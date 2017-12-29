@@ -33,7 +33,7 @@ use std::str::FromStr;
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
-use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, NumCast};
+use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
@@ -442,7 +442,7 @@ impl<'a, 'b, T> Div<&'b Ratio<T>> for &'a Ratio<T>
     }
 }
 
-// Abstracts the a/b `op` c/d = (a*d `op` b*d) / (b*d) pattern
+// Abstracts the a/b `op` c/d = (a*d `op` b*c) / (b*d) pattern
 macro_rules! arith_impl {
     (impl $imp:ident, $method:ident) => {
         forward_all_binop!(impl $imp, $method);
@@ -466,6 +466,53 @@ arith_impl!(impl Sub, sub);
 
 // a/b % c/d = (a*d % b*c)/(b*d)
 arith_impl!(impl Rem, rem);
+
+// a/b * c/d = (a*c)/(b*d)
+impl<T> CheckedMul for Ratio<T>
+    where T: Clone + Integer + CheckedMul
+{
+    #[inline]
+    fn checked_mul(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
+        Some(Ratio::new(self.numer.checked_mul(&rhs.numer)?,
+                        self.denom.checked_mul(&rhs.denom)?))
+    }
+}
+
+// (a/b) / (c/d) = (a*d)/(b*c)
+impl<T> CheckedDiv for Ratio<T>
+    where T: Clone + Integer + CheckedMul
+{
+    #[inline]
+    fn checked_div(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
+        let bc = self.denom.checked_mul(&rhs.numer)?;
+        if bc.is_zero() {
+            None
+        } else {
+            Some(Ratio::new(self.numer.checked_mul(&rhs.denom)?, bc))
+        }
+    }
+}
+
+// As arith_impl! but for Checked{Add,Sub} traits
+macro_rules! checked_arith_impl {
+    (impl $imp:ident, $method:ident) => {
+        impl<T: Clone + Integer + CheckedMul + $imp> $imp for Ratio<T> {
+            #[inline]
+            fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
+                let ad = self.numer.checked_mul(&rhs.denom)?;
+                let bc = self.denom.checked_mul(&rhs.numer)?;
+                let bd = self.denom.checked_mul(&rhs.denom)?;
+                Some(Ratio::new(ad.$method(&bc)?, bd))
+            }
+        }
+    }
+}
+
+// a/b + c/d = (a*d + b*c)/(b*d)
+checked_arith_impl!(impl CheckedAdd, checked_add);
+
+// a/b - c/d = (a*d - b*c)/(b*d)
+checked_arith_impl!(impl CheckedSub, checked_sub);
 
 impl<T> Neg for Ratio<T>
     where T: Clone + Integer + Neg<Output = T>
@@ -1102,12 +1149,15 @@ mod test {
     mod arith {
         use super::{_0, _1, _2, _1_2, _3_2, _NEG1_2, to_big};
         use super::super::{Ratio, Rational};
+        use traits::{CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
         #[test]
         fn test_add() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a + b, c);
                 assert_eq!(to_big(a) + to_big(b), to_big(c));
+                assert_eq!(a.checked_add(&b), Some(c));
+                assert_eq!(to_big(a).checked_add(&to_big(b)), Some(to_big(c)));
             }
 
             test(_1, _1_2, _3_2);
@@ -1120,7 +1170,9 @@ mod test {
         fn test_sub() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a - b, c);
-                assert_eq!(to_big(a) - to_big(b), to_big(c))
+                assert_eq!(to_big(a) - to_big(b), to_big(c));
+                assert_eq!(a.checked_sub(&b), Some(c));
+                assert_eq!(to_big(a).checked_sub(&to_big(b)), Some(to_big(c)));
             }
 
             test(_1, _1_2, _1_2);
@@ -1132,7 +1184,9 @@ mod test {
         fn test_mul() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a * b, c);
-                assert_eq!(to_big(a) * to_big(b), to_big(c))
+                assert_eq!(to_big(a) * to_big(b), to_big(c));
+                assert_eq!(a.checked_mul(&b), Some(c));
+                assert_eq!(to_big(a).checked_mul(&to_big(b)), Some(to_big(c)));
             }
 
             test(_1, _1_2, _1_2);
@@ -1144,7 +1198,9 @@ mod test {
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a / b, c);
-                assert_eq!(to_big(a) / to_big(b), to_big(c))
+                assert_eq!(to_big(a) / to_big(b), to_big(c));
+                assert_eq!(a.checked_div(&b), Some(c));
+                assert_eq!(to_big(a).checked_div(&to_big(b)), Some(to_big(c)));
             }
 
             test(_1, _1_2, _2);
@@ -1187,6 +1243,17 @@ mod test {
         #[should_panic]
         fn test_div_0() {
             let _a = _1 / _0;
+        }
+
+        #[test]
+        fn test_checked_failures() {
+            let big = Ratio::new(128u8, 1);
+            let small = Ratio::new(1, 128u8);
+            assert_eq!(big.checked_add(&big), None);
+            assert_eq!(small.checked_sub(&big), None);
+            assert_eq!(big.checked_mul(&big), None);
+            assert_eq!(small.checked_div(&big), None);
+            assert_eq!(_1.checked_div(&_0), None);
         }
     }
 
