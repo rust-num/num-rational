@@ -467,14 +467,23 @@ arith_impl!(impl Sub, sub);
 // a/b % c/d = (a*d % b*c)/(b*d)
 arith_impl!(impl Rem, rem);
 
+// Like `std::try!` for Option<T>, unwrap the value or early-return None.
+// Since Rust 1.22 this can be replaced by the `?` operator.
+macro_rules! otry {
+    ($expr:expr) => (match $expr {
+        Some(val) => val,
+        None => return None,
+    })
+}
+
 // a/b * c/d = (a*c)/(b*d)
 impl<T> CheckedMul for Ratio<T>
     where T: Clone + Integer + CheckedMul
 {
     #[inline]
     fn checked_mul(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-        Some(Ratio::new(self.numer.checked_mul(&rhs.numer)?,
-                        self.denom.checked_mul(&rhs.denom)?))
+        Some(Ratio::new(otry!(self.numer.checked_mul(&rhs.numer)),
+                        otry!(self.denom.checked_mul(&rhs.denom))))
     }
 }
 
@@ -484,11 +493,11 @@ impl<T> CheckedDiv for Ratio<T>
 {
     #[inline]
     fn checked_div(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-        let bc = self.denom.checked_mul(&rhs.numer)?;
+        let bc = otry!(self.denom.checked_mul(&rhs.numer));
         if bc.is_zero() {
             None
         } else {
-            Some(Ratio::new(self.numer.checked_mul(&rhs.denom)?, bc))
+            Some(Ratio::new(otry!(self.numer.checked_mul(&rhs.denom)), bc))
         }
     }
 }
@@ -499,10 +508,10 @@ macro_rules! checked_arith_impl {
         impl<T: Clone + Integer + CheckedMul + $imp> $imp for Ratio<T> {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-                let ad = self.numer.checked_mul(&rhs.denom)?;
-                let bc = self.denom.checked_mul(&rhs.numer)?;
-                let bd = self.denom.checked_mul(&rhs.denom)?;
-                Some(Ratio::new(ad.$method(&bc)?, bd))
+                let ad = otry!(self.numer.checked_mul(&rhs.denom));
+                let bc = otry!(self.denom.checked_mul(&rhs.numer));
+                let bd = otry!(self.denom.checked_mul(&rhs.denom));
+                Some(Ratio::new(otry!(ad.$method(&bc)), bd))
             }
         }
     }
