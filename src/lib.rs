@@ -110,9 +110,11 @@ impl<T: Clone + Integer> Ratio<T> {
 
         // FIXME(#5992): assignment operator overloads
         // self.numer /= g;
+        // T: Clone + Integer != T: Clone + NumAssign
         self.numer = self.numer.clone() / g.clone();
         // FIXME(#5992): assignment operator overloads
         // self.denom /= g;
+        // T: Clone + Integer != T: Clone + NumAssign
         self.denom = self.denom.clone() / g;
 
         // keep denom positive!
@@ -265,7 +267,6 @@ impl<T> From<T> for Ratio<T> where T: Clone + Integer {
     }
 }
 
-
 // From pair (through the `new` constructor)
 impl<T> From<(T, T)> for Ratio<T> where T: Clone + Integer {
     fn from(pair: (T, T)) -> Ratio<T> {
@@ -362,6 +363,114 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
     }
 }
 
+mod opassign {
+    use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
+
+    use Ratio;
+    use integer::Integer;
+    use traits::NumAssign;
+
+    impl<T: Clone + Integer + NumAssign> AddAssign for Ratio<T> {
+        fn add_assign(&mut self, other: Ratio<T>) {
+            self.numer = (self.numer.clone() * other.denom.clone()).add(self.denom.clone() * other.numer);
+            self.denom *= other.denom;
+            self.reduce();
+        }
+    }
+
+    impl<T: Clone + Integer + NumAssign> DivAssign for Ratio<T> {
+        fn div_assign(&mut self, other: Ratio<T>) {
+            self.numer *= other.denom;
+            self.denom *= other.numer;
+            self.reduce();
+        }
+    }
+
+    impl<T: Clone + Integer + NumAssign> MulAssign for Ratio<T> {
+        fn mul_assign(&mut self, other: Ratio<T>) {
+            self.numer *= other.numer;
+            self.denom *= other.denom;
+            self.reduce();
+        }
+    }
+
+    impl<T: Clone + Integer + NumAssign> RemAssign for Ratio<T> {
+        fn rem_assign(&mut self, other: Ratio<T>) {
+            self.numer = (self.numer.clone() * other.denom.clone()).rem(self.denom.clone() * other.numer);
+            self.denom *= other.denom;
+            self.reduce();
+        }
+    }
+
+    impl<T: Clone + Integer + NumAssign> SubAssign for Ratio<T> {
+        fn sub_assign(&mut self, other: Ratio<T>) {
+            self.numer = (self.numer.clone() * other.denom.clone()).sub(self.denom.clone() * other.numer);
+            self.denom *= other.denom;
+            self.reduce();
+        }
+    }
+
+    // a/b + c/1 = (a*1 + b*c) / (b*1) = (a + b*c) / b
+    impl<T: Clone + Integer + NumAssign> AddAssign<T> for Ratio<T> {
+        fn add_assign(&mut self, other: T) {
+            self.numer += self.denom.clone() * other;
+            self.reduce();
+        }
+    }
+
+    impl<T: Clone + Integer + NumAssign> DivAssign<T> for Ratio<T> {
+        fn div_assign(&mut self, other: T) {
+            self.denom *= other;
+            self.reduce();
+        }
+    }
+
+    impl<T: Clone + Integer + NumAssign> MulAssign<T> for Ratio<T> {
+        fn mul_assign(&mut self, other: T) {
+            self.numer *= other;
+            self.reduce();
+        }
+    }
+
+    // a/b % c/1 = (a*1 % b*c) / (b*1) = (a % b*c) / b
+    impl<T: Clone + Integer + NumAssign> RemAssign<T> for Ratio<T> {
+        fn rem_assign(&mut self, other: T) {
+            self.numer %= self.denom.clone() * other;
+            self.reduce();
+        }
+    }
+
+    // a/b - c/1 = (a*1 - b*c) / (b*1) = (a - b*c) / b
+    impl<T: Clone + Integer + NumAssign> SubAssign<T> for Ratio<T> {
+        fn sub_assign(&mut self, other: T) {
+            self.numer -= self.denom.clone() * other;
+            self.reduce();
+        }
+    }
+
+    macro_rules! forward_op_assign {
+        (impl $imp:ident, $method:ident) => {
+            impl<'a, T: Clone + Integer + NumAssign> $imp<&'a Ratio<T>> for Ratio<T> {
+                #[inline]
+                fn $method(&mut self, other: &Ratio<T>) {
+                    self.$method(other.clone())
+                }
+            }
+            impl<'a, T: Clone + Integer + NumAssign> $imp<&'a T> for Ratio<T> {
+                #[inline]
+                fn $method(&mut self, other: &T) {
+                    self.$method(other.clone())
+                }
+            }
+        }
+    }
+
+    forward_op_assign!(impl AddAssign, add_assign);
+    forward_op_assign!(impl DivAssign, div_assign);
+    forward_op_assign!(impl MulAssign, mul_assign);
+    forward_op_assign!(impl RemAssign, rem_assign);
+    forward_op_assign!(impl SubAssign, sub_assign);
+}
 
 macro_rules! forward_val_val_binop {
     (impl $imp:ident, $method:ident) => {
@@ -370,6 +479,14 @@ macro_rules! forward_val_val_binop {
 
             #[inline]
             fn $method(self, other: Ratio<T>) -> Ratio<T> {
+                (&self).$method(&other)
+            }
+        }
+        impl<T: Clone + Integer> $imp<T> for Ratio<T> {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn $method(self, other: T) -> Ratio<T> {
                 (&self).$method(&other)
             }
         }
@@ -388,6 +505,16 @@ macro_rules! forward_ref_val_binop {
                 self.$method(&other)
             }
         }
+        impl<'a, T> $imp<T> for &'a Ratio<T> where
+            T: Clone + Integer
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn $method(self, other: T) -> Ratio<T> {
+                self.$method(&other)
+            }
+        }
     }
 }
 
@@ -400,6 +527,16 @@ macro_rules! forward_val_ref_binop {
 
             #[inline]
             fn $method(self, other: &Ratio<T>) -> Ratio<T> {
+                (&self).$method(other)
+            }
+        }
+        impl<'a, T> $imp<&'a T> for Ratio<T> where
+            T: Clone + Integer
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn $method(self, other: &T) -> Ratio<T> {
                 (&self).$method(other)
             }
         }
@@ -427,9 +564,20 @@ impl<'a, 'b, T> Mul<&'b Ratio<T>> for &'a Ratio<T>
                    self.denom.clone() * rhs.denom.clone())
     }
 }
+// a/b * c/1 = (a*c) / (b*1) = (a*c) / b
+impl<'a, 'b, T> Mul<&'b T> for &'a Ratio<T>
+    where T: Clone + Integer
+{
+    type Output = Ratio<T>;
+    #[inline]
+    fn mul(self, rhs: &T) -> Ratio<T> {
+        Ratio::new(self.numer.clone() * rhs.clone(),
+                   self.denom.clone())
+    }
+}
 
 forward_all_binop!(impl Div, div);
-// (a/b) / (c/d) = (a*d)/(b*c)
+// (a/b) / (c/d) = (a*d) / (b*c)
 impl<'a, 'b, T> Div<&'b Ratio<T>> for &'a Ratio<T>
     where T: Clone + Integer
 {
@@ -441,11 +589,23 @@ impl<'a, 'b, T> Div<&'b Ratio<T>> for &'a Ratio<T>
                    self.denom.clone() * rhs.numer.clone())
     }
 }
+// (a/b) / (c/1) = (a*1) / (b*c) = a / (b*c)
+impl<'a, 'b, T> Div<&'b T> for &'a Ratio<T>
+    where T: Clone + Integer
+{
+    type Output = Ratio<T>;
 
-// Abstracts the a/b `op` c/d = (a*d `op` b*c) / (b*d) pattern
+    #[inline]
+    fn div(self, rhs: &T) -> Ratio<T> {
+        Ratio::new(self.numer.clone(),
+                   self.denom.clone() * rhs.clone())
+    }
+}
+
 macro_rules! arith_impl {
     (impl $imp:ident, $method:ident) => {
         forward_all_binop!(impl $imp, $method);
+        // Abstracts the a/b `op` c/d = (a*d `op` b*c) / (b*d) pattern
         impl<'a, 'b, T: Clone + Integer>
             $imp<&'b Ratio<T>> for &'a Ratio<T> {
             type Output = Ratio<T>;
@@ -455,16 +615,21 @@ macro_rules! arith_impl {
                            self.denom.clone() * rhs.denom.clone())
             }
         }
+        // Abstracts the a/b `op` c/1 = (a*1 `op` b*c) / (b*1) = (a `op` b*c) / b pattern
+        impl<'a, 'b, T: Clone + Integer>
+            $imp<&'b T> for &'a Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn $method(self, rhs: &'b T) -> Ratio<T> {
+                Ratio::new(self.numer.clone().$method(self.denom.clone() * rhs.clone()),
+                           self.denom.clone())
+            }
+        }
     }
 }
 
-// a/b + c/d = (a*d + b*c)/(b*d)
 arith_impl!(impl Add, add);
-
-// a/b - c/d = (a*d - b*c)/(b*d)
 arith_impl!(impl Sub, sub);
-
-// a/b % c/d = (a*d % b*c)/(b*d)
 arith_impl!(impl Rem, rem);
 
 // Like `std::try!` for Option<T>, unwrap the value or early-return None.
@@ -1164,69 +1329,99 @@ mod test {
         fn test_add() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a + b, c);
+                assert_eq!({ let mut x = a; x += b; x}, c);
                 assert_eq!(to_big(a) + to_big(b), to_big(c));
                 assert_eq!(a.checked_add(&b), Some(c));
                 assert_eq!(to_big(a).checked_add(&to_big(b)), Some(to_big(c)));
+            }
+           fn test_assign(a: Rational, b: isize, c: Rational) {
+                assert_eq!(a + b, c);
+                assert_eq!({ let mut x = a; x += b; x}, c);
             }
 
             test(_1, _1_2, _3_2);
             test(_1, _1, _2);
             test(_1_2, _3_2, _2);
             test(_1_2, _NEG1_2, _0);
+            test_assign(_1_2, 1, _3_2);
         }
 
         #[test]
         fn test_sub() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a - b, c);
+                assert_eq!({ let mut x = a; x -= b; x}, c);
                 assert_eq!(to_big(a) - to_big(b), to_big(c));
                 assert_eq!(a.checked_sub(&b), Some(c));
                 assert_eq!(to_big(a).checked_sub(&to_big(b)), Some(to_big(c)));
+            }
+            fn test_assign(a: Rational, b: isize, c: Rational) {
+                assert_eq!(a - b, c);
+                assert_eq!({ let mut x = a; x -= b; x}, c);
             }
 
             test(_1, _1_2, _1_2);
             test(_3_2, _1_2, _1);
             test(_1, _NEG1_2, _3_2);
+            test_assign(_1_2, 1, _NEG1_2);
         }
 
         #[test]
         fn test_mul() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a * b, c);
+                assert_eq!({ let mut x = a; x *= b; x}, c);
                 assert_eq!(to_big(a) * to_big(b), to_big(c));
                 assert_eq!(a.checked_mul(&b), Some(c));
                 assert_eq!(to_big(a).checked_mul(&to_big(b)), Some(to_big(c)));
+            }
+            fn test_assign(a: Rational, b: isize, c: Rational) {
+                assert_eq!(a * b, c);
+                assert_eq!({ let mut x = a; x *= b; x}, c);
             }
 
             test(_1, _1_2, _1_2);
             test(_1_2, _3_2, Ratio::new(3, 4));
             test(_1_2, _NEG1_2, Ratio::new(-1, 4));
+            test_assign(_1_2, 2, _1);
         }
 
         #[test]
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a / b, c);
+                assert_eq!({ let mut x = a; x /= b; x}, c);
                 assert_eq!(to_big(a) / to_big(b), to_big(c));
                 assert_eq!(a.checked_div(&b), Some(c));
                 assert_eq!(to_big(a).checked_div(&to_big(b)), Some(to_big(c)));
+            }
+            fn test_assign(a: Rational, b: isize, c: Rational) {
+                assert_eq!(a / b, c);
+                assert_eq!({ let mut x = a; x /= b; x}, c);
             }
 
             test(_1, _1_2, _2);
             test(_3_2, _1_2, _1 + _2);
             test(_1, _NEG1_2, _NEG1_2 + _NEG1_2 + _NEG1_2 + _NEG1_2);
+            test_assign(_1, 2, _1_2);
         }
 
         #[test]
         fn test_rem() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a % b, c);
+                assert_eq!({ let mut x = a; x %= b; x}, c);
                 assert_eq!(to_big(a) % to_big(b), to_big(c))
+            }
+            fn test_assign(a: Rational, b: isize, c: Rational) {
+                assert_eq!(a % b, c);
+                assert_eq!({ let mut x = a; x %= b; x}, c);
             }
 
             test(_3_2, _1, _1_2);
             test(_2, _NEG1_2, _0);
             test(_1_2, _2, _1_2);
+            test_assign(_3_2, 1, _1_2);
         }
 
         #[test]
