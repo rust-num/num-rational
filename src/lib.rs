@@ -475,22 +475,22 @@ mod opassign {
     forward_op_assign!(impl SubAssign, sub_assign);
 }
 
-macro_rules! forward_val_val_binop {
+macro_rules! forward_ref_ref_binop {
     (impl $imp:ident, $method:ident) => {
-        impl<T: Clone + Integer> $imp<Ratio<T>> for Ratio<T> {
+        impl<'a, 'b, T: Clone + Integer> $imp<&'b Ratio<T>> for &'a Ratio<T> {
             type Output = Ratio<T>;
 
             #[inline]
-            fn $method(self, other: Ratio<T>) -> Ratio<T> {
-                (&self).$method(&other)
+            fn $method(self, other: &'b Ratio<T>) -> Ratio<T> {
+                self.clone().$method(other.clone())
             }
         }
-        impl<T: Clone + Integer> $imp<T> for Ratio<T> {
+        impl<'a, 'b, T: Clone + Integer> $imp<&'b T> for &'a Ratio<T> {
             type Output = Ratio<T>;
 
             #[inline]
-            fn $method(self, other: T) -> Ratio<T> {
-                (&self).$method(&other)
+            fn $method(self, other: &'b T) -> Ratio<T> {
+                self.clone().$method(other.clone())
             }
         }
     }
@@ -505,7 +505,7 @@ macro_rules! forward_ref_val_binop {
 
             #[inline]
             fn $method(self, other: Ratio<T>) -> Ratio<T> {
-                self.$method(&other)
+                self.clone().$method(other)
             }
         }
         impl<'a, T> $imp<T> for &'a Ratio<T> where
@@ -515,7 +515,7 @@ macro_rules! forward_ref_val_binop {
 
             #[inline]
             fn $method(self, other: T) -> Ratio<T> {
-                self.$method(&other)
+                self.clone().$method(other)
             }
         }
     }
@@ -530,7 +530,7 @@ macro_rules! forward_val_ref_binop {
 
             #[inline]
             fn $method(self, other: &Ratio<T>) -> Ratio<T> {
-                (&self).$method(other)
+                self.$method(other.clone())
             }
         }
         impl<'a, T> $imp<&'a T> for Ratio<T> where
@@ -540,7 +540,7 @@ macro_rules! forward_val_ref_binop {
 
             #[inline]
             fn $method(self, other: &T) -> Ratio<T> {
-                (&self).$method(other)
+                self.$method(other.clone())
             }
         }
     }
@@ -548,7 +548,7 @@ macro_rules! forward_val_ref_binop {
 
 macro_rules! forward_all_binop {
     (impl $imp:ident, $method:ident) => {
-        forward_val_val_binop!(impl $imp, $method);
+        forward_ref_ref_binop!(impl $imp, $method);
         forward_ref_val_binop!(impl $imp, $method);
         forward_val_ref_binop!(impl $imp, $method);
     };
@@ -557,51 +557,51 @@ macro_rules! forward_all_binop {
 // Arithmetic
 forward_all_binop!(impl Mul, mul);
 // a/b * c/d = (a*c)/(b*d)
-impl<'a, 'b, T> Mul<&'b Ratio<T>> for &'a Ratio<T>
+impl<T> Mul<Ratio<T>> for Ratio<T>
     where T: Clone + Integer
 {
     type Output = Ratio<T>;
     #[inline]
-    fn mul(self, rhs: &Ratio<T>) -> Ratio<T> {
-        Ratio::new(self.numer.clone() * rhs.numer.clone(),
-                   self.denom.clone() * rhs.denom.clone())
+    fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
+        Ratio::new(self.numer * rhs.numer,
+                   self.denom * rhs.denom)
     }
 }
 // a/b * c/1 = (a*c) / (b*1) = (a*c) / b
-impl<'a, 'b, T> Mul<&'b T> for &'a Ratio<T>
+impl<T> Mul<T> for Ratio<T>
     where T: Clone + Integer
 {
     type Output = Ratio<T>;
     #[inline]
-    fn mul(self, rhs: &T) -> Ratio<T> {
-        Ratio::new(self.numer.clone() * rhs.clone(),
-                   self.denom.clone())
+    fn mul(self, rhs: T) -> Ratio<T> {
+        Ratio::new(self.numer * rhs,
+                   self.denom)
     }
 }
 
 forward_all_binop!(impl Div, div);
 // (a/b) / (c/d) = (a*d) / (b*c)
-impl<'a, 'b, T> Div<&'b Ratio<T>> for &'a Ratio<T>
+impl<T> Div<Ratio<T>> for Ratio<T>
     where T: Clone + Integer
 {
     type Output = Ratio<T>;
 
     #[inline]
-    fn div(self, rhs: &Ratio<T>) -> Ratio<T> {
-        Ratio::new(self.numer.clone() * rhs.denom.clone(),
-                   self.denom.clone() * rhs.numer.clone())
+    fn div(self, rhs: Ratio<T>) -> Ratio<T> {
+        Ratio::new(self.numer * rhs.denom,
+                   self.denom * rhs.numer)
     }
 }
 // (a/b) / (c/1) = (a*1) / (b*c) = a / (b*c)
-impl<'a, 'b, T> Div<&'b T> for &'a Ratio<T>
+impl<T> Div<T> for Ratio<T>
     where T: Clone + Integer
 {
     type Output = Ratio<T>;
 
     #[inline]
-    fn div(self, rhs: &T) -> Ratio<T> {
-        Ratio::new(self.numer.clone(),
-                   self.denom.clone() * rhs.clone())
+    fn div(self, rhs: T) -> Ratio<T> {
+        Ratio::new(self.numer,
+                   self.denom * rhs)
     }
 }
 
@@ -609,23 +609,21 @@ macro_rules! arith_impl {
     (impl $imp:ident, $method:ident) => {
         forward_all_binop!(impl $imp, $method);
         // Abstracts the a/b `op` c/d = (a*d `op` b*c) / (b*d) pattern
-        impl<'a, 'b, T: Clone + Integer>
-            $imp<&'b Ratio<T>> for &'a Ratio<T> {
+        impl<T: Clone + Integer> $imp<Ratio<T>> for Ratio<T> {
             type Output = Ratio<T>;
             #[inline]
-            fn $method(self, rhs: &Ratio<T>) -> Ratio<T> {
-                Ratio::new((self.numer.clone() * rhs.denom.clone()).$method(self.denom.clone() * rhs.numer.clone()),
-                           self.denom.clone() * rhs.denom.clone())
+            fn $method(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new((self.numer * rhs.denom.clone()).$method(self.denom.clone() * rhs.numer),
+                           self.denom * rhs.denom)
             }
         }
         // Abstracts the a/b `op` c/1 = (a*1 `op` b*c) / (b*1) = (a `op` b*c) / b pattern
-        impl<'a, 'b, T: Clone + Integer>
-            $imp<&'b T> for &'a Ratio<T> {
+        impl<T: Clone + Integer> $imp<T> for Ratio<T> {
             type Output = Ratio<T>;
             #[inline]
-            fn $method(self, rhs: &'b T) -> Ratio<T> {
-                Ratio::new(self.numer.clone().$method(self.denom.clone() * rhs.clone()),
-                           self.denom.clone())
+            fn $method(self, rhs: T) -> Ratio<T> {
+                Ratio::new(self.numer.$method(self.denom.clone() * rhs),
+                           self.denom)
             }
         }
     }
