@@ -372,7 +372,8 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> AddAssign for Ratio<T> {
         fn add_assign(&mut self, other: Ratio<T>) {
-            self.numer = (self.numer.clone() * other.denom.clone()).add(self.denom.clone() * other.numer);
+            self.numer *= other.denom.clone();
+            self.numer += self.denom.clone() * other.numer;
             self.denom *= other.denom;
             self.reduce();
         }
@@ -396,7 +397,8 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> RemAssign for Ratio<T> {
         fn rem_assign(&mut self, other: Ratio<T>) {
-            self.numer = (self.numer.clone() * other.denom.clone()).rem(self.denom.clone() * other.numer);
+            self.numer *= other.denom.clone();
+            self.numer %= self.denom.clone() * other.numer;
             self.denom *= other.denom;
             self.reduce();
         }
@@ -404,7 +406,8 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> SubAssign for Ratio<T> {
         fn sub_assign(&mut self, other: Ratio<T>) {
-            self.numer = (self.numer.clone() * other.denom.clone()).sub(self.denom.clone() * other.numer);
+            self.numer *= other.denom.clone();
+            self.numer -= self.denom.clone() * other.numer;
             self.denom *= other.denom;
             self.reduce();
         }
