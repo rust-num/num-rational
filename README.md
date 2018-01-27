@@ -21,6 +21,10 @@ and this to your crate root:
 extern crate num_rational;
 ```
 
+## Releases
+
+Release notes are available in [RELEASES.md](RELEASES.md).
+
 ## Compatibility
 
 The `num-rational` crate is tested for rustc 1.8 and greater.
