@@ -24,10 +24,11 @@ extern crate num_integer as integer;
 
 use std::cmp;
 use std::error::Error;
+use std::fmt;
+use std::fmt::{Display, Octal, LowerHex, UpperHex, Binary, LowerExp, UpperExp};
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use std::str::FromStr;
-use std::fmt;
 
 #[cfg(feature = "num-bigint")]
 use bigint::{BigInt, BigUint, Sign};
@@ -804,7 +805,7 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 
 // String conversions
 macro_rules! fmt_impl {
-    ($imp:path) => {
+    ($imp:ident) => {
         impl<T: Eq + One + $imp> $imp for Ratio<T> {
             /// Renders as `numer/denom`. If denom=1, renders as numer.
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -823,13 +824,13 @@ macro_rules! fmt_impl {
     }
 }
 
-fmt_impl!(fmt::Display);
-fmt_impl!(fmt::Octal);
-fmt_impl!(fmt::LowerHex);
-fmt_impl!(fmt::UpperHex);
-fmt_impl!(fmt::Binary);
-fmt_impl!(fmt::LowerExp);
-fmt_impl!(fmt::UpperExp);
+fmt_impl!(Display);
+fmt_impl!(Octal);
+fmt_impl!(LowerHex);
+fmt_impl!(UpperHex);
+fmt_impl!(Binary);
+fmt_impl!(LowerExp);
+fmt_impl!(UpperExp);
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     type Err = ParseRatioError;
