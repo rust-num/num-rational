@@ -1,3 +1,8 @@
+# Release 0.1.42
+
+- Maintenance release to update dependencies.
+
+
 # Release 0.1.41
 
 - [num-rational now has its own source repository][num-356] at [rust-num/num-rational][home].

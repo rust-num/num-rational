@@ -9,6 +9,10 @@
 // except according to those terms.
 
 //! Rational numbers
+//!
+//! ## Compatibility
+//!
+//! The `num-rational` crate is tested for rustc 1.8 and greater.
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
 
