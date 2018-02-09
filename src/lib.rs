@@ -806,7 +806,7 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 // String conversions
 macro_rules! fmt_impl {
     ($imp:ident) => {
-        impl<T: Eq + One + $imp> $imp for Ratio<T> {
+        impl<T: PartialEq + One + $imp> $imp for Ratio<T> {
             /// Renders as `numer/denom`. If denom=1, renders as numer.
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 if self.denom == One::one() {
@@ -829,8 +829,6 @@ fmt_impl!(Octal);
 fmt_impl!(LowerHex);
 fmt_impl!(UpperHex);
 fmt_impl!(Binary);
-fmt_impl!(LowerExp);
-fmt_impl!(UpperExp);
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     type Err = ParseRatioError;
@@ -1401,29 +1399,6 @@ mod test {
             assert_eq!(format!("{:b}", _10_21), "1010/10101".to_string());
             assert_eq!(format!("{:#b}", _3_47), "0b11/0b101111".to_string());
         }
-        
-        // Integer types don't implement fmt::LowerExp / fmt::UpperExp.
-        /*
-        #[test]
-        fn test_lower_exp() {
-            assert_eq!(format!("{:e}", _2), "2e0".to_string());
-            assert_eq!(format!("{:e}", _1_2), "1e0/2e0".to_string());
-            assert_eq!(format!("{:e}", _0), "0e0".to_string());
-            assert_eq!(format!("{:e}", _NEG12), "-1.2e1".to_string());
-            assert_eq!(format!("{:e}", _10_21), "1e1/2.1e1".to_string());
-            assert_eq!(format!("{:e}", _3_47), "3e0/4.7e1".to_string());
-        }
-
-        #[test]
-        fn test_upper_exp() {
-            assert_eq!(format!("{:E}", _2), "2E0".to_string());
-            assert_eq!(format!("{:E}", _1_2), "1E0/2E0".to_string());
-            assert_eq!(format!("{:E}", _0), "0E0".to_string());
-            assert_eq!(format!("{:E}", _NEG12), "-1.2E1".to_string());
-            assert_eq!(format!("{:E}", _10_21), "1E1/2.1E1".to_string());
-            assert_eq!(format!("{:E}", _3_47), "3E0/4.7E1".to_string());
-        }
-        */
     }
 
     mod arith {
