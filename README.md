@@ -2,6 +2,7 @@
 
 [![crate](https://img.shields.io/crates/v/num-rational.svg)](https://crates.io/crates/num-rational)
 [![documentation](https://docs.rs/num-rational/badge.svg)](https://docs.rs/num-rational)
+![minimum rustc 1.8](https://img.shields.io/badge/rustc-1.8+-red.svg)
 [![Travis status](https://travis-ci.org/rust-num/num-rational.svg?branch=master)](https://travis-ci.org/rust-num/num-rational)
 
 Generic `Rational` numbers for Rust.
