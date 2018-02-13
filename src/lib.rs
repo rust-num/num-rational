@@ -29,6 +29,7 @@ extern crate num_integer as integer;
 use std::cmp;
 use std::error::Error;
 use std::fmt;
+use std::fmt::{Display, Octal, LowerHex, UpperHex, Binary, LowerExp, UpperExp};
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use std::str::FromStr;
@@ -807,18 +808,31 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 }
 
 // String conversions
-impl<T> fmt::Display for Ratio<T>
-    where T: fmt::Display + Eq + One
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.denom == One::one() {
-            write!(f, "{}", self.numer)
-        } else {
-            write!(f, "{}/{}", self.numer, self.denom)
+macro_rules! fmt_impl {
+    ($imp:ident) => {
+        impl<T: PartialEq + One + $imp> $imp for Ratio<T> {
+            /// Renders as `numer/denom`. If denom=1, renders as numer.
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                if self.denom == One::one() {
+                    let n = &self.numer;
+                    <$imp>::fmt(n, f)
+                } else {
+                    let n = &self.numer;
+                    let d = &self.denom;
+                    <$imp>::fmt(n, f)
+                        .and_then(|_| write!(f, "/"))
+                        .and_then(|_| <$imp>::fmt(d, f))
+                }   
+            }
         }
     }
 }
+
+fmt_impl!(Display);
+fmt_impl!(Octal);
+fmt_impl!(LowerHex);
+fmt_impl!(UpperHex);
+fmt_impl!(Binary);
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     type Err = ParseRatioError;
@@ -1317,12 +1331,78 @@ mod test {
         assert!(!_NEG1_2.is_integer());
     }
 
-    #[test]
-    fn test_show() {
-        assert_eq!(format!("{}", _2), "2".to_string());
-        assert_eq!(format!("{}", _1_2), "1/2".to_string());
-        assert_eq!(format!("{}", _0), "0".to_string());
-        assert_eq!(format!("{}", Ratio::from_integer(-2)), "-2".to_string());
+    mod show {
+        use Ratio;
+
+        pub const _2: Ratio<isize> = super::_2;
+        pub const _1_2: Ratio<i32> = Ratio {
+            numer: 1,
+            denom: 2
+        };
+        pub const _0: Ratio<i64> = Ratio {
+            numer: 0,
+            denom: 1
+        };
+        pub const _NEG12: Ratio<isize> = Ratio {
+            numer: -12,
+            denom: 1
+        };
+        pub const _10_21: Ratio<i32> = Ratio {
+            numer: 10, 
+            denom: 21
+        };
+        pub const _3_47: Ratio<i64> = Ratio {
+            numer: 3,
+            denom: 47
+        };
+
+        #[test]
+        fn test_display() {
+            assert_eq!(format!("{}", _2), "2".to_string());
+            assert_eq!(format!("{}", _1_2), "1/2".to_string());
+            assert_eq!(format!("{}", _0), "0".to_string());
+            assert_eq!(format!("{}", _NEG12), "-12".to_string());
+        }
+
+        #[test]
+        fn test_octal() {
+            assert_eq!(format!("{:o}", _2), "2".to_string());
+            assert_eq!(format!("{:o}", _1_2), "1/2".to_string());
+            assert_eq!(format!("{:o}", _0), "0".to_string());
+            //assert_eq!(format!("{:o}", _NEG12), "-14".to_string());
+            assert_eq!(format!("{:o}", _10_21), "12/25".to_string());
+            assert_eq!(format!("{:#o}", _3_47), "0o3/0o57");
+        }
+
+        #[test]
+        fn test_lower_hex() {
+            assert_eq!(format!("{:x}", _2), "2".to_string());
+            assert_eq!(format!("{:x}", _1_2), "1/2".to_string());
+            assert_eq!(format!("{:x}", _0), "0".to_string());
+            //assert_eq!(format!("{:x}", _NEG12), "-c".to_string());
+            assert_eq!(format!("{:x}", _10_21), "a/15".to_string());
+            assert_eq!(format!("{:#x}", _3_47), "0x3/0x2f".to_string());
+        }
+
+        #[test]
+        fn test_upper_hex() {
+            assert_eq!(format!("{:X}", _2), "2".to_string());
+            assert_eq!(format!("{:X}", _1_2), "1/2".to_string());
+            assert_eq!(format!("{:X}", _0), "0".to_string());
+            //assert_eq!(format!("{:X}", _NEG12), "-C".to_string());
+            assert_eq!(format!("{:X}", _10_21), "A/15".to_string());
+            assert_eq!(format!("{:#X}", _3_47), "0x3/0x2F".to_string());
+        }
+
+        #[test]
+        fn test_binary() {
+            assert_eq!(format!("{:b}", _2), "10".to_string());
+            assert_eq!(format!("{:b}", _1_2), "1/10".to_string());
+            assert_eq!(format!("{:b}", _0), "0".to_string());
+            //assert_eq!(format!("{:b}", _NEG12), "-1100".to_string());
+            assert_eq!(format!("{:b}", _10_21), "1010/10101".to_string());
+            assert_eq!(format!("{:#b}", _3_47), "0b11/0b101111".to_string());
+        }
     }
 
     mod arith {
