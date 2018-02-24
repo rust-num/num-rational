@@ -1,3 +1,12 @@
+# Release 0.2.0 (pending)
+
+- :warning: [num-rational now requires rustc 1.15 or greater][18].
+
+**Contributors**: @cuviper
+
+[18]: https://github.com/rust-num/num-rational/pull/18
+
+
 # Release 0.1.42
 
 - Maintenance release to update dependencies.
