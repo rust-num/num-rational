@@ -8,14 +8,16 @@ categories = [ "algorithms", "data-structures", "science" ]
 license = "MIT/Apache-2.0"
 name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
-version = "0.1.42"
+version = "0.2.0-git"
+publish = false
 readme = "README.md"
 
 [dependencies]
 
 [dependencies.num-bigint]
 optional = true
-version = "0.1.42"
+version = "0.2.0-git"
+git = "https://github.com/rust-num/num-bigint"
 
 [dependencies.num-integer]
 version = "0.1.36"
