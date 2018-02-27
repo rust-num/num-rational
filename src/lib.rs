@@ -37,7 +37,7 @@ use std::str::FromStr;
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
-use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
@@ -712,6 +712,28 @@ impl<'a, T> Neg for &'a Ratio<T>
     #[inline]
     fn neg(self) -> Ratio<T> {
         -self.clone()
+    }
+}
+
+impl<T> Inv for Ratio<T>
+    where T: Clone + Integer + Inv<Output = T>
+{
+    type Output = Ratio<T>;
+
+    #[inline]
+    fn inv(self) -> Ratio<T> {
+        self.recip()
+    }
+}
+
+impl<'a, T> Inv for &'a Ratio<T>
+    where T: Clone + Integer + Inv<Output = T>
+{
+    type Output = Ratio<T>;
+
+    #[inline]
+    fn neg(self) -> Ratio<T> {
+        self.recip()
     }
 }
 
