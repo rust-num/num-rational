@@ -43,7 +43,7 @@ use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
 use traits::float::FloatCore;
-use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, Pow, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -246,6 +246,82 @@ impl<T: Clone + Integer + PrimInt> Ratio<T> {
         }
     }
 }
+
+macro_rules! pow_impl {
+    ($exp: ty) => {
+        pow_impl!($exp, $exp);
+    };
+    ($exp: ty, $unsigned: ty) => {
+        impl<T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<$exp> for Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: $exp) -> Ratio<T> {
+                match expon.cmp(&0) {
+                    cmp::Ordering::Equal => One::one(),
+                    cmp::Ordering::Less => {
+                        let expon = expon.wrapping_abs() as $unsigned;
+                        Ratio::new_raw(
+                            Pow::pow(self.denom, expon),
+                            Pow::pow(self.numer, expon),
+                        )
+                    },
+                    cmp::Ordering::Greater => {
+                        Ratio::new_raw(
+                            Pow::pow(self.numer, expon as $unsigned),
+                            Pow::pow(self.denom, expon as $unsigned),
+                        )
+                    }
+                }
+            }
+        }
+        impl<'a, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<$exp> for &'a Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: $exp) -> Ratio<T> {
+                Pow::pow(self.clone(), expon)
+            }
+        }
+        impl<'a, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<&'a $exp> for Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: &'a $exp) -> Ratio<T> {
+                Pow::pow(self, *expon)
+            }
+        }
+        impl<'a, 'b, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<&'a $exp> for &'b Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: &'a $exp) -> Ratio<T> {
+                Pow::pow(self.clone(), *expon)
+            }
+        }
+    };
+}
+
+// this is solely to make `pow_impl!` work
+trait WrappingAbs: Sized {
+    fn wrapping_abs(self) -> Self {
+        self
+    }
+}
+impl WrappingAbs for u8 {}
+impl WrappingAbs for u16 {}
+impl WrappingAbs for u32 {}
+impl WrappingAbs for u64 {}
+impl WrappingAbs for usize {}
+
+pow_impl!(i8, u8);
+pow_impl!(i16, u16);
+pow_impl!(i32, u32);
+pow_impl!(i64, u64);
+pow_impl!(isize, usize);
+pow_impl!(u8);
+pow_impl!(u16);
+pow_impl!(u32);
+pow_impl!(u64);
+pow_impl!(usize);
+
+// TODO: pow_impl!(BigUint) and pow_impl!(BigInt, BigUint)
 
 #[cfg(feature = "bigint")]
 impl Ratio<BigInt> {
