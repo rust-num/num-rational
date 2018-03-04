@@ -716,7 +716,7 @@ impl<'a, T> Neg for &'a Ratio<T>
 }
 
 impl<T> Inv for Ratio<T>
-    where T: Clone + Integer + Inv<Output = T>
+    where T: Clone + Integer
 {
     type Output = Ratio<T>;
 
@@ -727,12 +727,12 @@ impl<T> Inv for Ratio<T>
 }
 
 impl<'a, T> Inv for &'a Ratio<T>
-    where T: Clone + Integer + Inv<Output = T>
+    where T: Clone + Integer
 {
     type Output = Ratio<T>;
 
     #[inline]
-    fn neg(self) -> Ratio<T> {
+    fn inv(self) -> Ratio<T> {
         self.recip()
     }
 }
