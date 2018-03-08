@@ -37,7 +37,7 @@ use std::str::FromStr;
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
-use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
@@ -105,7 +105,7 @@ impl<T: Clone + Integer> Ratio<T> {
     /// Returns true if the rational number is an integer (denominator is 1).
     #[inline]
     pub fn is_integer(&self) -> bool {
-        self.denom == One::one()
+        self.denom.is_one()
     }
 
     /// Puts self into lowest terms, with denom > 0.
@@ -715,6 +715,28 @@ impl<'a, T> Neg for &'a Ratio<T>
     }
 }
 
+impl<T> Inv for Ratio<T>
+    where T: Clone + Integer
+{
+    type Output = Ratio<T>;
+
+    #[inline]
+    fn inv(self) -> Ratio<T> {
+        self.recip()
+    }
+}
+
+impl<'a, T> Inv for &'a Ratio<T>
+    where T: Clone + Integer
+{
+    type Output = Ratio<T>;
+
+    #[inline]
+    fn inv(self) -> Ratio<T> {
+        self.recip()
+    }
+}
+
 // Constants
 impl<T: Clone + Integer> Zero for Ratio<T> {
     #[inline]
@@ -732,6 +754,11 @@ impl<T: Clone + Integer> One for Ratio<T> {
     #[inline]
     fn one() -> Ratio<T> {
         Ratio::new_raw(One::one(), One::one())
+    }
+
+    #[inline]
+    fn is_one(&self) -> bool {
+        self.numer == self.denom
     }
 }
 
@@ -812,7 +839,7 @@ impl<T> fmt::Display for Ratio<T>
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.denom == One::one() {
+        if self.denom.is_one() {
             write!(f, "{}", self.numer)
         } else {
             write!(f, "{}/{}", self.numer, self.denom)
