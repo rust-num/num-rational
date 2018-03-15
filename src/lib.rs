@@ -16,6 +16,8 @@
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[cfg(feature = "rustc-serialize")]
 extern crate rustc_serialize;
 #[cfg(feature = "serde")]
@@ -26,18 +28,25 @@ extern crate num_bigint as bigint;
 extern crate num_traits as traits;
 extern crate num_integer as integer;
 
-use std::cmp;
+#[cfg(feature = "std")]
+extern crate core;
+
+use core::cmp;
+#[cfg(feature = "std")]
 use std::error::Error;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
-use std::str::FromStr;
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use core::str::FromStr;
 
 #[cfg(feature = "num-bigint")]
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
+#[cfg(feature = "std")]
 use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+#[cfg(not(feature = "std"))]
+use traits::{PrimInt, Num, Signed, Zero, One, Inv, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
@@ -368,7 +377,7 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
 }
 
 mod opassign {
-    use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
+    use core::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 
     use Ratio;
     use integer::Integer;
@@ -767,25 +776,19 @@ impl<T: Clone + Integer> Num for Ratio<T> {
 
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: u32) -> Result<Ratio<T>, ParseRatioError> {
-        let split: Vec<&str> = s.splitn(2, '/').collect();
-        if split.len() < 2 {
-            Err(ParseRatioError { kind: RatioErrorKind::ParseError })
-        } else {
-            let a_result: Result<T, _> = T::from_str_radix(split[0], radix).map_err(|_| {
+        if s.splitn(2, '/').count() == 2 {
+            let mut parts = s.splitn(2, '/').map(|ss| T::from_str_radix(ss, radix).map_err(|_| {
                 ParseRatioError { kind: RatioErrorKind::ParseError }
-            });
-            a_result.and_then(|a| {
-                let b_result: Result<T, _> = T::from_str_radix(split[1], radix).map_err(|_| {
-                    ParseRatioError { kind: RatioErrorKind::ParseError }
-                });
-                b_result.and_then(|b| {
-                    if b.is_zero() {
-                        Err(ParseRatioError { kind: RatioErrorKind::ZeroDenominator })
-                    } else {
-                        Ok(Ratio::new(a.clone(), b.clone()))
-                    }
-                })
-            })
+            }));
+            let numer: T = parts.next().unwrap()?;
+            let denom: T = parts.next().unwrap()?;
+            if denom.is_zero() {
+                Err(ParseRatioError { kind: RatioErrorKind::ZeroDenominator })
+            } else {
+                Ok(Ratio::new(numer.clone(), denom.clone()))
+            }
+        } else {
+            Err(ParseRatioError { kind: RatioErrorKind::ParseError })
         }
     }
 }
@@ -915,18 +918,21 @@ enum RatioErrorKind {
     ZeroDenominator,
 }
 
+#[cfg(feature = "std")]
 impl fmt::Display for ParseRatioError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }
 }
 
+#[cfg(feature = "std")]
 impl Error for ParseRatioError {
     fn description(&self) -> &str {
         self.kind.description()
     }
 }
 
+#[cfg(feature = "std")]
 impl RatioErrorKind {
     fn description(&self) -> &'static str {
         match *self {
@@ -955,6 +961,9 @@ impl FromPrimitive for Ratio<BigInt> {
     }
 }
 
+// NOTE: this macro compiles just fine with no_std, it's hidden behind a feature since all of its
+// uses depend on the Float type, which depends on std.
+#[cfg(feature = "std")]
 macro_rules! from_primitive_integer {
     ($typ:ty, $approx:ident) => {
         impl FromPrimitive for Ratio<$typ> {
@@ -977,18 +986,29 @@ macro_rules! from_primitive_integer {
     }
 }
 
+#[cfg(feature = "std")]
 from_primitive_integer!(i8, approximate_float);
+#[cfg(feature = "std")]
 from_primitive_integer!(i16, approximate_float);
+#[cfg(feature = "std")]
 from_primitive_integer!(i32, approximate_float);
+#[cfg(feature = "std")]
 from_primitive_integer!(i64, approximate_float);
+#[cfg(feature = "std")]
 from_primitive_integer!(isize, approximate_float);
 
+#[cfg(feature = "std")]
 from_primitive_integer!(u8, approximate_float_unsigned);
+#[cfg(feature = "std")]
 from_primitive_integer!(u16, approximate_float_unsigned);
+#[cfg(feature = "std")]
 from_primitive_integer!(u32, approximate_float_unsigned);
+#[cfg(feature = "std")]
 from_primitive_integer!(u64, approximate_float_unsigned);
+#[cfg(feature = "std")]
 from_primitive_integer!(usize, approximate_float_unsigned);
 
+#[cfg(feature = "std")]
 impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
     pub fn approximate_float<F: Float + NumCast>(f: F) -> Option<Ratio<T>> {
         // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
@@ -999,6 +1019,7 @@ impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
     }
 }
 
+#[cfg(feature = "std")]
 fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
     where T: Integer + Signed + Bounded + NumCast + Clone,
           F: Float + NumCast
@@ -1018,6 +1039,7 @@ fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Optio
 
 // No Unsigned constraint because this also works on positive integers and is called
 // like that, see above
+#[cfg(feature = "std")]
 fn approximate_float_unsigned<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
     where T: Integer + Bounded + NumCast + Clone,
           F: Float + NumCast
