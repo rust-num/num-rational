@@ -1133,6 +1133,7 @@ fn approximate_float_unsigned<T, F>(val: F, max_error: F, max_iterations: usize)
 }
 
 #[cfg(test)]
+#[cfg(feature = "std")]
 fn hash<T: Hash>(x: &T) -> u64 {
     use std::hash::BuildHasher;
     use std::collections::hash_map::RandomState;
@@ -1147,8 +1148,10 @@ mod test {
     #[cfg(feature = "num-bigint")]
     use super::BigRational;
 
+    #[cfg(feature = "std")]
     use std::str::FromStr;
-    use std::i32;
+    use core::i32;
+    #[cfg(feature = "std")]
     use std::f64;
     use traits::{Zero, One, Signed, FromPrimitive};
 
@@ -1241,6 +1244,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_approximate_float() {
         assert_eq!(Ratio::from_f32(0.5f32), Some(Ratio::new(1i64, 2)));
         assert_eq!(Ratio::from_f64(0.5f64), Some(Ratio::new(1i32, 2)));
@@ -1288,6 +1292,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_cmp_overflow() {
         use std::cmp::Ordering;
 
@@ -1367,6 +1372,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_show() {
         assert_eq!(format!("{}", _2), "2".to_string());
         assert_eq!(format!("{}", _1_2), "1/2".to_string());
@@ -1614,6 +1620,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_to_from_str() {
         fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(&s), Ok(r));
@@ -1627,6 +1634,7 @@ mod test {
         test(_NEG1_2, "-1/2".to_string());
     }
     #[test]
+    #[cfg(feature = "std")]
     fn test_from_str_fail() {
         fn test(s: &str) {
             let rational: Result<Rational, _> = FromStr::from_str(s);
@@ -1639,8 +1647,8 @@ mod test {
         }
     }
 
-    #[cfg(feature = "num-bigint")]
     #[test]
+    #[cfg(feature = "num-bigint")]
     fn test_from_float() {
         use traits::Float;
         fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
@@ -1703,6 +1711,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_hash() {
         assert!(::hash(&_0) != ::hash(&_1));
         assert!(::hash(&_0) != ::hash(&_3_2));
