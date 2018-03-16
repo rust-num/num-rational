@@ -918,10 +918,9 @@ enum RatioErrorKind {
     ZeroDenominator,
 }
 
-#[cfg(feature = "std")]
 impl fmt::Display for ParseRatioError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        self.kind.description().fmt(f)
     }
 }
 
@@ -932,7 +931,6 @@ impl Error for ParseRatioError {
     }
 }
 
-#[cfg(feature = "std")]
 impl RatioErrorKind {
     fn description(&self) -> &'static str {
         match *self {
