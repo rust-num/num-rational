@@ -1271,9 +1271,8 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "std")]
     fn test_cmp_overflow() {
-        use std::cmp::Ordering;
+        use core::cmp::Ordering;
 
         // issue #7 example:
         let big = Ratio::new(128u8, 1);
@@ -1282,7 +1281,7 @@ mod test {
 
         // try a few that are closer together
         // (some matching numer, some matching denom, some neither)
-        let ratios = vec![
+        let ratios = [
             Ratio::new(125_i8, 127_i8),
             Ratio::new(63_i8, 64_i8),
             Ratio::new(124_i8, 125_i8),
@@ -1292,6 +1291,7 @@ mod test {
         ];
 
         fn check_cmp(a: Ratio<i8>, b: Ratio<i8>, ord: Ordering) {
+            #[cfg(feature = "std")]
             println!("comparing {} and {}", a, b);
             assert_eq!(a.cmp(&b), ord);
             assert_eq!(b.cmp(&a), ord.reverse());
