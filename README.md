@@ -33,8 +33,6 @@ version = "0.2"
 default-features = false
 ```
 
-`FromPrimitive` implementations are only available when `std` is enabled.
-
 ## Releases
 
 Release notes are available in [RELEASES.md](RELEASES.md).

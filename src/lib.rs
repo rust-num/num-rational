@@ -43,10 +43,8 @@ use core::str::FromStr;
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
-#[cfg(feature = "std")]
-use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-#[cfg(not(feature = "std"))]
-use traits::{PrimInt, Num, Signed, Zero, One, Inv, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::float::FloatCore;
+use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
@@ -961,9 +959,6 @@ impl FromPrimitive for Ratio<BigInt> {
     }
 }
 
-// NOTE: this macro compiles just fine with no_std, it's hidden behind a feature since all of its
-// uses depend on the Float type, which depends on std.
-#[cfg(feature = "std")]
 macro_rules! from_primitive_integer {
     ($typ:ty, $approx:ident) => {
         impl FromPrimitive for Ratio<$typ> {
@@ -986,31 +981,20 @@ macro_rules! from_primitive_integer {
     }
 }
 
-#[cfg(feature = "std")]
 from_primitive_integer!(i8, approximate_float);
-#[cfg(feature = "std")]
 from_primitive_integer!(i16, approximate_float);
-#[cfg(feature = "std")]
 from_primitive_integer!(i32, approximate_float);
-#[cfg(feature = "std")]
 from_primitive_integer!(i64, approximate_float);
-#[cfg(feature = "std")]
 from_primitive_integer!(isize, approximate_float);
 
-#[cfg(feature = "std")]
 from_primitive_integer!(u8, approximate_float_unsigned);
-#[cfg(feature = "std")]
 from_primitive_integer!(u16, approximate_float_unsigned);
-#[cfg(feature = "std")]
 from_primitive_integer!(u32, approximate_float_unsigned);
-#[cfg(feature = "std")]
 from_primitive_integer!(u64, approximate_float_unsigned);
-#[cfg(feature = "std")]
 from_primitive_integer!(usize, approximate_float_unsigned);
 
-#[cfg(feature = "std")]
 impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
-    pub fn approximate_float<F: Float + NumCast>(f: F) -> Option<Ratio<T>> {
+    pub fn approximate_float<F: FloatCore + NumCast>(f: F) -> Option<Ratio<T>> {
         // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
         // to work well. Might want to choose something based on the types in the future, e.g.
         // T::max().recip() and T::bits() or something similar.
@@ -1019,10 +1003,9 @@ impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
     }
 }
 
-#[cfg(feature = "std")]
 fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
     where T: Integer + Signed + Bounded + NumCast + Clone,
-          F: Float + NumCast
+          F: FloatCore + NumCast
 {
     let negative = val.is_sign_negative();
     let abs_val = val.abs();
@@ -1039,10 +1022,9 @@ fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Optio
 
 // No Unsigned constraint because this also works on positive integers and is called
 // like that, see above
-#[cfg(feature = "std")]
 fn approximate_float_unsigned<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
     where T: Integer + Bounded + NumCast + Clone,
-          F: Float + NumCast
+          F: FloatCore + NumCast
 {
     // Continued fractions algorithm
     // http://mathforum.org/dr.math/faq/faq.fractions.html#decfrac
@@ -1148,11 +1130,9 @@ mod test {
     #[cfg(feature = "num-bigint")]
     use super::BigRational;
 
-    #[cfg(feature = "std")]
-    use std::str::FromStr;
+    use core::str::FromStr;
     use core::i32;
-    #[cfg(feature = "std")]
-    use std::f64;
+    use core::f64;
     use traits::{Zero, One, Signed, FromPrimitive};
 
     pub const _0: Rational = Ratio {
@@ -1244,7 +1224,6 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "std")]
     fn test_approximate_float() {
         assert_eq!(Ratio::from_f32(0.5f32), Some(Ratio::new(1i64, 2)));
         assert_eq!(Ratio::from_f64(0.5f64), Some(Ratio::new(1i32, 2)));
@@ -1634,7 +1613,6 @@ mod test {
         test(_NEG1_2, "-1/2".to_string());
     }
     #[test]
-    #[cfg(feature = "std")]
     fn test_from_str_fail() {
         fn test(s: &str) {
             let rational: Result<Rational, _> = FromStr::from_str(s);
@@ -1647,8 +1625,8 @@ mod test {
         }
     }
 
-    #[test]
     #[cfg(feature = "num-bigint")]
+    #[test]
     fn test_from_float() {
         use traits::Float;
         fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
