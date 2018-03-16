@@ -45,6 +45,8 @@ use bigint::{BigInt, BigUint, Sign};
 use integer::Integer;
 use traits::float::FloatCore;
 use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+#[cfg(feature = "std")]
+use traits::Float;
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
@@ -783,7 +785,7 @@ impl<T: Clone + Integer> Num for Ratio<T> {
             if denom.is_zero() {
                 Err(ParseRatioError { kind: RatioErrorKind::ZeroDenominator })
             } else {
-                Ok(Ratio::new(numer.clone(), denom.clone()))
+                Ok(Ratio::new(numer, denom))
             }
         } else {
             Err(ParseRatioError { kind: RatioErrorKind::ParseError })
