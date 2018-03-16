@@ -50,7 +50,7 @@ use traits::Float;
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
-#[cfg_attr(feature = "rustc-serialize", derive(RustcEncodable, RustcDecodable))]
+#[cfg_attr(all(feature = "std", feature = "rustc-serialize"), derive(RustcEncodable, RustcDecodable))]
 #[allow(missing_docs)]
 pub struct Ratio<T> {
     numer: T,
