@@ -16,6 +16,8 @@
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[cfg(feature = "rustc-serialize")]
 extern crate rustc_serialize;
 #[cfg(feature = "serde")]
@@ -26,22 +28,29 @@ extern crate num_bigint as bigint;
 extern crate num_traits as traits;
 extern crate num_integer as integer;
 
-use std::cmp;
+#[cfg(feature = "std")]
+extern crate core;
+
+use core::cmp;
+#[cfg(feature = "std")]
 use std::error::Error;
-use std::fmt;
-use std::hash::{Hash, Hasher};
-use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
-use std::str::FromStr;
+use core::fmt;
+use core::hash::{Hash, Hasher};
+use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use core::str::FromStr;
 
 #[cfg(feature = "num-bigint")]
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
-use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::float::FloatCore;
+use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+#[cfg(feature = "std")]
+use traits::Float;
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
-#[cfg_attr(feature = "rustc-serialize", derive(RustcEncodable, RustcDecodable))]
+#[cfg_attr(all(feature = "std", feature = "rustc-serialize"), derive(RustcEncodable, RustcDecodable))]
 #[allow(missing_docs)]
 pub struct Ratio<T> {
     numer: T,
@@ -368,7 +377,7 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
 }
 
 mod opassign {
-    use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
+    use core::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 
     use Ratio;
     use integer::Integer;
@@ -767,25 +776,19 @@ impl<T: Clone + Integer> Num for Ratio<T> {
 
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: u32) -> Result<Ratio<T>, ParseRatioError> {
-        let split: Vec<&str> = s.splitn(2, '/').collect();
-        if split.len() < 2 {
-            Err(ParseRatioError { kind: RatioErrorKind::ParseError })
-        } else {
-            let a_result: Result<T, _> = T::from_str_radix(split[0], radix).map_err(|_| {
+        if s.splitn(2, '/').count() == 2 {
+            let mut parts = s.splitn(2, '/').map(|ss| T::from_str_radix(ss, radix).map_err(|_| {
                 ParseRatioError { kind: RatioErrorKind::ParseError }
-            });
-            a_result.and_then(|a| {
-                let b_result: Result<T, _> = T::from_str_radix(split[1], radix).map_err(|_| {
-                    ParseRatioError { kind: RatioErrorKind::ParseError }
-                });
-                b_result.and_then(|b| {
-                    if b.is_zero() {
-                        Err(ParseRatioError { kind: RatioErrorKind::ZeroDenominator })
-                    } else {
-                        Ok(Ratio::new(a.clone(), b.clone()))
-                    }
-                })
-            })
+            }));
+            let numer: T = parts.next().unwrap()?;
+            let denom: T = parts.next().unwrap()?;
+            if denom.is_zero() {
+                Err(ParseRatioError { kind: RatioErrorKind::ZeroDenominator })
+            } else {
+                Ok(Ratio::new(numer, denom))
+            }
+        } else {
+            Err(ParseRatioError { kind: RatioErrorKind::ParseError })
         }
     }
 }
@@ -917,10 +920,11 @@ enum RatioErrorKind {
 
 impl fmt::Display for ParseRatioError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        self.kind.description().fmt(f)
     }
 }
 
+#[cfg(feature = "std")]
 impl Error for ParseRatioError {
     fn description(&self) -> &str {
         self.kind.description()
@@ -990,7 +994,7 @@ from_primitive_integer!(u64, approximate_float_unsigned);
 from_primitive_integer!(usize, approximate_float_unsigned);
 
 impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
-    pub fn approximate_float<F: Float + NumCast>(f: F) -> Option<Ratio<T>> {
+    pub fn approximate_float<F: FloatCore + NumCast>(f: F) -> Option<Ratio<T>> {
         // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
         // to work well. Might want to choose something based on the types in the future, e.g.
         // T::max().recip() and T::bits() or something similar.
@@ -1001,7 +1005,7 @@ impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
 
 fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
     where T: Integer + Signed + Bounded + NumCast + Clone,
-          F: Float + NumCast
+          F: FloatCore + NumCast
 {
     let negative = val.is_sign_negative();
     let abs_val = val.abs();
@@ -1020,7 +1024,7 @@ fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Optio
 // like that, see above
 fn approximate_float_unsigned<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
     where T: Integer + Bounded + NumCast + Clone,
-          F: Float + NumCast
+          F: FloatCore + NumCast
 {
     // Continued fractions algorithm
     // http://mathforum.org/dr.math/faq/faq.fractions.html#decfrac
@@ -1111,6 +1115,7 @@ fn approximate_float_unsigned<T, F>(val: F, max_error: F, max_iterations: usize)
 }
 
 #[cfg(test)]
+#[cfg(feature = "std")]
 fn hash<T: Hash>(x: &T) -> u64 {
     use std::hash::BuildHasher;
     use std::collections::hash_map::RandomState;
@@ -1125,9 +1130,9 @@ mod test {
     #[cfg(feature = "num-bigint")]
     use super::BigRational;
 
-    use std::str::FromStr;
-    use std::i32;
-    use std::f64;
+    use core::str::FromStr;
+    use core::i32;
+    use core::f64;
     use traits::{Zero, One, Signed, FromPrimitive};
 
     pub const _0: Rational = Ratio {
@@ -1267,7 +1272,7 @@ mod test {
 
     #[test]
     fn test_cmp_overflow() {
-        use std::cmp::Ordering;
+        use core::cmp::Ordering;
 
         // issue #7 example:
         let big = Ratio::new(128u8, 1);
@@ -1276,7 +1281,7 @@ mod test {
 
         // try a few that are closer together
         // (some matching numer, some matching denom, some neither)
-        let ratios = vec![
+        let ratios = [
             Ratio::new(125_i8, 127_i8),
             Ratio::new(63_i8, 64_i8),
             Ratio::new(124_i8, 125_i8),
@@ -1286,6 +1291,7 @@ mod test {
         ];
 
         fn check_cmp(a: Ratio<i8>, b: Ratio<i8>, ord: Ordering) {
+            #[cfg(feature = "std")]
             println!("comparing {} and {}", a, b);
             assert_eq!(a.cmp(&b), ord);
             assert_eq!(b.cmp(&a), ord.reverse());
@@ -1345,6 +1351,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_show() {
         assert_eq!(format!("{}", _2), "2".to_string());
         assert_eq!(format!("{}", _1_2), "1/2".to_string());
@@ -1592,6 +1599,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_to_from_str() {
         fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(&s), Ok(r));
@@ -1681,6 +1689,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_hash() {
         assert!(::hash(&_0) != ::hash(&_1));
         assert!(::hash(&_0) != ::hash(&_3_2));

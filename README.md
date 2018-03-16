@@ -13,13 +13,24 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-num-rational = "0.1"
+num-rational = "0.2"
 ```
 
 and this to your crate root:
 
 ```rust
 extern crate num_rational;
+```
+
+## Features
+
+This crate can be used without the standard library (`#![no_std]`) by disabling
+the default `std` feature.  Use this in `Cargo.toml`:
+
+```toml
+[dependencies.num-rational]
+version = "0.2"
+default-features = false
 ```
 
 ## Releases

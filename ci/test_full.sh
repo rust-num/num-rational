@@ -13,7 +13,7 @@ cargo build --no-default-features
 cargo test --no-default-features
 
 # Each isolated feature should also work everywhere.
-for feature in bigint rustc-serialize serde; do
+for feature in bigint rustc-serialize serde std; do
   cargo build --verbose --no-default-features --features="$feature"
   cargo test --verbose --no-default-features --features="$feature"
 done
