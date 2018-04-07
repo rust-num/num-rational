@@ -27,15 +27,12 @@ default-features = false
 version = "0.2.1"
 default-features = false
 
-[dependencies.rustc-serialize]
-optional = true
-version = "0.3.19"
-
 [dependencies.serde]
 optional = true
-version = ">= 0.7.0, < 0.9.0"
+version = "1.0.0"
+default-features = false
 
 [features]
-default = ["bigint", "rustc-serialize", "std"]
+default = ["bigint", "std"]
 bigint = ["num-bigint", "std"]
 std = ["num-traits/std"]
