@@ -376,6 +376,49 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
     }
 }
 
+mod iter_sum_product {
+    use ::core::iter::{Sum, Product};
+    use Ratio;
+    use integer::Integer;
+    use traits::{Zero, One};
+
+    impl<T: Integer + Clone> Sum for Ratio<T> {
+        fn sum<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = Ratio<T>>
+        {
+            iter.fold(Self::zero(), |sum, num| sum + num)
+        }
+    }
+
+    impl<'a, T: Integer + Clone> Sum<&'a Ratio<T>> for Ratio<T> {
+        fn sum<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = &'a Ratio<T>>
+        {
+            iter.fold(Self::zero(), |sum, num| sum + num)
+        }
+    }
+
+    impl<T: Integer + Clone> Product for Ratio<T> {
+        fn product<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = Ratio<T>>
+        {
+            iter.fold(Self::one(), |prod, num| prod * num)
+        }
+    }
+
+    impl<'a, T: Integer + Clone> Product<&'a Ratio<T>> for Ratio<T> {
+        fn product<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = &'a Ratio<T>>
+        {
+            iter.fold(Self::one(), |prod, num| prod * num)
+        }
+    }
+}
+
 mod opassign {
     use core::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 
