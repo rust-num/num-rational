@@ -48,18 +48,22 @@ use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCa
 #[cfg(feature = "std")]
 use traits::Float;
 
-/// Represents the ratio between 2 numbers.
+/// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(all(feature = "std", feature = "rustc-serialize"), derive(RustcEncodable, RustcDecodable))]
 #[allow(missing_docs)]
 pub struct Ratio<T> {
+    /// Numerator.
     numer: T,
+    /// Denominator.
     denom: T,
 }
 
 /// Alias for a `Ratio` of machine-sized integers.
 pub type Rational = Ratio<isize>;
+/// Alias for a `Ratio` of 32-bit-sized integers.
 pub type Rational32 = Ratio<i32>;
+/// Alias for a `Ratio` of 64-bit-sized integers.
 pub type Rational64 = Ratio<i64>;
 
 #[cfg(feature = "num-bigint")]
