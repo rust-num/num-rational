@@ -377,6 +377,49 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
     }
 }
 
+mod iter_sum_product {
+    use ::core::iter::{Sum, Product};
+    use Ratio;
+    use integer::Integer;
+    use traits::{Zero, One};
+
+    impl<T: Integer + Clone> Sum for Ratio<T> {
+        fn sum<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = Ratio<T>>
+        {
+            iter.fold(Self::zero(), |sum, num| sum + num)
+        }
+    }
+
+    impl<'a, T: Integer + Clone> Sum<&'a Ratio<T>> for Ratio<T> {
+        fn sum<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = &'a Ratio<T>>
+        {
+            iter.fold(Self::zero(), |sum, num| sum + num)
+        }
+    }
+
+    impl<T: Integer + Clone> Product for Ratio<T> {
+        fn product<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = Ratio<T>>
+        {
+            iter.fold(Self::one(), |prod, num| prod * num)
+        }
+    }
+
+    impl<'a, T: Integer + Clone> Product<&'a Ratio<T>> for Ratio<T> {
+        fn product<I>(iter: I) -> Self
+        where
+            I: Iterator<Item = &'a Ratio<T>>
+        {
+            iter.fold(Self::one(), |prod, num| prod * num)
+        }
+    }
+}
+
 mod opassign {
     use core::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 
@@ -1137,6 +1180,7 @@ mod test {
     use core::i32;
     use core::f64;
     use traits::{Zero, One, Signed, FromPrimitive};
+    use integer::Integer;
 
     pub const _0: Rational = Ratio {
         numer: 0,
@@ -1722,5 +1766,56 @@ mod test {
         assert_eq! (_1, Ratio::from ((1, 1)));
         assert_eq! (_NEG2, Ratio::from ((-2, 1)));
         assert_eq! (_1_NEG2, Ratio::from ((1, -2)));
+    }
+
+    #[test]
+    fn ratio_iter_sum() {
+        // generic function to assure the iter method can be called
+        // for any Iterator with Item = Ratio<impl Integer> or Ratio<&impl Integer>
+        fn iter_sums<T: Integer + Clone>(slice: &[Ratio<T>]) -> [Ratio<T>; 3] {
+            let mut manual_sum = Ratio::new(T::zero(), T::one());
+            for ratio in slice {
+                manual_sum = manual_sum + ratio;
+            }
+            [
+                manual_sum,
+                slice.iter().sum(),
+                slice.iter().cloned().sum()
+            ]
+        }
+        // collect into array so test works on no_std
+        let mut nums = [Ratio::new(0,1); 1000];
+        for (i, r) in (0..1000).map(|n| Ratio::new(n, 500)).enumerate() {
+            nums[i] = r;
+        }
+        let sums = iter_sums(&nums[..]);
+        assert_eq!(sums[0], sums[1]);
+        assert_eq!(sums[0], sums[2]);
+    }
+
+    #[test]
+    fn ratio_iter_product() {
+        // generic function to assure the iter method can be called
+        // for any Iterator with Item = Ratio<impl Integer> or Ratio<&impl Integer>
+        fn iter_products<T: Integer + Clone>(slice: &[Ratio<T>]) -> [Ratio<T>; 3] {
+            let mut manual_prod = Ratio::new(T::one(), T::one());
+            for ratio in slice {
+                manual_prod = manual_prod * ratio;
+            }
+            [
+                manual_prod,
+                slice.iter().product(),
+                slice.iter().cloned().product()
+            ]
+        }
+
+        // collect into array so test works on no_std
+        let mut nums = [Ratio::new(0,1); 1000];
+        for (i, r) in (0..1000).map(|n| Ratio::new(n, 500)).enumerate() {
+            nums[i] = r;
+        }
+        let products = iter_products(&nums[..]);
+        assert_eq!(products[0], products[1]);
+        assert_eq!(products[0], products[2]);
     }
 }
