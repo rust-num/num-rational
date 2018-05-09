@@ -44,8 +44,6 @@ use bigint::{BigInt, BigUint, Sign};
 use integer::Integer;
 use traits::float::FloatCore;
 use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-#[cfg(feature = "std")]
-use traits::Float;
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -252,7 +250,7 @@ impl<T: Clone + Integer + PrimInt> Ratio<T> {
 #[cfg(feature = "num-bigint")]
 impl Ratio<BigInt> {
     /// Converts a float into a rational number.
-    pub fn from_float<T: Float>(f: T) -> Option<BigRational> {
+    pub fn from_float<T: FloatCore>(f: T) -> Option<BigRational> {
         if !f.is_finite() {
             return None;
         }
@@ -1678,8 +1676,8 @@ mod test {
     #[cfg(feature = "num-bigint")]
     #[test]
     fn test_from_float() {
-        use traits::Float;
-        fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
+        use traits::float::FloatCore;
+        fn test<T: FloatCore>(given: T, (numer, denom): (&str, &str)) {
             let ratio: BigRational = Ratio::from_float(given).unwrap();
             assert_eq!(ratio,
                        Ratio::new(FromStr::from_str(numer).unwrap(),
