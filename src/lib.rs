@@ -16,7 +16,7 @@
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 #[cfg(feature = "serde")]
 extern crate serde;
@@ -27,7 +27,8 @@ extern crate num_traits as traits;
 extern crate num_integer as integer;
 
 #[cfg(feature = "std")]
-extern crate core;
+#[cfg_attr(test, macro_use)]
+extern crate std;
 
 use core::cmp;
 #[cfg(feature = "std")]
@@ -1400,6 +1401,7 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn test_show() {
+        use std::string::ToString;
         assert_eq!(format!("{}", _2), "2".to_string());
         assert_eq!(format!("{}", _1_2), "1/2".to_string());
         assert_eq!(format!("{}", _0), "0".to_string());
@@ -1648,6 +1650,7 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn test_to_from_str() {
+        use std::string::{String, ToString};
         fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(&s), Ok(r));
             assert_eq!(r.to_string(), s);
