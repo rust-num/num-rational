@@ -20,7 +20,7 @@
 
 #[cfg(feature = "serde")]
 extern crate serde;
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 extern crate num_bigint as bigint;
 
 extern crate num_traits as traits;
@@ -38,7 +38,7 @@ use core::hash::{Hash, Hasher};
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use core::str::FromStr;
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
@@ -62,7 +62,7 @@ pub type Rational32 = Ratio<i32>;
 /// Alias for a `Ratio` of 64-bit-sized integers.
 pub type Rational64 = Ratio<i64>;
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
@@ -247,7 +247,7 @@ impl<T: Clone + Integer + PrimInt> Ratio<T> {
     }
 }
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 impl Ratio<BigInt> {
     /// Converts a float into a rational number.
     pub fn from_float<T: FloatCore>(f: T) -> Option<BigRational> {
@@ -985,7 +985,7 @@ impl RatioErrorKind {
     }
 }
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 impl FromPrimitive for Ratio<BigInt> {
     fn from_i64(n: i64) -> Option<Self> {
         Some(Ratio::from_integer(n.into()))
@@ -1172,7 +1172,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
 #[cfg(test)]
 mod test {
     use super::{Ratio, Rational};
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     use super::BigRational;
 
     use core::str::FromStr;
@@ -1234,12 +1234,12 @@ mod test {
         denom: 3,
     };
 
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     pub fn to_big(n: Rational) -> BigRational {
         Ratio::new(FromPrimitive::from_isize(n.numer).unwrap(),
                    FromPrimitive::from_isize(n.denom).unwrap())
     }
-    #[cfg(not(feature = "num-bigint"))]
+    #[cfg(not(feature = "bigint"))]
     pub fn to_big(n: Rational) -> Rational {
         Ratio::new(FromPrimitive::from_isize(n.numer).unwrap(),
                    FromPrimitive::from_isize(n.denom).unwrap())
@@ -1673,7 +1673,7 @@ mod test {
         }
     }
 
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     #[test]
     fn test_from_float() {
         use traits::float::FloatCore;
@@ -1703,7 +1703,7 @@ mod test {
              ("1", "1267650600228229401496703205376"));
     }
 
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     #[test]
     fn test_from_float_fail() {
         use std::{f32, f64};
