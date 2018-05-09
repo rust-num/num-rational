@@ -16,18 +16,19 @@
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 #[cfg(feature = "serde")]
 extern crate serde;
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 extern crate num_bigint as bigint;
 
 extern crate num_traits as traits;
 extern crate num_integer as integer;
 
 #[cfg(feature = "std")]
-extern crate core;
+#[cfg_attr(test, macro_use)]
+extern crate std;
 
 use core::cmp;
 #[cfg(feature = "std")]
@@ -37,14 +38,12 @@ use core::hash::{Hash, Hasher};
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use core::str::FromStr;
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
 use traits::float::FloatCore;
 use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
-#[cfg(feature = "std")]
-use traits::Float;
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -63,7 +62,7 @@ pub type Rational32 = Ratio<i32>;
 /// Alias for a `Ratio` of 64-bit-sized integers.
 pub type Rational64 = Ratio<i64>;
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
@@ -248,10 +247,10 @@ impl<T: Clone + Integer + PrimInt> Ratio<T> {
     }
 }
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 impl Ratio<BigInt> {
     /// Converts a float into a rational number.
-    pub fn from_float<T: Float>(f: T) -> Option<BigRational> {
+    pub fn from_float<T: FloatCore>(f: T) -> Option<BigRational> {
         if !f.is_finite() {
             return None;
         }
@@ -986,7 +985,7 @@ impl RatioErrorKind {
     }
 }
 
-#[cfg(feature = "num-bigint")]
+#[cfg(feature = "bigint")]
 impl FromPrimitive for Ratio<BigInt> {
     fn from_i64(n: i64) -> Option<Self> {
         Some(Ratio::from_integer(n.into()))
@@ -1173,7 +1172,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
 #[cfg(test)]
 mod test {
     use super::{Ratio, Rational};
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     use super::BigRational;
 
     use core::str::FromStr;
@@ -1235,12 +1234,12 @@ mod test {
         denom: 3,
     };
 
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     pub fn to_big(n: Rational) -> BigRational {
         Ratio::new(FromPrimitive::from_isize(n.numer).unwrap(),
                    FromPrimitive::from_isize(n.denom).unwrap())
     }
-    #[cfg(not(feature = "num-bigint"))]
+    #[cfg(not(feature = "bigint"))]
     pub fn to_big(n: Rational) -> Rational {
         Ratio::new(FromPrimitive::from_isize(n.numer).unwrap(),
                    FromPrimitive::from_isize(n.denom).unwrap())
@@ -1400,6 +1399,7 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn test_show() {
+        use std::string::ToString;
         assert_eq!(format!("{}", _2), "2".to_string());
         assert_eq!(format!("{}", _1_2), "1/2".to_string());
         assert_eq!(format!("{}", _0), "0".to_string());
@@ -1648,6 +1648,7 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn test_to_from_str() {
+        use std::string::{String, ToString};
         fn test(r: Rational, s: String) {
             assert_eq!(FromStr::from_str(&s), Ok(r));
             assert_eq!(r.to_string(), s);
@@ -1672,11 +1673,11 @@ mod test {
         }
     }
 
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     #[test]
     fn test_from_float() {
-        use traits::Float;
-        fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
+        use traits::float::FloatCore;
+        fn test<T: FloatCore>(given: T, (numer, denom): (&str, &str)) {
             let ratio: BigRational = Ratio::from_float(given).unwrap();
             assert_eq!(ratio,
                        Ratio::new(FromStr::from_str(numer).unwrap(),
@@ -1702,7 +1703,7 @@ mod test {
              ("1", "1267650600228229401496703205376"));
     }
 
-    #[cfg(feature = "num-bigint")]
+    #[cfg(feature = "bigint")]
     #[test]
     fn test_from_float_fail() {
         use std::{f32, f64};
