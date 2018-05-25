@@ -19,8 +19,7 @@ all-features = true
 
 [dependencies.num-bigint]
 optional = true
-version = "0.2.0-git"
-git = "https://github.com/rust-num/num-bigint"
+version = "0.2.0"
 
 [dependencies.num-integer]
 version = "0.1.36"
