@@ -43,7 +43,8 @@ use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
 use traits::float::FloatCore;
-use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, Pow, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num,
+             NumCast, One, Pow, Signed, Zero};
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -233,17 +234,11 @@ impl<T: Clone + Integer> Ratio<T> {
     }
 }
 
-impl<T: Clone + Integer + PrimInt> Ratio<T> {
+impl<T: Clone + Integer + Pow<u32, Output = T>> Ratio<T> {
     /// Raises the `Ratio` to the power of an exponent.
     #[inline]
     pub fn pow(&self, expon: i32) -> Ratio<T> {
-        match expon.cmp(&0) {
-            cmp::Ordering::Equal => One::one(),
-            cmp::Ordering::Less => self.recip().pow(-expon),
-            cmp::Ordering::Greater => {
-                Ratio::new_raw(self.numer.pow(expon as u32), self.denom.pow(expon as u32))
-            }
-        }
+        Pow::pow(self, expon)
     }
 }
 
@@ -1254,7 +1249,7 @@ mod test {
     use core::str::FromStr;
     use core::i32;
     use core::f64;
-    use traits::{Zero, One, Signed, FromPrimitive};
+    use traits::{Zero, One, Signed, FromPrimitive, Pow};
     use integer::Integer;
 
     pub const _0: Rational = Ratio {
@@ -1711,9 +1706,7 @@ mod test {
 
     #[test]
     fn test_pow() {
-        fn test(r: Rational, e: isize, expected: Rational) {
-            use traits::Pow;
-
+        fn test(r: Rational, e: i32, expected: Rational) {
             assert_eq!(r.pow(e), expected);
             assert_eq!(Pow::pow(r, e), expected);
             assert_eq!(Pow::pow(r, &e), expected);
@@ -1724,8 +1717,10 @@ mod test {
         test(_1_2, 2, Ratio::new(1, 4));
         test(_1_2, -2, Ratio::new(4, 1));
         test(_1, 1, _1);
-        test(_NEG1_2, 2, _1_2.pow(2));
-        test(_NEG1_2, 3, -_1_2.pow(3));
+        test(_1, i32::MAX, _1);
+        test(_1, i32::MIN, _1);
+        test(_NEG1_2, 2, _1_2.pow(2i32));
+        test(_NEG1_2, 3, -_1_2.pow(3i32));
         test(_3_2, 0, _1);
         test(_3_2, -1, _3_2.recip());
         test(_3_2, 3, Ratio::new(27, 8));
