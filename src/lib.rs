@@ -43,7 +43,8 @@ use bigint::{BigInt, BigUint, Sign};
 
 use integer::Integer;
 use traits::float::FloatCore;
-use traits::{FromPrimitive, PrimInt, Num, Signed, Zero, One, Bounded, Inv, NumCast, CheckedAdd, CheckedSub, CheckedMul, CheckedDiv};
+use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num,
+             NumCast, One, Pow, Signed, Zero};
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -233,19 +234,89 @@ impl<T: Clone + Integer> Ratio<T> {
     }
 }
 
-impl<T: Clone + Integer + PrimInt> Ratio<T> {
+impl<T: Clone + Integer + Pow<u32, Output = T>> Ratio<T> {
     /// Raises the `Ratio` to the power of an exponent.
     #[inline]
     pub fn pow(&self, expon: i32) -> Ratio<T> {
-        match expon.cmp(&0) {
-            cmp::Ordering::Equal => One::one(),
-            cmp::Ordering::Less => self.recip().pow(-expon),
-            cmp::Ordering::Greater => {
-                Ratio::new_raw(self.numer.pow(expon as u32), self.denom.pow(expon as u32))
-            }
-        }
+        Pow::pow(self, expon)
     }
 }
+
+macro_rules! pow_impl {
+    ($exp: ty) => {
+        pow_impl!($exp, $exp);
+    };
+    ($exp: ty, $unsigned: ty) => {
+        impl<T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<$exp> for Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: $exp) -> Ratio<T> {
+                match expon.cmp(&0) {
+                    cmp::Ordering::Equal => One::one(),
+                    cmp::Ordering::Less => {
+                        let expon = expon.wrapping_abs() as $unsigned;
+                        Ratio::new_raw(
+                            Pow::pow(self.denom, expon),
+                            Pow::pow(self.numer, expon),
+                        )
+                    },
+                    cmp::Ordering::Greater => {
+                        Ratio::new_raw(
+                            Pow::pow(self.numer, expon as $unsigned),
+                            Pow::pow(self.denom, expon as $unsigned),
+                        )
+                    }
+                }
+            }
+        }
+        impl<'a, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<$exp> for &'a Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: $exp) -> Ratio<T> {
+                Pow::pow(self.clone(), expon)
+            }
+        }
+        impl<'a, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<&'a $exp> for Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: &'a $exp) -> Ratio<T> {
+                Pow::pow(self, *expon)
+            }
+        }
+        impl<'a, 'b, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<&'a $exp> for &'b Ratio<T> {
+            type Output = Ratio<T>;
+            #[inline]
+            fn pow(self, expon: &'a $exp) -> Ratio<T> {
+                Pow::pow(self.clone(), *expon)
+            }
+        }
+    };
+}
+
+// this is solely to make `pow_impl!` work
+trait WrappingAbs: Sized {
+    fn wrapping_abs(self) -> Self {
+        self
+    }
+}
+impl WrappingAbs for u8 {}
+impl WrappingAbs for u16 {}
+impl WrappingAbs for u32 {}
+impl WrappingAbs for u64 {}
+impl WrappingAbs for usize {}
+
+pow_impl!(i8, u8);
+pow_impl!(i16, u16);
+pow_impl!(i32, u32);
+pow_impl!(i64, u64);
+pow_impl!(isize, usize);
+pow_impl!(u8);
+pow_impl!(u16);
+pow_impl!(u32);
+pow_impl!(u64);
+pow_impl!(usize);
+
+// TODO: pow_impl!(BigUint) and pow_impl!(BigInt, BigUint)
 
 #[cfg(feature = "bigint")]
 impl Ratio<BigInt> {
@@ -1202,7 +1273,7 @@ mod test {
     use core::str::FromStr;
     use core::i32;
     use core::f64;
-    use traits::{Zero, One, Signed, FromPrimitive};
+    use traits::{Zero, One, Signed, FromPrimitive, Pow};
     use integer::Integer;
 
     pub const _0: Rational = Ratio {
@@ -1659,14 +1730,24 @@ mod test {
 
     #[test]
     fn test_pow() {
-        assert_eq!(_1_2.pow(2), Ratio::new(1, 4));
-        assert_eq!(_1_2.pow(-2), Ratio::new(4, 1));
-        assert_eq!(_1.pow(1), _1);
-        assert_eq!(_NEG1_2.pow(2), _1_2.pow(2));
-        assert_eq!(_NEG1_2.pow(3), -_1_2.pow(3));
-        assert_eq!(_3_2.pow(0), _1);
-        assert_eq!(_3_2.pow(-1), _3_2.recip());
-        assert_eq!(_3_2.pow(3), Ratio::new(27, 8));
+        fn test(r: Rational, e: i32, expected: Rational) {
+            assert_eq!(r.pow(e), expected);
+            assert_eq!(Pow::pow(r, e), expected);
+            assert_eq!(Pow::pow(r, &e), expected);
+            assert_eq!(Pow::pow(&r, e), expected);
+            assert_eq!(Pow::pow(&r, &e), expected);
+        }
+
+        test(_1_2, 2, Ratio::new(1, 4));
+        test(_1_2, -2, Ratio::new(4, 1));
+        test(_1, 1, _1);
+        test(_1, i32::MAX, _1);
+        test(_1, i32::MIN, _1);
+        test(_NEG1_2, 2, _1_2.pow(2i32));
+        test(_NEG1_2, 3, -_1_2.pow(3i32));
+        test(_3_2, 0, _1);
+        test(_3_2, -1, _3_2.recip());
+        test(_3_2, 3, Ratio::new(27, 8));
     }
 
     #[test]
