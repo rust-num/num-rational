@@ -991,7 +991,17 @@ impl FromPrimitive for Ratio<BigInt> {
         Some(Ratio::from_integer(n.into()))
     }
 
+    #[cfg(has_i128)]
+    fn from_i128(n: i128) -> Option<Self> {
+        Some(Ratio::from_integer(n.into()))
+    }
+
     fn from_u64(n: u64) -> Option<Self> {
+        Some(Ratio::from_integer(n.into()))
+    }
+
+    #[cfg(has_i128)]
+    fn from_u128(n: u128) -> Option<Self> {
         Some(Ratio::from_integer(n.into()))
     }
 
@@ -1011,8 +1021,18 @@ macro_rules! from_primitive_integer {
                 <$typ as FromPrimitive>::from_i64(n).map(Ratio::from_integer)
             }
 
+            #[cfg(has_i128)]
+            fn from_i128(n: i128) -> Option<Self> {
+                <$typ as FromPrimitive>::from_i128(n).map(Ratio::from_integer)
+            }
+
             fn from_u64(n: u64) -> Option<Self> {
                 <$typ as FromPrimitive>::from_u64(n).map(Ratio::from_integer)
+            }
+
+            #[cfg(has_i128)]
+            fn from_u128(n: u128) -> Option<Self> {
+                <$typ as FromPrimitive>::from_u128(n).map(Ratio::from_integer)
             }
 
             fn from_f32(n: f32) -> Option<Self> {
@@ -1030,12 +1050,16 @@ from_primitive_integer!(i8, approximate_float);
 from_primitive_integer!(i16, approximate_float);
 from_primitive_integer!(i32, approximate_float);
 from_primitive_integer!(i64, approximate_float);
+#[cfg(has_i128)]
+from_primitive_integer!(i128, approximate_float);
 from_primitive_integer!(isize, approximate_float);
 
 from_primitive_integer!(u8, approximate_float_unsigned);
 from_primitive_integer!(u16, approximate_float_unsigned);
 from_primitive_integer!(u32, approximate_float_unsigned);
 from_primitive_integer!(u64, approximate_float_unsigned);
+#[cfg(has_i128)]
+from_primitive_integer!(u128, approximate_float_unsigned);
 from_primitive_integer!(usize, approximate_float_unsigned);
 
 impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
@@ -1706,7 +1730,7 @@ mod test {
     #[cfg(feature = "bigint")]
     #[test]
     fn test_from_float_fail() {
-        use std::{f32, f64};
+        use core::{f32, f64};
 
         assert_eq!(Ratio::from_float(f32::NAN), None);
         assert_eq!(Ratio::from_float(f32::INFINITY), None);
