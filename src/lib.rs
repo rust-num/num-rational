@@ -1711,14 +1711,24 @@ mod test {
 
     #[test]
     fn test_pow() {
-        assert_eq!(_1_2.pow(2), Ratio::new(1, 4));
-        assert_eq!(_1_2.pow(-2), Ratio::new(4, 1));
-        assert_eq!(_1.pow(1), _1);
-        assert_eq!(_NEG1_2.pow(2), _1_2.pow(2));
-        assert_eq!(_NEG1_2.pow(3), -_1_2.pow(3));
-        assert_eq!(_3_2.pow(0), _1);
-        assert_eq!(_3_2.pow(-1), _3_2.recip());
-        assert_eq!(_3_2.pow(3), Ratio::new(27, 8));
+        fn test(r: Rational, e: isize, expected: Rational) {
+            use traits::Pow;
+
+            assert_eq!(r.pow(e), expected);
+            assert_eq!(Pow::pow(r, e), expected);
+            assert_eq!(Pow::pow(r, &e), expected);
+            assert_eq!(Pow::pow(&r, e), expected);
+            assert_eq!(Pow::pow(&r, &e), expected);
+        }
+
+        test(_1_2, 2, Ratio::new(1, 4));
+        test(_1_2, -2, Ratio::new(4, 1));
+        test(_1, 1, _1);
+        test(_NEG1_2, 2, _1_2.pow(2));
+        test(_NEG1_2, 3, -_1_2.pow(3));
+        test(_3_2, 0, _1);
+        test(_3_2, -1, _3_2.recip());
+        test(_3_2, 3, Ratio::new(27, 8));
     }
 
     #[test]
