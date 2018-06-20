@@ -1,10 +1,33 @@
-# Release 0.2.0 (pending)
+# Release 0.2.0
 
-- :warning: [num-rational now requires rustc 1.15 or greater][18].
+### Enhancements
 
-**Contributors**: @cuviper
+- [`Ratio` now implements `One::is_one` and the `Inv` trait][19].
+- [`Ratio` now implements `Sum` and `Product`][25].
+- [`Ratio` now supports `i128` and `u128` components][29] with Rust 1.26+.
+- [`Ratio` now implements the `Pow` trait][21].
+
+### Breaking Changes
+
+- [`num-rational` now requires rustc 1.15 or greater][18].
+- [There is now a `std` feature][23], enabled by default, along with the
+  implication that building *without* this feature makes this a `#![no_std]`
+  crate.  A few methods now require `FloatCore` instead of `Float`.
+- [The `serde` dependency has been updated to 1.0][24], and `rustc-serialize`
+  is no longer supported by `num-complex`.
+- The optional `num-bigint` dependency has been updated to 0.2, and should be
+  enabled using the `bigint-std` feature.  In the future, it may be possible
+  to use the `bigint` feature with `no_std`.
+
+**Contributors**: @clarcharr, @cuviper, @Emerentius, @robomancer-or, @vks
 
 [18]: https://github.com/rust-num/num-rational/pull/18
+[19]: https://github.com/rust-num/num-rational/pull/19
+[21]: https://github.com/rust-num/num-rational/pull/21
+[23]: https://github.com/rust-num/num-rational/pull/23
+[24]: https://github.com/rust-num/num-rational/pull/24
+[25]: https://github.com/rust-num/num-rational/pull/25
+[29]: https://github.com/rust-num/num-rational/pull/29
 
 
 # Release 0.1.42
