@@ -1,4 +1,4 @@
-# Release 0.2.0
+# Release 0.2.0 (2018-06-19)
 
 ### Enhancements
 
@@ -30,12 +30,12 @@
 [29]: https://github.com/rust-num/num-rational/pull/29
 
 
-# Release 0.1.42
+# Release 0.1.42 (2018-02-08)
 
 - Maintenance release to update dependencies.
 
 
-# Release 0.1.41
+# Release 0.1.41 (2018-01-26)
 
 - [num-rational now has its own source repository][num-356] at [rust-num/num-rational][home].
 - [`Ratio` now implements `CheckedAdd`, `CheckedSub`, `CheckedMul`, and `CheckedDiv`][11].
