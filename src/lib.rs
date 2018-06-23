@@ -14,7 +14,7 @@
 //!
 //! The `num-rational` crate is tested for rustc 1.15 and greater.
 
-#![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
+#![doc(html_root_url = "https://docs.rs/num-rational/0.2")]
 
 #![no_std]
 

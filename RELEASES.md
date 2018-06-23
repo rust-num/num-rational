@@ -1,3 +1,7 @@
+# Release 0.2.1 (2018-06-22)
+
+- Maintenance release to fix `html_root_url`.
+
 # Release 0.2.0 (2018-06-19)
 
 ### Enhancements
