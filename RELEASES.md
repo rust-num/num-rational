@@ -18,7 +18,7 @@
   implication that building *without* this feature makes this a `#![no_std]`
   crate.  A few methods now require `FloatCore` instead of `Float`.
 - [The `serde` dependency has been updated to 1.0][24], and `rustc-serialize`
-  is no longer supported by `num-complex`.
+  is no longer supported by `num-bigint`.
 - The optional `num-bigint` dependency has been updated to 0.2, and should be
   enabled using the `bigint-std` feature.  In the future, it may be possible
   to use the `bigint` feature with `no_std`.
