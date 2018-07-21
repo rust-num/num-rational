@@ -981,12 +981,40 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 // String conversions
 impl<T> fmt::Display for Ratio<T>
 where
-    T: fmt::Display + Eq + One,
+    T: fmt::Display
+        + Clone
+        + Eq
+        + FromPrimitive
+        + Integer
+        + One
+        + Pow<u32, Output = T>
+        + Signed
+        + Zero,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
+    /// If precision is given in Formatter it renders decimal approximation
+    /// to a specified precision.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.denom.is_one() {
             write!(f, "{}", self.numer)
+        } else if let Some(precision) = f.precision() {
+            let _10_pow_prec = T::from_usize(10).unwrap().pow(precision as u32);
+            let rounded = (self.clone() * &_10_pow_prec).round();
+            let minus = rounded < Zero::zero();
+            let trunc = &((&rounded / &_10_pow_prec).trunc().to_integer());
+            let tail = &(rounded % _10_pow_prec).abs().to_integer();
+            if tail.is_zero() {
+                write!(f, "{}", trunc)
+            } else {
+                write!(
+                    f,
+                    "{}{}.{:0width$}",
+                    (if minus { "-" } else { "" }),
+                    trunc,
+                    tail,
+                    width = precision
+                )
+            }
         } else {
             write!(f, "{}/{}", self.numer, self.denom)
         }
@@ -1352,6 +1380,19 @@ mod test {
         numer: -2,
         denom: 3,
     };
+    pub const _1_8: Rational = Ratio { numer: 1, denom: 8 };
+    pub const _NEG1_8: Rational = Ratio {
+        numer: -1,
+        denom: 8,
+    };
+    pub const _99999_1000: Rational = Ratio {
+        numer: 99999,
+        denom: 1000,
+    };
+    pub const _NEG99999_1000: Rational = Ratio {
+        numer: -99999,
+        denom: 1000,
+    };
 
     #[cfg(feature = "bigint")]
     pub fn to_big(n: Rational) -> BigRational {
@@ -1534,6 +1575,15 @@ mod test {
         assert_eq!(format!("{}", _1_2), "1/2".to_string());
         assert_eq!(format!("{}", _0), "0".to_string());
         assert_eq!(format!("{}", Ratio::from_integer(-2)), "-2".to_string());
+        assert_eq!(format!("{:.2}", _2), "2".to_string());
+        assert_eq!(format!("{:.2}", _1_2), "0.50".to_string());
+        assert_eq!(format!("{:.1}", _3_2), "1.5".to_string());
+        assert_eq!(format!("{:.2}", _NEG1_2), "-0.50".to_string());
+        assert_eq!(format!("{:.3}", _NEG2_3), "-0.667".to_string());
+        assert_eq!(format!("{:.2}", _1_8), "0.13".to_string());
+        assert_eq!(format!("{:.4}", _NEG1_8), "-0.1250".to_string());
+        assert_eq!(format!("{:.3}", _99999_1000), "99.999".to_string());
+        assert_eq!(format!("{:.1}", _NEG99999_1000), "-100".to_string());
     }
 
     mod arith {
