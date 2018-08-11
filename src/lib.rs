@@ -1600,6 +1600,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_as_decimal() {
         use AsDecimal;
         use std::string::ToString;
