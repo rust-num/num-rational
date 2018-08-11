@@ -978,8 +978,10 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
     }
 }
 
+#[cfg(feature = "std")]
 use std::string::String;
 
+#[cfg(feature = "std")]
 trait AsDecimal {
     fn as_decimal(&self, usize) -> String;
 }
@@ -1029,7 +1031,9 @@ impl<T> AsDecimal for Ratio<T> where
                 let tail_strarr = &tail.to_string();
                 let tail_length = &tail_strarr.chars().count();
                 let tail_zeroes = if tail_length < &precision {
-                    "0".repeat(precision - tail_length)
+                    // If rust >= 1.16.0 - we can simply use repeat.
+                    // "0".repeat(precision - tail_length)
+                    (0..(precision - tail_length)).map(|_| "0").collect::<String>()
                 } else { String::from("") };
                 ret_val.push_str(&tail_zeroes);
                 ret_val.push_str(&tail.to_string());
