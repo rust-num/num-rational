@@ -978,45 +978,63 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
     }
 }
 
+use std::string::String;
+
+trait AsDecimal {
+    fn as_decimal(&self, usize) -> String;
+}
+
 // String conversions
 impl<T> fmt::Display for Ratio<T>
 where
+    T: fmt::Display + Eq + One,
+{
+    /// Renders as `numer/denom`. If denom=1, renders as numer.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.denom.is_one() {
+            write!(f, "{}", self.numer)
+        } else {
+            write!(f, "{}/{}", self.numer, self.denom)
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> AsDecimal for Ratio<T> where
     T: fmt::Display
         + Clone
         + Eq
         + FromPrimitive
         + Integer
-        + One
-        + Pow<u32, Output = T>
+        + Pow<usize, Output = T>
         + Signed
-        + Zero,
+        + std::string::ToString,
 {
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    /// If precision is given in Formatter it renders decimal approximation
-    /// to a specified precision.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    /// Generates decimal approximation to a specified precision as a String.
+    fn as_decimal(&self, precision: usize) -> String {
         if self.denom.is_one() {
-            write!(f, "{}", self.numer)
-        } else if let Some(precision) = f.precision() {
-            let _10_pow_prec = T::from_usize(10).unwrap().pow(precision as u32);
+            self.numer.to_string()
+        } else {
+            let _10_pow_prec = T::from_usize(10).unwrap().pow(precision);
             let rounded = (self.clone() * &_10_pow_prec).round();
             let minus = rounded < Zero::zero();
             let trunc = &((&rounded / &_10_pow_prec).trunc().to_integer());
             let tail = &(rounded % _10_pow_prec).abs().to_integer();
             if tail.is_zero() {
-                write!(f, "{}", trunc)
+                trunc.to_string()
             } else {
-                write!(
-                    f,
-                    "{}{}.{:0width$}",
-                    (if minus { "-" } else { "" }),
-                    trunc,
-                    tail,
-                    width = precision
-                )
+                let mut ret_val = String::from(if minus { "-" } else { "" });
+                ret_val.push_str(&trunc.to_string());
+                ret_val.push_str(".");
+                let tail_strarr = &tail.to_string();
+                let tail_length = &tail_strarr.chars().count();
+                let tail_zeroes = if tail_length < &precision {
+                    "0".repeat(precision - tail_length)
+                } else { String::from("") };
+                ret_val.push_str(&tail_zeroes);
+                ret_val.push_str(&tail.to_string());
+                ret_val
             }
-        } else {
-            write!(f, "{}/{}", self.numer, self.denom)
         }
     }
 }
@@ -1575,15 +1593,21 @@ mod test {
         assert_eq!(format!("{}", _1_2), "1/2".to_string());
         assert_eq!(format!("{}", _0), "0".to_string());
         assert_eq!(format!("{}", Ratio::from_integer(-2)), "-2".to_string());
-        assert_eq!(format!("{:.2}", _2), "2".to_string());
-        assert_eq!(format!("{:.2}", _1_2), "0.50".to_string());
-        assert_eq!(format!("{:.1}", _3_2), "1.5".to_string());
-        assert_eq!(format!("{:.2}", _NEG1_2), "-0.50".to_string());
-        assert_eq!(format!("{:.3}", _NEG2_3), "-0.667".to_string());
-        assert_eq!(format!("{:.2}", _1_8), "0.13".to_string());
-        assert_eq!(format!("{:.4}", _NEG1_8), "-0.1250".to_string());
-        assert_eq!(format!("{:.3}", _99999_1000), "99.999".to_string());
-        assert_eq!(format!("{:.1}", _NEG99999_1000), "-100".to_string());
+    }
+
+    #[test]
+    fn test_as_decimal() {
+        use AsDecimal;
+        use std::string::ToString;
+        assert_eq!(_2.as_decimal(2), "2".to_string());
+        assert_eq!(_1_2.as_decimal(2), "0.50".to_string());
+        assert_eq!(_3_2.as_decimal(1), "1.5".to_string());
+        assert_eq!(_NEG1_2.as_decimal(2), "-0.50".to_string());
+        assert_eq!(_NEG2_3.as_decimal(3), "-0.667".to_string());
+        assert_eq!(_1_8.as_decimal(2), "0.13".to_string());
+        assert_eq!(_NEG1_8.as_decimal(4), "-0.1250".to_string());
+        assert_eq!(_99999_1000.as_decimal(3), "99.999".to_string());
+        assert_eq!(_NEG99999_1000.as_decimal(1), "-100".to_string());
     }
 
     mod arith {
