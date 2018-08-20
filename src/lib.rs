@@ -717,6 +717,152 @@ where
     }
 }
 
+macro_rules! impl_primitive_ops_ratio {
+    (Ratio<T> for $primitive:ident) => {
+        impl<T> Add<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn add(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(rhs.numer + T::from(self), rhs.denom)
+            }
+        }
+
+        impl<T> Sub<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn sub(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(T::from(self) - rhs.numer, rhs.denom)
+            }
+        }
+
+        impl<T> Mul<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(rhs.numer * T::from(self), rhs.denom)
+            }
+        }
+
+        impl<T> Div<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn div(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(rhs.numer, rhs.denom * T::from(self))
+            }
+        }
+    };
+}
+
+// Implements for isize and BigInt
+impl_primitive_ops_ratio!(Ratio<T> for isize);
+// Implements for BigInt
+impl_primitive_ops_ratio!(Ratio<T> for usize);
+// Implements for BigInt, i64, i32, i8
+impl_primitive_ops_ratio!(Ratio<T> for i8);
+// Implements for isize, i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u8);
+// Implements for isize, i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for i16);
+// Implements for i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u16);
+// Implements for i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for i32);
+// Implements for i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u32);
+// Implements for i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for i64);
+// Implements for BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u64);
+// Implements for BigInt
+#[cfg(feature = "i128")]
+impl_primitive_ops_ratio!(Ratio<T> for i128);
+// Implements for BigInt
+#[cfg(feature = "i128")]
+impl_primitive_ops_ratio!(Ratio<T> for u128);
+
+// Implementing these directly because the implementation of Add<T>, Sub<T>,
+// Mul<T> and Div<T> for Ratio<T> don't cover these.
+macro_rules! impl_bigint_ops_primitive {
+    ($primitive:ident) => {
+        impl Add<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn add(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer + BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl Sub<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn sub(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer - BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl Mul<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn mul(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer * BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl Div<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn div(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer, self.denom * BigInt::from(rhs))
+            }
+        }
+    };
+}
+
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(isize);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(usize);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i8);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u8);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i16);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u16);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i32);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u32);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i64);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u64);
+#[cfg(all(feature = "i128", feature = "bigint"))]
+impl_bigint_ops_primitive!(i128);
+#[cfg(all(feature = "i128", feature = "bigint"))]
+impl_bigint_ops_primitive!(u128);
+
 forward_all_binop!(impl Div, div);
 // (a/b) / (c/d) = (a*d) / (b*c)
 impl<T> Div<Ratio<T>> for Ratio<T>
@@ -1537,9 +1683,24 @@ mod test {
     }
 
     mod arith {
-        use super::super::{Ratio, Rational};
+        use super::super::{BigRational, Ratio, Rational, Rational32, Rational64};
         use super::{_0, _1, _1_2, _2, _3_2, _NEG1_2, to_big};
         use traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+
+        const _1I32: Rational32 = Ratio { numer: 1, denom: 1 };
+        const _1I64: Rational64 = Ratio { numer: 1, denom: 1 };
+        const _NEG1: Rational = Ratio { numer: -1, denom: 1 };
+        const _NEG1I32: Rational32 = Ratio { numer: -1, denom: 1 };
+        const _NEG1I64: Rational64 = Ratio { numer: -1, denom: 1 };
+
+        const _2I32: Rational32 = Ratio { numer: 2, denom: 1 };
+        const _2I64: Rational64 = Ratio { numer: 2, denom: 1 };
+        const _NEG2: Rational = Ratio { numer: -2, denom: 1 };
+        const _NEG2I32: Rational32 = Ratio { numer: -2, denom: 1 };
+        const _NEG2I64: Rational64 = Ratio { numer: -2, denom: 1 };
+
+        const _1I32_2I32: Rational32 = Ratio { numer: 1, denom: 2 };
+        const _1I64_2I64: Rational64 = Ratio { numer: 1, denom: 2 };
 
         #[test]
         fn test_add() {
@@ -1577,6 +1738,198 @@ mod test {
         }
 
         #[test]
+        fn test_primitive_add_rational() {
+            fn test_isize_add_rational(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i8_add_rational(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u8_add_rational(a: u8, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i16_add_rational(a: i16, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+            }
+            test_isize_add_rational(-2isize, _1, _NEG1);
+            test_i8_add_rational(-2i8, _1, _NEG1);
+            test_u8_add_rational(1u8, _1, _2);
+            test_i16_add_rational(-2i16, _1, _NEG1);
+        }
+
+        #[test]
+        fn test_primitive_add_rational32() {
+            fn test_i8_add_rational32(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u8_add_rational32(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i16_add_rational32(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u16_add_rational32(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i32_add_rational32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            test_i8_add_rational32(-2i8, _1I32, _NEG1I32);
+            test_u8_add_rational32(1u8, _1I32, _2I32);
+            test_i16_add_rational32(-2i16, _1I32, _NEG1I32);
+            test_u16_add_rational32(1u16, _1I32, _2I32);
+            test_i32_add_rational32(-2i32, _1I32, _NEG1I32);
+        }
+
+        #[test]
+        fn test_primitive_add_rational64() {
+            fn test_i8_add_rational64(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u8_add_rational64(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i16_add_rational64(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u16_add_rational64(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i32_add_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u32_add_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i64_add_rational64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+
+            test_i8_add_rational64(-2i8, _1I64, _NEG1I64);
+            test_u8_add_rational64(1u8, _1I64, _2I64);
+            test_i16_add_rational64(-2i16, _1I64, _NEG1I64);
+            test_u16_add_rational64(1u16, _1I64, _2I64);
+            test_i32_add_rational64(-2i32, _1I64, _NEG1I64);
+            test_u32_add_rational64(1i32, _1I64, _2I64);
+            test_i64_add_rational64(-2i64, _1I64, _NEG1I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_add_bigint() {
+            fn test_isize_add_bigrational(a: isize, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_usize_add_bigrational(a: usize, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i8_add_bigrational(a: i8, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u8_add_bigrational(a: u8, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i16_add_bigrational(a: i16, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u16_add_bigrational(a: u16, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i32_add_bigrational(a: i32, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u32_add_bigrational(a: u32, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i64_add_bigrational(a: i64, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u64_add_bigrational(a: u64, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_i128_add_bigrational(a: i128, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_u128_add_bigrational(a: u128, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            test_isize_add_bigrational(-2isize, to_big(_1), to_big(_NEG1));
+            test_usize_add_bigrational(1usize, to_big(_1), to_big(_2));
+            test_i8_add_bigrational(-2i8, to_big(_1), to_big(_NEG1));
+            test_u8_add_bigrational(1u8, to_big(_1), to_big(_2));
+            test_i16_add_bigrational(-2i16, to_big(_1), to_big(_NEG1));
+            test_u16_add_bigrational(1u16, to_big(_1), to_big(_2));
+            test_i32_add_bigrational(-2i32, to_big(_1), to_big(_NEG1));
+            test_u32_add_bigrational(1u32, to_big(_1), to_big(_2));
+            test_i64_add_bigrational(-2i64, to_big(_1), to_big(_NEG1));
+            test_u64_add_bigrational(1u64, to_big(_1), to_big(_2));
+            #[cfg(feature = "i128")]
+            test_i128_add_bigrational(-2i128, to_big(_1), to_big(_NEG1));
+            #[cfg(feature = "i128")]
+            test_u128_add_bigrational(1u128, to_big(_1), to_big(_2));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigint_add_primitive() {
+            fn test_bigrational_add_isize(a: BigRational, b: isize, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_usize(a: BigRational, b: usize, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_i8(a: BigRational, b: i8, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_u8(a: BigRational, b: u8, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_i16(a: BigRational, b: i16, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_u16(a: BigRational, b: u16, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_i32(a: BigRational, b: i32, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_u32(a: BigRational, b: u32, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_i64(a: BigRational, b: i64, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_bigrational_add_u64(a: BigRational, b: u64, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_add_i128(a: BigRational, b: i128, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_add_u128(a: BigRational, b: u128, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
+
+            test_bigrational_add_isize(to_big(_1), -2isize, to_big(_NEG1));
+            test_bigrational_add_usize(to_big(_1), 1usize, to_big(_2));
+            test_bigrational_add_i8(to_big(_1), -2i8, to_big(_NEG1));
+            test_bigrational_add_u8(to_big(_1), 1u8, to_big(_2));
+            test_bigrational_add_i16(to_big(_1), -2i16, to_big(_NEG1));
+            test_bigrational_add_u16(to_big(_1), 1u16, to_big(_2));
+            test_bigrational_add_i32(to_big(_1), -2i32, to_big(_NEG1));
+            test_bigrational_add_u32(to_big(_1), 1u32, to_big(_2));
+            test_bigrational_add_i64(to_big(_1), -2i64, to_big(_NEG1));
+            test_bigrational_add_u64(to_big(_1), 1u64, to_big(_2));
+            #[cfg(feature = "i128")]
+            test_bigrational_add_i128(to_big(_1), -2i128, to_big(_NEG1));
+            #[cfg(feature = "i128")]
+            test_bigrational_add_u128(to_big(_1), 1u128, to_big(_2));
+        }
+
+        #[test]
         fn test_sub() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a - b, c);
@@ -1610,6 +1963,198 @@ mod test {
             test_assign(_1_2, 1, _NEG1_2);
         }
 
+        #[test]
+        fn test_primitive_sub_rational() {
+            fn test_isize_sub_rational(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i8_sub_rational(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u8_sub_rational(a: u8, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i16_sub_rational(a: i16, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+            }
+            test_isize_sub_rational(-1isize, _1, _NEG2);
+            test_i8_sub_rational(-1i8, _1, _NEG2);
+            test_u8_sub_rational(2u8, _1, _1);
+            test_i16_sub_rational(-1i16, _1, _NEG2);
+        }
+
+        #[test]
+        fn test_primitive_sub_rational32() {
+            fn test_i8_sub_rational32(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u8_sub_rational32(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i16_sub_rational32(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u16_sub_rational32(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i32_sub_rational32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            test_i8_sub_rational32(-1i8, _1I32, _NEG2I32);
+            test_u8_sub_rational32(2u8, _1I32, _1I32);
+            test_i16_sub_rational32(-1i16, _1I32, _NEG2I32);
+            test_u16_sub_rational32(2u16, _1I32, _1I32);
+            test_i32_sub_rational32(-1i32, _1I32, _NEG2I32);
+        }
+
+        #[test]
+        fn test_primitive_sub_rational64() {
+            fn test_i8_sub_rational64(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u8_sub_rational64(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i16_sub_rational64(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u16_sub_rational64(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i32_sub_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u32_sub_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i64_sub_rational64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+
+            test_i8_sub_rational64(-1i8, _1I64, _NEG2I64);
+            test_u8_sub_rational64(2u8, _1I64, _1I64);
+            test_i16_sub_rational64(-1i16, _1I64, _NEG2I64);
+            test_u16_sub_rational64(2u16, _1I64, _1I64);
+            test_i32_sub_rational64(-1i32, _1I64, _NEG2I64);
+            test_u32_sub_rational64(2i32, _1I64, _1I64);
+            test_i64_sub_rational64(-1i64, _1I64, _NEG2I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_sub_bigint() {
+            fn test_isize_sub_bigrational(a: isize, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_usize_sub_bigrational(a: usize, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i8_sub_bigrational(a: i8, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u8_sub_bigrational(a: u8, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i16_sub_bigrational(a: i16, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u16_sub_bigrational(a: u16, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i32_sub_bigrational(a: i32, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u32_sub_bigrational(a: u32, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i64_sub_bigrational(a: i64, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u64_sub_bigrational(a: u64, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_i128_sub_bigrational(a: i128, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_u128_sub_bigrational(a: u128, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+
+            test_isize_sub_bigrational(-1isize, to_big(_1), to_big(_NEG2));
+            test_usize_sub_bigrational(2usize, to_big(_1), to_big(_1));
+            test_i8_sub_bigrational(-1i8, to_big(_1), to_big(_NEG2));
+            test_u8_sub_bigrational(2u8, to_big(_1), to_big(_1));
+            test_i16_sub_bigrational(-1i16, to_big(_1), to_big(_NEG2));
+            test_u16_sub_bigrational(2u16, to_big(_1), to_big(_1));
+            test_i32_sub_bigrational(-1i32, to_big(_1), to_big(_NEG2));
+            test_u32_sub_bigrational(2u32, to_big(_1), to_big(_1));
+            test_i64_sub_bigrational(-1i64, to_big(_1), to_big(_NEG2));
+            test_u64_sub_bigrational(2u64, to_big(_1), to_big(_1));
+            #[cfg(feature = "i128")]
+            test_i128_sub_bigrational(-1i128, to_big(_1), to_big(_NEG2));
+            #[cfg(feature = "i128")]
+            test_u128_sub_bigrational(2u128, to_big(_1), to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigint_sub_primitive() {
+            fn test_bigrational_sub_isize(a: BigRational, b: isize, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_usize(a: BigRational, b: usize, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_i8(a: BigRational, b: i8, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_u8(a: BigRational, b: u8, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_i16(a: BigRational, b: i16, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_u16(a: BigRational, b: u16, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_i32(a: BigRational, b: i32, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_u32(a: BigRational, b: u32, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_i64(a: BigRational, b: i64, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_bigrational_sub_u64(a: BigRational, b: u64, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_sub_i128(a: BigRational, b: i128, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_sub_u128(a: BigRational, b: u128, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
+
+            test_bigrational_sub_isize(to_big(_2), 1isize, to_big(_1));
+            test_bigrational_sub_usize(to_big(_2), 1usize, to_big(_1));
+            test_bigrational_sub_i8(to_big(_2), 1i8, to_big(_1));
+            test_bigrational_sub_u8(to_big(_2), 1u8, to_big(_1));
+            test_bigrational_sub_i16(to_big(_2), 1i16, to_big(_1));
+            test_bigrational_sub_u16(to_big(_2), 1u16, to_big(_1));
+            test_bigrational_sub_i32(to_big(_2), 1i32, to_big(_1));
+            test_bigrational_sub_u32(to_big(_2), 1u32, to_big(_1));
+            test_bigrational_sub_i64(to_big(_2), 1i64, to_big(_1));
+            test_bigrational_sub_u64(to_big(_2), 1u64, to_big(_1));
+            #[cfg(feature = "i128")]
+            test_bigrational_sub_i128(to_big(_2), 1i128, to_big(_1));
+            #[cfg(feature = "i128")]
+            test_bigrational_sub_u128(to_big(_2), 1u128, to_big(_1));
+        }
         #[test]
         fn test_mul() {
             fn test(a: Rational, b: Rational, c: Rational) {
@@ -1645,6 +2190,198 @@ mod test {
         }
 
         #[test]
+        fn test_primitive_mul_rational() {
+            fn test_isize_mul_rational(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i8_mul_rational(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u8_mul_rational(a: u8, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i16_mul_rational(a: i16, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+            }
+            test_isize_mul_rational(-2isize, _1_2, _NEG1);
+            test_i8_mul_rational(-2i8, _1_2, _NEG1);
+            test_u8_mul_rational(2u8, _1_2, _1);
+            test_i16_mul_rational(-2i16, _1_2, _NEG1);
+        }
+
+        #[test]
+        fn test_primitive_mul_rational32() {
+            fn test_i8_mul_rational32(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u8_mul_rational32(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i16_mul_rational32(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u16_mul_rational32(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i32_mul_rational32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            test_i8_mul_rational32(-2i8, _1I32_2I32, _NEG1I32);
+            test_u8_mul_rational32(2u8, _1I32_2I32, _1I32);
+            test_i16_mul_rational32(-2i16, _1I32_2I32, _NEG1I32);
+            test_u16_mul_rational32(2u16, _1I32_2I32, _1I32);
+            test_i32_mul_rational32(-2i32, _1I32_2I32, _NEG1I32);
+        }
+
+        #[test]
+        fn test_primitive_mul_rational64() {
+            fn test_i8_mul_rational64(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u8_mul_rational64(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i16_mul_rational64(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u16_mul_rational64(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i32_mul_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u32_mul_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i64_mul_rational64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+
+            test_i8_mul_rational64(-2i8, _1I64_2I64, _NEG1I64);
+            test_u8_mul_rational64(2u8, _1I64_2I64, _1I64);
+            test_i16_mul_rational64(-2i16, _1I64_2I64, _NEG1I64);
+            test_u16_mul_rational64(2u16, _1I64_2I64, _1I64);
+            test_i32_mul_rational64(-2i32, _1I64_2I64, _NEG1I64);
+            test_u32_mul_rational64(2i32, _1I64_2I64, _1I64);
+            test_i64_mul_rational64(-2i64, _1I64_2I64, _NEG1I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_mul_bigint() {
+            fn test_isize_mul_bigrational(a: isize, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_usize_mul_bigrational(a: usize, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i8_mul_bigrational(a: i8, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u8_mul_bigrational(a: u8, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i16_mul_bigrational(a: i16, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u16_mul_bigrational(a: u16, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i32_mul_bigrational(a: i32, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u32_mul_bigrational(a: u32, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i64_mul_bigrational(a: i64, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u64_mul_bigrational(a: u64, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_i128_mul_bigrational(a: i128, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_u128_mul_bigrational(a: u128, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            test_isize_mul_bigrational(-2isize, to_big(_1_2), to_big(_NEG1));
+            test_usize_mul_bigrational(2usize, to_big(_1_2), to_big(_1));
+            test_i8_mul_bigrational(-2i8, to_big(_1_2), to_big(_NEG1));
+            test_u8_mul_bigrational(2u8, to_big(_1_2), to_big(_1));
+            test_i16_mul_bigrational(-2i16, to_big(_1_2), to_big(_NEG1));
+            test_u16_mul_bigrational(2u16, to_big(_1_2), to_big(_1));
+            test_i32_mul_bigrational(-2i32, to_big(_1_2), to_big(_NEG1));
+            test_u32_mul_bigrational(2u32, to_big(_1_2), to_big(_1));
+            test_i64_mul_bigrational(-2i64, to_big(_1_2), to_big(_NEG1));
+            test_u64_mul_bigrational(2u64, to_big(_1_2), to_big(_1));
+            #[cfg(feature = "i128")]
+            test_i128_mul_bigrational(-2i128, to_big(_1_2), to_big(_NEG1));
+            #[cfg(feature = "i128")]
+            test_u128_mul_bigrational(2u128, to_big(_1_2), to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigint_mul_primitive() {
+            fn test_bigrational_mul_isize(a: BigRational, b: isize, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_usize(a: BigRational, b: usize, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_i8(a: BigRational, b: i8, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_u8(a: BigRational, b: u8, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_i16(a: BigRational, b: i16, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_u16(a: BigRational, b: u16, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_i32(a: BigRational, b: i32, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_u32(a: BigRational, b: u32, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_i64(a: BigRational, b: i64, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_bigrational_mul_u64(a: BigRational, b: u64, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_mul_i128(a: BigRational, b: i128, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_mul_u128(a: BigRational, b: u128, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
+
+            test_bigrational_mul_isize(to_big(_1_2), -2isize, to_big(_NEG1));
+            test_bigrational_mul_usize(to_big(_1_2), 2usize, to_big(_1));
+            test_bigrational_mul_i8(to_big(_1_2), -2i8, to_big(_NEG1));
+            test_bigrational_mul_u8(to_big(_1_2), 2u8, to_big(_1));
+            test_bigrational_mul_i16(to_big(_1_2), -2i16, to_big(_NEG1));
+            test_bigrational_mul_u16(to_big(_1_2), 2u16, to_big(_1));
+            test_bigrational_mul_i32(to_big(_1_2), -2i32, to_big(_NEG1));
+            test_bigrational_mul_u32(to_big(_1_2), 2u32, to_big(_1));
+            test_bigrational_mul_i64(to_big(_1_2), -2i64, to_big(_NEG1));
+            test_bigrational_mul_u64(to_big(_1_2), 2u64, to_big(_1));
+            #[cfg(feature = "i128")]
+            test_bigrational_mul_i128(to_big(_1_2), -2i128, to_big(_NEG1));
+            #[cfg(feature = "i128")]
+            test_bigrational_mul_u128(to_big(_1_2), 2u128, to_big(_1));
+        }
+
+        #[test]
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a / b, c);
@@ -1676,6 +2413,197 @@ mod test {
             test(_3_2, _1_2, _1 + _2);
             test(_1, _NEG1_2, _NEG1_2 + _NEG1_2 + _NEG1_2 + _NEG1_2);
             test_assign(_1, 2, _1_2);
+        }
+
+        #[test]
+        fn test_primitive_div_rational() {
+            fn test_isize_div_rational(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i8_div_rational(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u8_div_rational(a: u8, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i16_div_rational(a: i16, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+            }
+            test_isize_div_rational(-2isize, _2, _NEG1);
+            test_i8_div_rational(-2i8, _2, _NEG1);
+            test_u8_div_rational(2u8, _2, _1);
+            test_i16_div_rational(-2i16, _2, _NEG1);
+        }
+
+        #[test]
+        fn test_primitive_div_rational32() {
+            fn test_i8_div_rational32(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u8_div_rational32(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i16_div_rational32(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u16_div_rational32(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i32_div_rational32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            test_i8_div_rational32(-2i8, _2I32, _NEG1I32);
+            test_u8_div_rational32(2u8, _2I32, _1I32);
+            test_i16_div_rational32(-2i16, _2I32, _NEG1I32);
+            test_u16_div_rational32(2u16, _2I32, _1I32);
+            test_i32_div_rational32(-2i32, _2I32, _NEG1I32);
+        }
+
+        #[test]
+        fn test_primitive_div_rational64() {
+            fn test_i8_div_rational64(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u8_div_rational64(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i16_div_rational64(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u16_div_rational64(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i32_div_rational64(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u32_div_rational64(a: u32, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i64_div_rational64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            test_i8_div_rational64(-2i8, _2I64, _NEG1I64);
+            test_u8_div_rational64(2u8, _2I64, _1I64);
+            test_i16_div_rational64(-2i16, _2I64, _NEG1I64);
+            test_u16_div_rational64(2u16, _2I64, _1I64);
+            test_i32_div_rational64(-2i32, _2I64, _NEG1I64);
+            test_u32_div_rational64(2u32, _2I64, _1I64);
+            test_i64_div_rational64(-2i64, _2I64, _NEG1I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_div_bigint() {
+            fn test_isize_div_bigrational(a: isize, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_usize_div_bigrational(a: usize, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i8_div_bigrational(a: i8, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u8_div_bigrational(a: u8, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i16_div_bigrational(a: i16, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u16_div_bigrational(a: u16, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i32_div_bigrational(a: i32, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u32_div_bigrational(a: u32, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i64_div_bigrational(a: i64, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u64_div_bigrational(a: u64, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_i128_div_bigrational(a: i128, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_u128_div_bigrational(a: u128, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            test_isize_div_bigrational(-2isize, to_big(_2), to_big(_NEG1));
+            test_usize_div_bigrational(2usize, to_big(_2), to_big(_1));
+            test_i8_div_bigrational(-2i8, to_big(_2), to_big(_NEG1));
+            test_u8_div_bigrational(2u8, to_big(_2), to_big(_1));
+            test_i16_div_bigrational(-2i16, to_big(_2), to_big(_NEG1));
+            test_u16_div_bigrational(2u16, to_big(_2), to_big(_1));
+            test_i32_div_bigrational(-2i32, to_big(_2), to_big(_NEG1));
+            test_u32_div_bigrational(2u32, to_big(_2), to_big(_1));
+            test_i64_div_bigrational(-2i64, to_big(_2), to_big(_NEG1));
+            test_u64_div_bigrational(2u64, to_big(_2), to_big(_1));
+            #[cfg(feature = "i128")]
+            test_i128_div_bigrational(-2i128, to_big(_2), to_big(_NEG1));
+            #[cfg(feature = "i128")]
+            test_u128_div_bigrational(2u128, to_big(_2), to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigint_div_primitive() {
+            fn test_bigrational_div_isize(a: BigRational, b: isize, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_usize(a: BigRational, b: usize, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_i8(a: BigRational, b: i8, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_u8(a: BigRational, b: u8, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_i16(a: BigRational, b: i16, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_u16(a: BigRational, b: u16, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_i32(a: BigRational, b: i32, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_u32(a: BigRational, b: u32, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_i64(a: BigRational, b: i64, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_bigrational_div_u64(a: BigRational, b: u64, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_div_i128(a: BigRational, b: i128, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+            #[cfg(feature = "i128")]
+            fn test_bigrational_div_u128(a: BigRational, b: u128, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
+
+            test_bigrational_div_isize(to_big(_2), -2isize, to_big(_NEG1));
+            test_bigrational_div_usize(to_big(_2), 2usize, to_big(_1));
+            test_bigrational_div_i8(to_big(_2), -2i8, to_big(_NEG1));
+            test_bigrational_div_u8(to_big(_2), 2u8, to_big(_1));
+            test_bigrational_div_i16(to_big(_2), -2i16, to_big(_NEG1));
+            test_bigrational_div_u16(to_big(_2), 2u16, to_big(_1));
+            test_bigrational_div_i32(to_big(_2), -2i32, to_big(_NEG1));
+            test_bigrational_div_u32(to_big(_2), 2u32, to_big(_1));
+            test_bigrational_div_i64(to_big(_2), -2i64, to_big(_NEG1));
+            test_bigrational_div_u64(to_big(_2), 2u64, to_big(_1));
+            #[cfg(feature = "i128")]
+            test_bigrational_div_i128(to_big(_2), -2i128, to_big(_NEG1));
+            #[cfg(feature = "i128")]
+            test_bigrational_div_u128(to_big(_2), 2u128, to_big(_1));
         }
 
         #[test]
