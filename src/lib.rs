@@ -798,6 +798,7 @@ impl_primitive_ops_ratio!(Ratio<T> for u128);
 
 // Implementing these directly because the implementation of Add<T>, Sub<T>,
 // Mul<T> and Div<T> for Ratio<T> don't cover these.
+#[cfg(feature = "bigint")]
 macro_rules! impl_bigint_ops_primitive {
     ($primitive:ident) => {
         impl Add<$primitive> for BigRational {
@@ -1683,7 +1684,9 @@ mod test {
     }
 
     mod arith {
-        use super::super::{BigRational, Ratio, Rational, Rational32, Rational64};
+        #[cfg(feature = "bigint")]
+        use super::super::BigRational;
+        use super::super::{Ratio, Rational, Rational32, Rational64};
         use super::{_0, _1, _1_2, _2, _3_2, _NEG1_2, to_big};
         use traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
 
