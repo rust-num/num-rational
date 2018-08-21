@@ -795,6 +795,8 @@ impl_primitive_ops_ratio!(Ratio<T> for i128);
 // Implements for BigInt
 #[cfg(has_i128)]
 impl_primitive_ops_ratio!(Ratio<T> for u128);
+#[cfg(feature = "bigint")]
+impl_primitive_ops_ratio!(Ratio<T> for BigInt);
 
 // Implementing these directly because the implementation of Add<T>, Sub<T>,
 // Mul<T> and Div<T> for Ratio<T> don't cover these.
@@ -1685,6 +1687,8 @@ mod test {
 
     mod arith {
         #[cfg(feature = "bigint")]
+        use bigint::BigInt;
+        #[cfg(feature = "bigint")]
         use super::super::BigRational;
         use super::super::{Ratio, Rational, Rational32, Rational64};
         use super::{_0, _1, _1_2, _2, _3_2, _NEG1_2, to_big};
@@ -1880,6 +1884,9 @@ mod test {
             fn test_u128(a: u128, b: BigRational, c: BigRational) {
                 assert_eq!(a + b, c);
             }
+            fn test_bigint(a: BigInt, b: BigRational, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
 
             test_isize(-2, to_big(_1), to_big(_NEG1));
             test_usize(1, to_big(_1), to_big(_2));
@@ -1895,6 +1902,7 @@ mod test {
             test_i128(-2, to_big(_1), to_big(_NEG1));
             #[cfg(has_i128)]
             test_u128(1, to_big(_1), to_big(_2));
+            test_bigint(BigInt::from(1), to_big(_1), to_big(_2));
         }
 
         #[cfg(feature = "bigint")]
@@ -1938,6 +1946,9 @@ mod test {
             fn test_u128(a: BigRational, b: u128, c: BigRational) {
                 assert_eq!(a + b, c);
             }
+            fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
 
             test_isize(to_big(_1), -2, to_big(_NEG1));
             test_usize(to_big(_1), 1, to_big(_2));
@@ -1953,6 +1964,7 @@ mod test {
             test_i128(to_big(_1), -2, to_big(_NEG1));
             #[cfg(has_i128)]
             test_u128(to_big(_1), 1, to_big(_2));
+            test_bigint(to_big(_1), BigInt::from(1), to_big(_2));
         }
 
         #[test]
@@ -2111,6 +2123,9 @@ mod test {
             fn test_u128(a: u128, b: BigRational, c: BigRational) {
                 assert_eq!(a - b, c);
             }
+            fn test_bigint(a: BigInt, b: BigRational, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
 
             test_isize(-1, to_big(_1), to_big(_NEG2));
             test_usize(2, to_big(_1), to_big(_1));
@@ -2126,6 +2141,7 @@ mod test {
             test_i128(-1, to_big(_1), to_big(_NEG2));
             #[cfg(has_i128)]
             test_u128(2, to_big(_1), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_1), to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2169,6 +2185,9 @@ mod test {
             fn test_u128(a: BigRational, b: u128, c: BigRational) {
                 assert_eq!(a - b, c);
             }
+            fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
 
             test_isize(to_big(_2), 1, to_big(_1));
             test_usize(to_big(_2), 1, to_big(_1));
@@ -2184,6 +2203,7 @@ mod test {
             test_i128(to_big(_2), 1, to_big(_1));
             #[cfg(has_i128)]
             test_u128(to_big(_2), 1, to_big(_1));
+            test_bigint(to_big(_2), BigInt::from(1), to_big(_1));
         }
 
         #[test]
@@ -2342,6 +2362,9 @@ mod test {
             fn test_u128(a: u128, b: BigRational, c: BigRational) {
                 assert_eq!(a * b, c);
             }
+            fn test_bigint(a: BigInt, b: BigRational, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
 
             test_isize(-2, to_big(_1_2), to_big(_NEG1));
             test_usize(2, to_big(_1_2), to_big(_1));
@@ -2357,6 +2380,7 @@ mod test {
             test_i128(-2, to_big(_1_2), to_big(_NEG1));
             #[cfg(has_i128)]
             test_u128(2, to_big(_1_2), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_1_2), to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2400,6 +2424,9 @@ mod test {
             fn test_u128(a: BigRational, b: u128, c: BigRational) {
                 assert_eq!(a * b, c);
             }
+            fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
 
             test_isize(to_big(_1_2), -2, to_big(_NEG1));
             test_usize(to_big(_1_2), 2, to_big(_1));
@@ -2415,6 +2442,7 @@ mod test {
             test_i128(to_big(_1_2), -2, to_big(_NEG1));
             #[cfg(has_i128)]
             test_u128(to_big(_1_2), 2, to_big(_1));
+            test_bigint(to_big(_1_2), BigInt::from(2), to_big(_1));
         }
 
         #[test]
@@ -2573,6 +2601,9 @@ mod test {
             fn test_u128(a: u128, b: BigRational, c: BigRational) {
                 assert_eq!(a / b, c);
             }
+            fn test_bigint(a: BigInt, b: BigRational, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
 
             test_isize(-2, to_big(_2), to_big(_NEG1));
             test_usize(2, to_big(_2), to_big(_1));
@@ -2588,6 +2619,7 @@ mod test {
             test_i128(-2, to_big(_2), to_big(_NEG1));
             #[cfg(has_i128)]
             test_u128(2, to_big(_2), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_2), to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2631,6 +2663,9 @@ mod test {
             fn test_u128(a: BigRational, b: u128, c: BigRational) {
                 assert_eq!(a / b, c);
             }
+            fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
 
             test_isize(to_big(_2), -2isize, to_big(_NEG1));
             test_usize(to_big(_2), 2usize, to_big(_1));
@@ -2646,6 +2681,7 @@ mod test {
             test_i128(to_big(_2), -2, to_big(_NEG1));
             #[cfg(has_i128)]
             test_u128(to_big(_2), 2, to_big(_1));
+            test_bigint(to_big(_2), BigInt::from(2), to_big(_1));
         }
 
         #[test]
