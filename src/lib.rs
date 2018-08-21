@@ -721,7 +721,7 @@ macro_rules! impl_primitive_ops_ratio {
     (Ratio<T> for $primitive:ident) => {
         impl<T> Add<Ratio<T>> for $primitive
         where
-            T: Clone + Integer + ::core::convert::From<$primitive>
+            T: Clone + Integer + ::core::convert::From<$primitive>,
         {
             type Output = Ratio<T>;
 
@@ -733,7 +733,7 @@ macro_rules! impl_primitive_ops_ratio {
 
         impl<T> Sub<Ratio<T>> for $primitive
         where
-            T: Clone + Integer + ::core::convert::From<$primitive>
+            T: Clone + Integer + ::core::convert::From<$primitive>,
         {
             type Output = Ratio<T>;
 
@@ -745,7 +745,7 @@ macro_rules! impl_primitive_ops_ratio {
 
         impl<T> Mul<Ratio<T>> for $primitive
         where
-            T: Clone + Integer + ::core::convert::From<$primitive>
+            T: Clone + Integer + ::core::convert::From<$primitive>,
         {
             type Output = Ratio<T>;
 
@@ -757,7 +757,7 @@ macro_rules! impl_primitive_ops_ratio {
 
         impl<T> Div<Ratio<T>> for $primitive
         where
-            T: Clone + Integer + ::core::convert::From<$primitive>
+            T: Clone + Integer + ::core::convert::From<$primitive>,
         {
             type Output = Ratio<T>;
 
@@ -1689,15 +1689,33 @@ mod test {
 
         const _1I32: Rational32 = Ratio { numer: 1, denom: 1 };
         const _1I64: Rational64 = Ratio { numer: 1, denom: 1 };
-        const _NEG1: Rational = Ratio { numer: -1, denom: 1 };
-        const _NEG1I32: Rational32 = Ratio { numer: -1, denom: 1 };
-        const _NEG1I64: Rational64 = Ratio { numer: -1, denom: 1 };
+        const _NEG1: Rational = Ratio {
+            numer: -1,
+            denom: 1,
+        };
+        const _NEG1I32: Rational32 = Ratio {
+            numer: -1,
+            denom: 1,
+        };
+        const _NEG1I64: Rational64 = Ratio {
+            numer: -1,
+            denom: 1,
+        };
 
         const _2I32: Rational32 = Ratio { numer: 2, denom: 1 };
         const _2I64: Rational64 = Ratio { numer: 2, denom: 1 };
-        const _NEG2: Rational = Ratio { numer: -2, denom: 1 };
-        const _NEG2I32: Rational32 = Ratio { numer: -2, denom: 1 };
-        const _NEG2I64: Rational64 = Ratio { numer: -2, denom: 1 };
+        const _NEG2: Rational = Ratio {
+            numer: -2,
+            denom: 1,
+        };
+        const _NEG2I32: Rational32 = Ratio {
+            numer: -2,
+            denom: 1,
+        };
+        const _NEG2I64: Rational64 = Ratio {
+            numer: -2,
+            denom: 1,
+        };
 
         const _1I32_2I32: Rational32 = Ratio { numer: 1, denom: 2 };
         const _1I64_2I64: Rational64 = Ratio { numer: 1, denom: 2 };
