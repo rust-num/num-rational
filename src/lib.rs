@@ -1236,8 +1236,8 @@ impl Error for ParseRatioError {
 }
 
 impl RatioErrorKind {
-    fn description(&self) -> &'static str {
-        match *self {
+    fn description(self) -> &'static str {
+        match self {
             RatioErrorKind::ParseError => "failed to parse integer",
             RatioErrorKind::ZeroDenominator => "zero value denominator",
         }
