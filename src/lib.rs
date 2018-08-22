@@ -852,12 +852,30 @@ macro_rules! impl_bigint_ops_primitive {
             }
         }
 
+        impl<'a> Add<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn add(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone() + BigInt::from(rhs), self.denom.clone())
+            }
+        }
+
         impl Sub<$primitive> for BigRational {
             type Output = BigRational;
 
             #[inline]
             fn sub(self, rhs: $primitive) -> BigRational {
                 Ratio::new(self.numer - BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl<'a> Sub<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn sub(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone() - BigInt::from(rhs), self.denom.clone())
             }
         }
 
@@ -870,12 +888,30 @@ macro_rules! impl_bigint_ops_primitive {
             }
         }
 
+        impl<'a> Mul<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn mul(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone() * BigInt::from(rhs), self.denom.clone())
+            }
+        }
+
         impl Div<$primitive> for BigRational {
             type Output = BigRational;
 
             #[inline]
             fn div(self, rhs: $primitive) -> BigRational {
                 Ratio::new(self.numer, self.denom * BigInt::from(rhs))
+            }
+        }
+
+        impl<'a> Div<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn div(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone(), self.denom.clone() * BigInt::from(rhs))
             }
         }
     };
@@ -1959,6 +1995,9 @@ mod test {
             fn test_isize(a: BigRational, b: isize, c: BigRational) {
                 assert_eq!(a + b, c);
             }
+            fn test_isize_ref(a: &BigRational, b: isize, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
             fn test_usize(a: BigRational, b: usize, c: BigRational) {
                 assert_eq!(a + b, c);
             }
@@ -1997,8 +2036,12 @@ mod test {
             fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
                 assert_eq!(a + b, c);
             }
+            fn test_bigint_ref(a: &BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a + b, c);
+            }
 
             test_isize(to_big(_1), -2, to_big(_NEG1));
+            test_isize_ref(&to_big(_1), -2, to_big(_NEG1));
             test_usize(to_big(_1), 1, to_big(_2));
             test_i8(to_big(_1), -2, to_big(_NEG1));
             test_u8(to_big(_1), 1, to_big(_2));
@@ -2013,6 +2056,7 @@ mod test {
             #[cfg(has_i128)]
             test_u128(to_big(_1), 1, to_big(_2));
             test_bigint(to_big(_1), BigInt::from(1), to_big(_2));
+            test_bigint_ref(&to_big(_1), BigInt::from(1), to_big(_2));
         }
 
         #[test]
@@ -2206,6 +2250,9 @@ mod test {
             fn test_isize(a: BigRational, b: isize, c: BigRational) {
                 assert_eq!(a - b, c);
             }
+            fn test_isize_ref(a: &BigRational, b: isize, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
             fn test_usize(a: BigRational, b: usize, c: BigRational) {
                 assert_eq!(a - b, c);
             }
@@ -2244,8 +2291,12 @@ mod test {
             fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
                 assert_eq!(a - b, c);
             }
+            fn test_bigint_ref(a: &BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a - b, c);
+            }
 
             test_isize(to_big(_2), 1, to_big(_1));
+            test_isize_ref(&to_big(_2), 1, to_big(_1));
             test_usize(to_big(_2), 1, to_big(_1));
             test_i8(to_big(_2), 1, to_big(_1));
             test_u8(to_big(_2), 1, to_big(_1));
@@ -2260,6 +2311,7 @@ mod test {
             #[cfg(has_i128)]
             test_u128(to_big(_2), 1, to_big(_1));
             test_bigint(to_big(_2), BigInt::from(1), to_big(_1));
+            test_bigint_ref(&to_big(_2), BigInt::from(1), to_big(_1));
         }
 
         #[test]
@@ -2453,6 +2505,9 @@ mod test {
             fn test_isize(a: BigRational, b: isize, c: BigRational) {
                 assert_eq!(a * b, c);
             }
+            fn test_isize_ref(a: &BigRational, b: isize, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
             fn test_usize(a: BigRational, b: usize, c: BigRational) {
                 assert_eq!(a * b, c);
             }
@@ -2491,8 +2546,12 @@ mod test {
             fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
                 assert_eq!(a * b, c);
             }
+            fn test_bigint_ref(a: &BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a * b, c);
+            }
 
             test_isize(to_big(_1_2), -2, to_big(_NEG1));
+            test_isize_ref(&to_big(_1_2), -2, to_big(_NEG1));
             test_usize(to_big(_1_2), 2, to_big(_1));
             test_i8(to_big(_1_2), -2, to_big(_NEG1));
             test_u8(to_big(_1_2), 2, to_big(_1));
@@ -2507,6 +2566,7 @@ mod test {
             #[cfg(has_i128)]
             test_u128(to_big(_1_2), 2, to_big(_1));
             test_bigint(to_big(_1_2), BigInt::from(2), to_big(_1));
+            test_bigint_ref(&to_big(_1_2), BigInt::from(2), to_big(_1));
         }
 
         #[test]
@@ -2700,6 +2760,9 @@ mod test {
             fn test_isize(a: BigRational, b: isize, c: BigRational) {
                 assert_eq!(a / b, c);
             }
+            fn test_isize_ref(a: &BigRational, b: isize, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
             fn test_usize(a: BigRational, b: usize, c: BigRational) {
                 assert_eq!(a / b, c);
             }
@@ -2738,8 +2801,12 @@ mod test {
             fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
                 assert_eq!(a / b, c);
             }
+            fn test_bigint_ref(a: &BigRational, b: BigInt, c: BigRational) {
+                assert_eq!(a / b, c);
+            }
 
             test_isize(to_big(_2), -2isize, to_big(_NEG1));
+            test_isize_ref(&to_big(_2), -2isize, to_big(_NEG1));
             test_usize(to_big(_2), 2usize, to_big(_1));
             test_i8(to_big(_2), -2i8, to_big(_NEG1));
             test_u8(to_big(_2), 2u8, to_big(_1));
@@ -2754,6 +2821,7 @@ mod test {
             #[cfg(has_i128)]
             test_u128(to_big(_2), 2, to_big(_1));
             test_bigint(to_big(_2), BigInt::from(2), to_big(_1));
+            test_bigint_ref(&to_big(_2), BigInt::from(2), to_big(_1));
         }
 
         #[test]
