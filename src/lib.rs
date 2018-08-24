@@ -840,26 +840,30 @@ impl_primitive_ops_ratio!(Ratio<T> for BigInt);
 
 #[cfg(feature = "bigint")]
 macro_rules! impl_ops_bigrational_for_float {
-    ($trait:ident, $method:ident, $float:ty) => {
-        impl $trait<BigRational> for $float {
+    ($trait_:ident, $method:ident, $float:ty) => {
+        impl $trait_<BigRational> for $float {
             type Output = Option<BigRational>;
 
             #[inline]
             fn $method(self, rhs: BigRational) -> Self::Output {
-                let me = BigRational::from_float(self)?;
-
-                Some(me.$method(rhs))
+                if let Some(me) = BigRational::from_float(self) {
+                    Some(me.$method(rhs))
+                } else {
+                    None
+                }
             }
         }
 
-        impl<'a> $trait<&'a BigRational> for $float {
+        impl<'a> $trait_<&'a BigRational> for $float {
             type Output = Option<BigRational>;
 
             #[inline]
             fn $method(self, rhs: &'a BigRational) -> Self::Output {
-                let me = BigRational::from_float(self)?;
-
-                Some(me.$method(rhs))
+                if let Some(me) = BigRational::from_float(self) {
+                    Some(me.$method(rhs))
+                } else {
+                    None
+                }
             }
         }
     };
@@ -987,24 +991,28 @@ impl_bigint_ops_primitive!(i128);
 impl_bigint_ops_primitive!(u128);
 
 macro_rules! impl_ops_float_for_bigrational {
-    ($trait:ident, $method:ident, $float:ident) => {
-        impl $trait<$float> for BigRational {
+    ($trait_:ident, $method:ident, $float:ident) => {
+        impl $trait_<$float> for BigRational {
             type Output = Option<BigRational>;
 
             fn $method(self, rhs: $float) -> Self::Output {
-                let rhs = BigRational::from_float(rhs)?;
-
-                Some(self.$method(rhs))
+                if let Some(r) = BigRational::from_float(rhs) {
+                    Some(self.$method(r))
+                } else {
+                    None
+                }
             }
         }
 
-        impl<'a> $trait<$float> for &'a BigRational {
+        impl<'a> $trait_<$float> for &'a BigRational {
             type Output = Option<BigRational>;
 
             fn $method(self, rhs: $float) -> Self::Output {
-                let rhs = BigRational::from_float(rhs)?;
-
-                Some(self.$method(rhs))
+                if let Some(r) = BigRational::from_float(rhs) {
+                    Some(self.$method(r))
+                } else {
+                    None
+                }
             }
         }
     };
@@ -2245,26 +2253,26 @@ mod test {
         fn test_primitive_add_bigrational() {
             define_primitive_op_bigrational_test_funcs!(+);
 
-            test_isize(-2, to_big(_1),  to_big(_NEG1));
-            test_usize(1,  to_big(_1),  to_big(_2));
-            test_i8(-2,    to_big(_1),  to_big(_NEG1));
-            test_u8(1,     to_big(_1),  to_big(_2));
-            test_i16(-2,   to_big(_1),  to_big(_NEG1));
-            test_u16(1,    to_big(_1),  to_big(_2));
-            test_i32(-2,   to_big(_1),  to_big(_NEG1));
-            test_u32(1,    to_big(_1),  to_big(_2));
-            test_i64(-2,   to_big(_1),  to_big(_NEG1));
-            test_u64(1,    to_big(_1),  to_big(_2));
+            test_isize(-2, to_big(_1), to_big(_NEG1));
+            test_usize(1, to_big(_1), to_big(_2));
+            test_i8(-2, to_big(_1), to_big(_NEG1));
+            test_u8(1, to_big(_1), to_big(_2));
+            test_i16(-2, to_big(_1), to_big(_NEG1));
+            test_u16(1, to_big(_1), to_big(_2));
+            test_i32(-2, to_big(_1), to_big(_NEG1));
+            test_u32(1, to_big(_1), to_big(_2));
+            test_i64(-2, to_big(_1), to_big(_NEG1));
+            test_u64(1, to_big(_1), to_big(_2));
             #[cfg(has_i128)]
-            test_i128(-2,  to_big(_1), to_big(_NEG1));
+            test_i128(-2, to_big(_1), to_big(_NEG1));
             #[cfg(has_i128)]
-            test_u128(1,                 to_big(_1),  to_big(_2));
-            test_bigint(BigInt::from(1), to_big(_1),  to_big(_2));
+            test_u128(1, to_big(_1), to_big(_2));
+            test_bigint(BigInt::from(1), to_big(_1), to_big(_2));
 
-            test_f32_some(1.0,     to_big(_1),   to_big(_2));
-            test_f32_none(1.0/0.0, to_big(_1));
-            test_f64_some(1.0,     to_big(_1),   to_big(_2));
-            test_f64_none(1.0/0.0, to_big(_1));
+            test_f32_some(1.0, to_big(_1), to_big(_2));
+            test_f32_none(1.0 / 0.0, to_big(_1));
+            test_f64_some(1.0, to_big(_1), to_big(_2));
+            test_f64_none(1.0 / 0.0, to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2273,25 +2281,25 @@ mod test {
             define_primitive_op_bigrational_ref_test_funcs!(+);
 
             test_isize(-2, &to_big(_1), to_big(_NEG1));
-            test_usize(1,  &to_big(_1), to_big(_2));
-            test_i8(-2,    &to_big(_1), to_big(_NEG1));
-            test_u8(1,     &to_big(_1), to_big(_2));
-            test_i16(-2,   &to_big(_1), to_big(_NEG1));
-            test_u16(1,    &to_big(_1), to_big(_2));
-            test_i32(-2,   &to_big(_1), to_big(_NEG1));
-            test_u32(1,    &to_big(_1), to_big(_2));
-            test_i64(-2,   &to_big(_1), to_big(_NEG1));
-            test_u64(1,    &to_big(_1), to_big(_2));
+            test_usize(1, &to_big(_1), to_big(_2));
+            test_i8(-2, &to_big(_1), to_big(_NEG1));
+            test_u8(1, &to_big(_1), to_big(_2));
+            test_i16(-2, &to_big(_1), to_big(_NEG1));
+            test_u16(1, &to_big(_1), to_big(_2));
+            test_i32(-2, &to_big(_1), to_big(_NEG1));
+            test_u32(1, &to_big(_1), to_big(_2));
+            test_i64(-2, &to_big(_1), to_big(_NEG1));
+            test_u64(1, &to_big(_1), to_big(_2));
             #[cfg(has_i128)]
-            test_i128(-2,  &to_big(_1), to_big(_NEG1));
+            test_i128(-2, &to_big(_1), to_big(_NEG1));
             #[cfg(has_i128)]
-            test_u128(1,                 &to_big(_1), to_big(_2));
+            test_u128(1, &to_big(_1), to_big(_2));
             test_bigint(BigInt::from(1), &to_big(_1), to_big(_2));
 
-            test_f32_some(1.0,     &to_big(_1),  to_big(_2));
-            test_f32_none(1.0/0.0, &to_big(_1));
-            test_f64_some(1.0,     &to_big(_1),  to_big(_2));
-            test_f64_none(1.0/0.0, &to_big(_1));
+            test_f32_some(1.0, &to_big(_1), to_big(_2));
+            test_f32_none(1.0 / 0.0, &to_big(_1));
+            test_f64_some(1.0, &to_big(_1), to_big(_2));
+            test_f64_none(1.0 / 0.0, &to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2316,9 +2324,9 @@ mod test {
             test_bigint(to_big(_1), BigInt::from(1), to_big(_2));
 
             test_f32_some(to_big(_1), 1.0, to_big(_2));
-            test_f32_none(to_big(_1), 1.0/0.0);
+            test_f32_none(to_big(_1), 1.0 / 0.0);
             test_f64_some(to_big(_1), 1.0, to_big(_2));
-            test_f64_none(to_big(_1), 1.0/0.0);
+            test_f64_none(to_big(_1), 1.0 / 0.0);
         }
 
         #[cfg(feature = "bigint")]
@@ -2343,9 +2351,9 @@ mod test {
             test_bigint(&to_big(_1), BigInt::from(1), to_big(_2));
 
             test_f32_some(&to_big(_1), 1.0, to_big(_2));
-            test_f32_none(&to_big(_1), 1.0/0.0);
+            test_f32_none(&to_big(_1), 1.0 / 0.0);
             test_f64_some(&to_big(_1), 1.0, to_big(_2));
-            test_f64_none(&to_big(_1), 1.0/0.0);
+            test_f64_none(&to_big(_1), 1.0 / 0.0);
         }
 
         #[test]
@@ -2468,26 +2476,26 @@ mod test {
         fn test_primitive_sub_bigrational() {
             define_primitive_op_bigrational_test_funcs!(-);
 
-            test_isize(-1, to_big(_1),  to_big(_NEG2));
-            test_usize(2,  to_big(_1),  to_big(_1));
-            test_i8(-1,    to_big(_1),  to_big(_NEG2));
-            test_u8(2,     to_big(_1),  to_big(_1));
-            test_i16(-1,   to_big(_1),  to_big(_NEG2));
-            test_u16(2,    to_big(_1),  to_big(_1));
-            test_i32(-1,   to_big(_1),  to_big(_NEG2));
-            test_u32(2,    to_big(_1),  to_big(_1));
-            test_i64(-1,   to_big(_1),  to_big(_NEG2));
-            test_u64(2,    to_big(_1),  to_big(_1));
+            test_isize(-1, to_big(_1), to_big(_NEG2));
+            test_usize(2, to_big(_1), to_big(_1));
+            test_i8(-1, to_big(_1), to_big(_NEG2));
+            test_u8(2, to_big(_1), to_big(_1));
+            test_i16(-1, to_big(_1), to_big(_NEG2));
+            test_u16(2, to_big(_1), to_big(_1));
+            test_i32(-1, to_big(_1), to_big(_NEG2));
+            test_u32(2, to_big(_1), to_big(_1));
+            test_i64(-1, to_big(_1), to_big(_NEG2));
+            test_u64(2, to_big(_1), to_big(_1));
             #[cfg(has_i128)]
             test_i128(-1, to_big(_1), to_big(_NEG2));
             #[cfg(has_i128)]
             test_u128(2, to_big(_1), to_big(_1));
             test_bigint(BigInt::from(2), to_big(_1), to_big(_1));
 
-            test_f32_some(2.0,     to_big(_1),   to_big(_1));
-            test_f32_none(1.0/0.0, to_big(_1));
-            test_f64_some(2.0,     to_big(_1),   to_big(_1));
-            test_f64_none(1.0/0.0, to_big(_1));
+            test_f32_some(2.0, to_big(_1), to_big(_1));
+            test_f32_none(1.0 / 0.0, to_big(_1));
+            test_f64_some(2.0, to_big(_1), to_big(_1));
+            test_f64_none(1.0 / 0.0, to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2511,10 +2519,10 @@ mod test {
             test_u128(2, &to_big(_1), to_big(_1));
             test_bigint(BigInt::from(2), &to_big(_1), to_big(_1));
 
-            test_f32_some(2.0,     &to_big(_1),   to_big(_1));
-            test_f32_none(1.0/0.0, &to_big(_1));
-            test_f64_some(2.0,     &to_big(_1),   to_big(_1));
-            test_f64_none(1.0/0.0, &to_big(_1));
+            test_f32_some(2.0, &to_big(_1), to_big(_1));
+            test_f32_none(1.0 / 0.0, &to_big(_1));
+            test_f64_some(2.0, &to_big(_1), to_big(_1));
+            test_f64_none(1.0 / 0.0, &to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2524,24 +2532,24 @@ mod test {
 
             test_isize(to_big(_2), 1, to_big(_1));
             test_usize(to_big(_2), 1, to_big(_1));
-            test_i8(to_big(_2),    1, to_big(_1));
-            test_u8(to_big(_2),    1, to_big(_1));
-            test_i16(to_big(_2),   1, to_big(_1));
-            test_u16(to_big(_2),   1, to_big(_1));
-            test_i32(to_big(_2),   1, to_big(_1));
-            test_u32(to_big(_2),   1, to_big(_1));
-            test_i64(to_big(_2),   1, to_big(_1));
-            test_u64(to_big(_2),   1, to_big(_1));
+            test_i8(to_big(_2), 1, to_big(_1));
+            test_u8(to_big(_2), 1, to_big(_1));
+            test_i16(to_big(_2), 1, to_big(_1));
+            test_u16(to_big(_2), 1, to_big(_1));
+            test_i32(to_big(_2), 1, to_big(_1));
+            test_u32(to_big(_2), 1, to_big(_1));
+            test_i64(to_big(_2), 1, to_big(_1));
+            test_u64(to_big(_2), 1, to_big(_1));
             #[cfg(has_i128)]
-            test_i128(to_big(_2),  1, to_big(_1));
+            test_i128(to_big(_2), 1, to_big(_1));
             #[cfg(has_i128)]
-            test_u128(to_big(_2),  1, to_big(_1));
+            test_u128(to_big(_2), 1, to_big(_1));
             test_bigint(to_big(_2), BigInt::from(1), to_big(_1));
 
             test_f32_some(to_big(_2), 1.0, to_big(_1));
-            test_f32_none(to_big(_2), 1.0/0.0);
+            test_f32_none(to_big(_2), 1.0 / 0.0);
             test_f64_some(to_big(_2), 1.0, to_big(_1));
-            test_f64_none(to_big(_2), 1.0/0.0);
+            test_f64_none(to_big(_2), 1.0 / 0.0);
         }
 
         #[cfg(feature = "bigint")]
@@ -2551,24 +2559,24 @@ mod test {
 
             test_isize(&to_big(_2), 1, to_big(_1));
             test_usize(&to_big(_2), 1, to_big(_1));
-            test_i8(&to_big(_2),    1, to_big(_1));
-            test_u8(&to_big(_2),    1, to_big(_1));
-            test_i16(&to_big(_2),   1, to_big(_1));
-            test_u16(&to_big(_2),   1, to_big(_1));
-            test_i32(&to_big(_2),   1, to_big(_1));
-            test_u32(&to_big(_2),   1, to_big(_1));
-            test_i64(&to_big(_2),   1, to_big(_1));
-            test_u64(&to_big(_2),   1, to_big(_1));
+            test_i8(&to_big(_2), 1, to_big(_1));
+            test_u8(&to_big(_2), 1, to_big(_1));
+            test_i16(&to_big(_2), 1, to_big(_1));
+            test_u16(&to_big(_2), 1, to_big(_1));
+            test_i32(&to_big(_2), 1, to_big(_1));
+            test_u32(&to_big(_2), 1, to_big(_1));
+            test_i64(&to_big(_2), 1, to_big(_1));
+            test_u64(&to_big(_2), 1, to_big(_1));
             #[cfg(has_i128)]
-            test_i128(&to_big(_2),  1, to_big(_1));
+            test_i128(&to_big(_2), 1, to_big(_1));
             #[cfg(has_i128)]
-            test_u128(&to_big(_2),  1, to_big(_1));
+            test_u128(&to_big(_2), 1, to_big(_1));
             test_bigint(&to_big(_2), BigInt::from(1), to_big(_1));
 
             test_f32_some(&to_big(_2), 1.0, to_big(_1));
-            test_f32_none(&to_big(_2), 1.0/0.0);
+            test_f32_none(&to_big(_2), 1.0 / 0.0);
             test_f64_some(&to_big(_2), 1.0, to_big(_1));
-            test_f64_none(&to_big(_2), 1.0/0.0);
+            test_f64_none(&to_big(_2), 1.0 / 0.0);
         }
 
         #[test]
@@ -2691,26 +2699,26 @@ mod test {
         fn test_primitive_mul_bigrational() {
             define_primitive_op_bigrational_test_funcs!(*);
 
-            test_isize(-2, to_big(_1_2),  to_big(_NEG1));
-            test_usize(2,  to_big(_1_2),  to_big(_1));
-            test_i8(-2,    to_big(_1_2),  to_big(_NEG1));
-            test_u8(2,     to_big(_1_2),  to_big(_1));
-            test_i16(-2,   to_big(_1_2),  to_big(_NEG1));
-            test_u16(2,    to_big(_1_2),  to_big(_1));
-            test_i32(-2,   to_big(_1_2),  to_big(_NEG1));
-            test_u32(2,    to_big(_1_2),  to_big(_1));
-            test_i64(-2,   to_big(_1_2),  to_big(_NEG1));
-            test_u64(2,    to_big(_1_2),  to_big(_1));
+            test_isize(-2, to_big(_1_2), to_big(_NEG1));
+            test_usize(2, to_big(_1_2), to_big(_1));
+            test_i8(-2, to_big(_1_2), to_big(_NEG1));
+            test_u8(2, to_big(_1_2), to_big(_1));
+            test_i16(-2, to_big(_1_2), to_big(_NEG1));
+            test_u16(2, to_big(_1_2), to_big(_1));
+            test_i32(-2, to_big(_1_2), to_big(_NEG1));
+            test_u32(2, to_big(_1_2), to_big(_1));
+            test_i64(-2, to_big(_1_2), to_big(_NEG1));
+            test_u64(2, to_big(_1_2), to_big(_1));
             #[cfg(has_i128)]
             test_i128(-2, to_big(_1_2), to_big(_NEG1));
             #[cfg(has_i128)]
-            test_u128(2,                 to_big(_1_2),  to_big(_1));
-            test_bigint(BigInt::from(2), to_big(_1_2),  to_big(_1));
+            test_u128(2, to_big(_1_2), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_1_2), to_big(_1));
 
-            test_f32_some(2.0,     to_big(_1_2),   to_big(_1));
-            test_f32_none(2.0/0.0, to_big(_1_2));
-            test_f64_some(2.0,     to_big(_1_2),   to_big(_1));
-            test_f64_none(2.0/0.0, to_big(_1_2));
+            test_f32_some(2.0, to_big(_1_2), to_big(_1));
+            test_f32_none(2.0 / 0.0, to_big(_1_2));
+            test_f64_some(2.0, to_big(_1_2), to_big(_1));
+            test_f64_none(2.0 / 0.0, to_big(_1_2));
         }
 
         #[cfg(feature = "bigint")]
@@ -2718,26 +2726,26 @@ mod test {
         fn test_primitive_mul_bigrational_ref() {
             define_primitive_op_bigrational_ref_test_funcs!(*);
 
-            test_isize(-2,     &to_big(_1_2), to_big(_NEG1));
-            test_usize(2,      &to_big(_1),   to_big(_2));
-            test_i8(-2,        &to_big(_1_2),   to_big(_NEG1));
-            test_u8(2,         &to_big(_1),   to_big(_2));
-            test_i16(-2,       &to_big(_1_2),   to_big(_NEG1));
-            test_u16(2,        &to_big(_1),   to_big(_2));
-            test_i32(-2,       &to_big(_1_2),   to_big(_NEG1));
-            test_u32(2,        &to_big(_1),   to_big(_2));
-            test_i64(-2,       &to_big(_1_2),   to_big(_NEG1));
-            test_u64(2,        &to_big(_1),   to_big(_2));
+            test_isize(-2, &to_big(_1_2), to_big(_NEG1));
+            test_usize(2, &to_big(_1), to_big(_2));
+            test_i8(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u8(2, &to_big(_1), to_big(_2));
+            test_i16(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u16(2, &to_big(_1), to_big(_2));
+            test_i32(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u32(2, &to_big(_1), to_big(_2));
+            test_i64(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u64(2, &to_big(_1), to_big(_2));
             #[cfg(has_i128)]
-            test_i128(-2,      &to_big(_1_2), to_big(_NEG1));
+            test_i128(-2, &to_big(_1_2), to_big(_NEG1));
             #[cfg(has_i128)]
-            test_u128(2,                 &to_big(_1), to_big(_2));
+            test_u128(2, &to_big(_1), to_big(_2));
             test_bigint(BigInt::from(2), &to_big(_1_2), to_big(_1));
 
-            test_f32_some(2.0,     &to_big(_1),  to_big(_2));
-            test_f32_none(2.0/0.0, &to_big(_1));
-            test_f64_some(2.0,     &to_big(_1),  to_big(_2));
-            test_f64_none(2.0/0.0, &to_big(_1));
+            test_f32_some(2.0, &to_big(_1), to_big(_2));
+            test_f32_none(2.0 / 0.0, &to_big(_1));
+            test_f64_some(2.0, &to_big(_1), to_big(_2));
+            test_f64_none(2.0 / 0.0, &to_big(_1));
         }
 
         #[cfg(feature = "bigint")]
@@ -2761,10 +2769,10 @@ mod test {
             test_u128(to_big(_1_2), 2, to_big(_1));
             test_bigint(to_big(_1_2), BigInt::from(2), to_big(_1));
 
-            test_f32_some(to_big(_1_2), 2.0,  to_big(_1));
-            test_f32_none(to_big(_1_2), 2.0/0.0);
-            test_f64_some(to_big(_1_2), 2.0,  to_big(_1));
-            test_f64_none(to_big(_1_2), 2.0/0.0);
+            test_f32_some(to_big(_1_2), 2.0, to_big(_1));
+            test_f32_none(to_big(_1_2), 2.0 / 0.0);
+            test_f64_some(to_big(_1_2), 2.0, to_big(_1));
+            test_f64_none(to_big(_1_2), 2.0 / 0.0);
         }
 
         #[cfg(feature = "bigint")]
@@ -2789,9 +2797,9 @@ mod test {
             test_bigint(&to_big(_1_2), BigInt::from(2), to_big(_1));
 
             test_f32_some(&to_big(_1_2), 2.0, to_big(_1));
-            test_f32_none(&to_big(_1_2), 2.0/0.0);
+            test_f32_none(&to_big(_1_2), 2.0 / 0.0);
             test_f64_some(&to_big(_1_2), 2.0, to_big(_1));
-            test_f64_none(&to_big(_1_2), 2.0/0.0);
+            test_f64_none(&to_big(_1_2), 2.0 / 0.0);
         }
 
         #[test]
@@ -2914,26 +2922,26 @@ mod test {
         fn test_primitive_div_bigrational() {
             define_primitive_op_bigrational_test_funcs!(/);
 
-            test_isize(-2, to_big(_2),  to_big(_NEG1));
-            test_usize(2,  to_big(_2),  to_big(_1));
-            test_i8(-2,    to_big(_2),  to_big(_NEG1));
-            test_u8(2,     to_big(_2),  to_big(_1));
-            test_i16(-2,   to_big(_2),  to_big(_NEG1));
-            test_u16(2,    to_big(_2),  to_big(_1));
-            test_i32(-2,   to_big(_2),  to_big(_NEG1));
-            test_u32(2,    to_big(_2),  to_big(_1));
-            test_i64(-2,   to_big(_2),  to_big(_NEG1));
-            test_u64(2,    to_big(_2),  to_big(_1));
+            test_isize(-2, to_big(_2), to_big(_NEG1));
+            test_usize(2, to_big(_2), to_big(_1));
+            test_i8(-2, to_big(_2), to_big(_NEG1));
+            test_u8(2, to_big(_2), to_big(_1));
+            test_i16(-2, to_big(_2), to_big(_NEG1));
+            test_u16(2, to_big(_2), to_big(_1));
+            test_i32(-2, to_big(_2), to_big(_NEG1));
+            test_u32(2, to_big(_2), to_big(_1));
+            test_i64(-2, to_big(_2), to_big(_NEG1));
+            test_u64(2, to_big(_2), to_big(_1));
             #[cfg(has_i128)]
             test_i128(-2, to_big(_2), to_big(_NEG1));
             #[cfg(has_i128)]
-            test_u128(2,                 to_big(_2),  to_big(_1));
-            test_bigint(BigInt::from(2), to_big(_2),  to_big(_1));
+            test_u128(2, to_big(_2), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_2), to_big(_1));
 
-            test_f32_some(2.0,     to_big(_2),   to_big(_1));
-            test_f32_none(2.0/0.0, to_big(_2));
-            test_f64_some(2.0,     to_big(_2),   to_big(_1));
-            test_f64_none(2.0/0.0, to_big(_2));
+            test_f32_some(2.0, to_big(_2), to_big(_1));
+            test_f32_none(2.0 / 0.0, to_big(_2));
+            test_f64_some(2.0, to_big(_2), to_big(_1));
+            test_f64_none(2.0 / 0.0, to_big(_2));
         }
 
         #[cfg(feature = "bigint")]
@@ -2942,25 +2950,25 @@ mod test {
             define_primitive_op_bigrational_ref_test_funcs!(/);
 
             test_isize(-2, &to_big(_2), to_big(_NEG1));
-            test_usize(2,  &to_big(_2), to_big(_1));
-            test_i8(-2,    &to_big(_2), to_big(_NEG1));
-            test_u8(2,     &to_big(_2), to_big(_1));
-            test_i16(-2,   &to_big(_2), to_big(_NEG1));
-            test_u16(2,    &to_big(_2), to_big(_1));
-            test_i32(-2,   &to_big(_2), to_big(_NEG1));
-            test_u32(2,    &to_big(_2), to_big(_1));
-            test_i64(-2,   &to_big(_2), to_big(_NEG1));
-            test_u64(2,    &to_big(_2), to_big(_1));
+            test_usize(2, &to_big(_2), to_big(_1));
+            test_i8(-2, &to_big(_2), to_big(_NEG1));
+            test_u8(2, &to_big(_2), to_big(_1));
+            test_i16(-2, &to_big(_2), to_big(_NEG1));
+            test_u16(2, &to_big(_2), to_big(_1));
+            test_i32(-2, &to_big(_2), to_big(_NEG1));
+            test_u32(2, &to_big(_2), to_big(_1));
+            test_i64(-2, &to_big(_2), to_big(_NEG1));
+            test_u64(2, &to_big(_2), to_big(_1));
             #[cfg(has_i128)]
             test_i128(-2, &to_big(_2), to_big(_NEG1));
             #[cfg(has_i128)]
-            test_u128(2,                 &to_big(_2), to_big(_1));
+            test_u128(2, &to_big(_2), to_big(_1));
             test_bigint(BigInt::from(2), &to_big(_2), to_big(_1));
 
-            test_f32_some(2.0,     &to_big(_2),   to_big(_1));
-            test_f32_none(2.0/0.0, &to_big(_2));
-            test_f64_some(2.0,     &to_big(_2),   to_big(_1));
-            test_f64_none(2.0/0.0, &to_big(_2));
+            test_f32_some(2.0, &to_big(_2), to_big(_1));
+            test_f32_none(2.0 / 0.0, &to_big(_2));
+            test_f64_some(2.0, &to_big(_2), to_big(_1));
+            test_f64_none(2.0 / 0.0, &to_big(_2));
         }
 
         #[cfg(feature = "bigint")]
@@ -2985,9 +2993,9 @@ mod test {
             test_bigint(to_big(_2), BigInt::from(2), to_big(_1));
 
             test_f32_some(to_big(_2), 2.0, to_big(_1));
-            test_f32_none(to_big(_2), 2.0/0.0);
+            test_f32_none(to_big(_2), 2.0 / 0.0);
             test_f64_some(to_big(_2), 2.0, to_big(_1));
-            test_f64_none(to_big(_2), 2.0/0.0);
+            test_f64_none(to_big(_2), 2.0 / 0.0);
         }
 
         #[cfg(feature = "bigint")]
@@ -3012,9 +3020,9 @@ mod test {
             test_bigint(&to_big(_2), BigInt::from(2), to_big(_1));
 
             test_f32_some(&to_big(_2), 2.0, to_big(_1));
-            test_f32_none(&to_big(_2), 2.0/0.0);
+            test_f32_none(&to_big(_2), 2.0 / 0.0);
             test_f64_some(&to_big(_2), 2.0, to_big(_1));
-            test_f64_none(&to_big(_2), 2.0/0.0);
+            test_f64_none(&to_big(_2), 2.0 / 0.0);
         }
 
         #[test]
