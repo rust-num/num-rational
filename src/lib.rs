@@ -717,6 +717,325 @@ where
     }
 }
 
+macro_rules! impl_primitive_ops_ratio {
+    (Ratio<T> for $primitive:ident) => {
+        impl<T> Add<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>,
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn add(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(rhs.numer + T::from(self), rhs.denom)
+            }
+        }
+
+        #[cfg(feature = "bigint")]
+        impl<'a> Add<&'a BigRational> for $primitive {
+            type Output = BigRational;
+
+            #[inline]
+            fn add(self, rhs: &'a BigRational) -> BigRational {
+                Ratio::new(rhs.numer.clone() + BigInt::from(self), rhs.denom.clone())
+            }
+        }
+
+        impl<T> Sub<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>,
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn sub(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(T::from(self) - rhs.numer, rhs.denom)
+            }
+        }
+
+        #[cfg(feature = "bigint")]
+        impl<'a> Sub<&'a BigRational> for $primitive {
+            type Output = BigRational;
+
+            #[inline]
+            fn sub(self, rhs: &'a BigRational) -> BigRational {
+                Ratio::new(BigInt::from(self) - rhs.numer.clone(), rhs.denom.clone())
+            }
+        }
+
+        impl<T> Mul<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>,
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(rhs.numer * T::from(self), rhs.denom)
+            }
+        }
+
+        #[cfg(feature = "bigint")]
+        impl<'a> Mul<&'a BigRational> for $primitive {
+            type Output = BigRational;
+
+            #[inline]
+            fn mul(self, rhs: &'a BigRational) -> BigRational {
+                Ratio::new(rhs.numer.clone() * BigInt::from(self), rhs.denom.clone())
+            }
+        }
+
+        impl<T> Div<Ratio<T>> for $primitive
+        where
+            T: Clone + Integer + ::core::convert::From<$primitive>,
+        {
+            type Output = Ratio<T>;
+
+            #[inline]
+            fn div(self, rhs: Ratio<T>) -> Ratio<T> {
+                Ratio::new(rhs.numer, rhs.denom * T::from(self))
+            }
+        }
+
+        #[cfg(feature = "bigint")]
+        impl<'a> Div<&'a BigRational> for $primitive {
+            type Output = BigRational;
+
+            #[inline]
+            fn div(self, rhs: &'a BigRational) -> BigRational {
+                Ratio::new(rhs.numer.clone(), rhs.denom.clone() * BigInt::from(self))
+            }
+        }
+    };
+}
+
+// Implements for isize and BigInt
+impl_primitive_ops_ratio!(Ratio<T> for isize);
+// Implements for BigInt
+impl_primitive_ops_ratio!(Ratio<T> for usize);
+// Implements for BigInt, i64, i32, i8
+impl_primitive_ops_ratio!(Ratio<T> for i8);
+// Implements for isize, i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u8);
+// Implements for isize, i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for i16);
+// Implements for i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u16);
+// Implements for i32, i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for i32);
+// Implements for i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u32);
+// Implements for i64, BigInt
+impl_primitive_ops_ratio!(Ratio<T> for i64);
+// Implements for BigInt
+impl_primitive_ops_ratio!(Ratio<T> for u64);
+// Implements for BigInt
+#[cfg(has_i128)]
+impl_primitive_ops_ratio!(Ratio<T> for i128);
+// Implements for BigInt
+#[cfg(has_i128)]
+impl_primitive_ops_ratio!(Ratio<T> for u128);
+#[cfg(feature = "bigint")]
+impl_primitive_ops_ratio!(Ratio<T> for BigInt);
+
+#[cfg(feature = "bigint")]
+macro_rules! impl_ops_bigrational_for_float {
+    ($trait_:ident, $method:ident, $float:ty) => {
+        impl $trait_<BigRational> for $float {
+            type Output = Option<BigRational>;
+
+            #[inline]
+            fn $method(self, rhs: BigRational) -> Self::Output {
+                if let Some(me) = BigRational::from_float(self) {
+                    Some(me.$method(rhs))
+                } else {
+                    None
+                }
+            }
+        }
+
+        impl<'a> $trait_<&'a BigRational> for $float {
+            type Output = Option<BigRational>;
+
+            #[inline]
+            fn $method(self, rhs: &'a BigRational) -> Self::Output {
+                if let Some(me) = BigRational::from_float(self) {
+                    Some(me.$method(rhs))
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Add, add, f32);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Add, add, f64);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Sub, sub, f32);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Sub, sub, f64);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Mul, mul, f32);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Mul, mul, f64);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Div, div, f32);
+#[cfg(feature = "bigint")]
+impl_ops_bigrational_for_float!(Div, div, f64);
+
+// Implementing these directly because the implementation of Add<T>, Sub<T>,
+// Mul<T> and Div<T> for Ratio<T> don't cover these.
+#[cfg(feature = "bigint")]
+macro_rules! impl_bigint_ops_primitive {
+    ($primitive:ident) => {
+        impl Add<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn add(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer + BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl<'a> Add<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn add(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone() + BigInt::from(rhs), self.denom.clone())
+            }
+        }
+
+        impl Sub<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn sub(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer - BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl<'a> Sub<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn sub(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone() - BigInt::from(rhs), self.denom.clone())
+            }
+        }
+
+        impl Mul<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn mul(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer * BigInt::from(rhs), self.denom)
+            }
+        }
+
+        impl<'a> Mul<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn mul(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone() * BigInt::from(rhs), self.denom.clone())
+            }
+        }
+
+        impl Div<$primitive> for BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn div(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer, self.denom * BigInt::from(rhs))
+            }
+        }
+
+        impl<'a> Div<$primitive> for &'a BigRational {
+            type Output = BigRational;
+
+            #[inline]
+            fn div(self, rhs: $primitive) -> BigRational {
+                Ratio::new(self.numer.clone(), self.denom.clone() * BigInt::from(rhs))
+            }
+        }
+    };
+}
+
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(isize);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(usize);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i8);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u8);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i16);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u16);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i32);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u32);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(i64);
+#[cfg(feature = "bigint")]
+impl_bigint_ops_primitive!(u64);
+#[cfg(all(has_i128, feature = "bigint"))]
+impl_bigint_ops_primitive!(i128);
+#[cfg(all(has_i128, feature = "bigint"))]
+impl_bigint_ops_primitive!(u128);
+
+#[cfg(feature = "bigint")]
+macro_rules! impl_ops_float_for_bigrational {
+    ($trait_:ident, $method:ident, $float:ident) => {
+        impl $trait_<$float> for BigRational {
+            type Output = Option<BigRational>;
+
+            fn $method(self, rhs: $float) -> Self::Output {
+                if let Some(r) = BigRational::from_float(rhs) {
+                    Some(self.$method(r))
+                } else {
+                    None
+                }
+            }
+        }
+
+        impl<'a> $trait_<$float> for &'a BigRational {
+            type Output = Option<BigRational>;
+
+            fn $method(self, rhs: $float) -> Self::Output {
+                if let Some(r) = BigRational::from_float(rhs) {
+                    Some(self.$method(r))
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Add, add, f32);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Add, add, f64);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Sub, sub, f32);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Sub, sub, f64);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Mul, mul, f32);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Mul, mul, f64);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Div, div, f32);
+#[cfg(feature = "bigint")]
+impl_ops_float_for_bigrational!(Div, div, f64);
+
 forward_all_binop!(impl Div, div);
 // (a/b) / (c/d) = (a*d) / (b*c)
 impl<T> Div<Ratio<T>> for Ratio<T>
@@ -1090,8 +1409,8 @@ impl Error for ParseRatioError {
 }
 
 impl RatioErrorKind {
-    fn description(&self) -> &'static str {
-        match *self {
+    fn description(self) -> &'static str {
+        match self {
             RatioErrorKind::ParseError => "failed to parse integer",
             RatioErrorKind::ZeroDenominator => "zero value denominator",
         }
@@ -1537,9 +1856,282 @@ mod test {
     }
 
     mod arith {
-        use super::super::{Ratio, Rational};
+        #[cfg(feature = "bigint")]
+        use super::super::BigRational;
+        use super::super::{Ratio, Rational, Rational32, Rational64};
         use super::{_0, _1, _1_2, _2, _3_2, _NEG1_2, to_big};
+        #[cfg(feature = "bigint")]
+        use bigint::BigInt;
         use traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+
+        const _1I32: Rational32 = Ratio { numer: 1, denom: 1 };
+        const _1I64: Rational64 = Ratio { numer: 1, denom: 1 };
+        const _NEG1: Rational = Ratio {
+            numer: -1,
+            denom: 1,
+        };
+        const _NEG1I32: Rational32 = Ratio {
+            numer: -1,
+            denom: 1,
+        };
+        const _NEG1I64: Rational64 = Ratio {
+            numer: -1,
+            denom: 1,
+        };
+
+        const _2I32: Rational32 = Ratio { numer: 2, denom: 1 };
+        const _2I64: Rational64 = Ratio { numer: 2, denom: 1 };
+        const _NEG2: Rational = Ratio {
+            numer: -2,
+            denom: 1,
+        };
+        const _NEG2I32: Rational32 = Ratio {
+            numer: -2,
+            denom: 1,
+        };
+        const _NEG2I64: Rational64 = Ratio {
+            numer: -2,
+            denom: 1,
+        };
+
+        const _1I32_2I32: Rational32 = Ratio { numer: 1, denom: 2 };
+        const _1I64_2I64: Rational64 = Ratio { numer: 1, denom: 2 };
+
+        macro_rules! define_primitive_op_bigrational_test_funcs {
+            ($op:tt) => {
+                fn test_isize(a: isize, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_usize(a: usize, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i8(a: i8, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u8(a: u8, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i16(a: i16, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u16(a: u16, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i32(a: i32, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u32(a: u32, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i64(a: i64, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u64(a: u64, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_i128(a: i128, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_u128(a: u128, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_bigint(a: BigInt, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+
+                fn test_f32_some(a: f32, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f32_none(a: f32, b: BigRational) {
+                    assert_eq!(a $op b, None);
+                }
+                fn test_f64_some(a: f64, b: BigRational, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f64_none(a: f64, b: BigRational) {
+                    assert_eq!(a $op b, None);
+                }
+            };
+        }
+
+        macro_rules! define_primitive_op_bigrational_ref_test_funcs {
+            ($op:tt) => {
+                fn test_isize(a: isize, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_usize(a: usize, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i8(a: i8, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u8(a: u8, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i16(a: i16, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u16(a: u16, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i32(a: i32, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u32(a: u32, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i64(a: i64, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u64(a: u64, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_i128(a: i128, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_u128(a: u128, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_bigint(a: BigInt, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+
+                fn test_f32_some(a: f32, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f32_none(a: f32, b: &BigRational) {
+                    assert_eq!(a $op b, None);
+                }
+                fn test_f64_some(a: f64, b: &BigRational, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f64_none(a: f64, b: &BigRational) {
+                    assert_eq!(a $op b, None);
+                }
+            };
+        }
+
+        macro_rules! define_bigrational_op_primitive_test_funcs {
+            ($op:tt) => {
+                fn test_isize(a: BigRational, b: isize, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_usize(a: BigRational, b: usize, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i8(a: BigRational, b: i8, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u8(a: BigRational, b: u8, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i16(a: BigRational, b: i16, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u16(a: BigRational, b: u16, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i32(a: BigRational, b: i32, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u32(a: BigRational, b: u32, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i64(a: BigRational, b: i64, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u64(a: BigRational, b: u64, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_i128(a: BigRational, b: i128, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_u128(a: BigRational, b: u128, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_bigint(a: BigRational, b: BigInt, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+
+                fn test_f32_some(a: BigRational, b: f32, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f32_none(a: BigRational, b: f32) {
+                    assert_eq!(a $op b, None);
+                }
+                fn test_f64_some(a: BigRational, b: f64, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f64_none(a: BigRational, b: f64) {
+                    assert_eq!(a $op b, None);
+                }
+            };
+        }
+
+        macro_rules! define_bigrational_ref_op_primitive_test_funcs {
+            ($op:tt) => {
+                fn test_isize(a: &BigRational, b: isize, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_usize(a: &BigRational, b: usize, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i8(a: &BigRational, b: i8, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u8(a: &BigRational, b: u8, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i16(a: &BigRational, b: i16, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u16(a: &BigRational, b: u16, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i32(a: &BigRational, b: i32, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u32(a: &BigRational, b: u32, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_i64(a: &BigRational, b: i64, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_u64(a: &BigRational, b: u64, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_i128(a: &BigRational, b: i128, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                #[cfg(has_i128)]
+                fn test_u128(a: &BigRational, b: u128, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+                fn test_bigint(a: &BigRational, b: BigInt, c: BigRational) {
+                    assert_eq!(a $op b, c);
+                }
+
+                fn test_f32_some(a: &BigRational, b: f32, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f32_none(a: &BigRational, b: f32) {
+                    assert_eq!(a $op b, None);
+                }
+                fn test_f64_some(a: &BigRational, b: f64, c: BigRational) {
+                    assert_eq!(a $op b, Some(c));
+                }
+                fn test_f64_none(a: &BigRational, b: f64) {
+                    assert_eq!(a $op b, None);
+                }
+            };
+        }
 
         #[test]
         fn test_add() {
@@ -1577,6 +2169,195 @@ mod test {
         }
 
         #[test]
+        fn test_primitive_add_rational() {
+            fn test_isize(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i8(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+            }
+            // fn test_u8(a: u8, b: Rational, c: Rational) {
+            //     assert_eq!(a + b, c);
+            // }
+            // fn test_i16(a: i16, b: Rational, c: Rational) {
+            //     assert_eq!(a + b, c);
+            // }
+
+            test_isize(-2, _1, _NEG1);
+            test_i8(-2, _1, _NEG1);
+            // TODO: Not sure how to get these to pass on Rust 1.15.0 for travis; `isize::from()`
+            // these had not yet been implemented.
+            // test_u8(1, _1, _2);
+            // test_i16(-2, _1, _NEG1);
+        }
+
+        #[test]
+        fn test_primitive_add_rational32() {
+            fn test_i8(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u8(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i16(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u16(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a + b, c);
+            }
+
+            test_i8(-2, _1I32, _NEG1I32);
+            test_u8(1, _1I32, _2I32);
+            test_i16(-2, _1I32, _NEG1I32);
+            test_u16(1, _1I32, _2I32);
+            test_i32(-2, _1I32, _NEG1I32);
+        }
+
+        #[test]
+        fn test_primitive_add_rational64() {
+            fn test_i8(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u8(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i16(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u16(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i32(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_u32(a: u32, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+            fn test_i64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a + b, c);
+            }
+
+            test_i8(-2, _1I64, _NEG1I64);
+            test_u8(1, _1I64, _2I64);
+            test_i16(-2, _1I64, _NEG1I64);
+            test_u16(1, _1I64, _2I64);
+            test_i32(-2, _1I64, _NEG1I64);
+            test_u32(1, _1I64, _2I64);
+            test_i64(-2, _1I64, _NEG1I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_add_bigrational() {
+            define_primitive_op_bigrational_test_funcs!(+);
+
+            test_isize(-2, to_big(_1), to_big(_NEG1));
+            test_usize(1, to_big(_1), to_big(_2));
+            test_i8(-2, to_big(_1), to_big(_NEG1));
+            test_u8(1, to_big(_1), to_big(_2));
+            test_i16(-2, to_big(_1), to_big(_NEG1));
+            test_u16(1, to_big(_1), to_big(_2));
+            test_i32(-2, to_big(_1), to_big(_NEG1));
+            test_u32(1, to_big(_1), to_big(_2));
+            test_i64(-2, to_big(_1), to_big(_NEG1));
+            test_u64(1, to_big(_1), to_big(_2));
+            #[cfg(has_i128)]
+            test_i128(-2, to_big(_1), to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(1, to_big(_1), to_big(_2));
+            test_bigint(BigInt::from(1), to_big(_1), to_big(_2));
+
+            test_f32_some(1.0, to_big(_1), to_big(_2));
+            test_f32_none(1.0 / 0.0, to_big(_1));
+            test_f64_some(1.0, to_big(_1), to_big(_2));
+            test_f64_none(1.0 / 0.0, to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_add_bigrational_ref() {
+            define_primitive_op_bigrational_ref_test_funcs!(+);
+
+            test_isize(-2, &to_big(_1), to_big(_NEG1));
+            test_usize(1, &to_big(_1), to_big(_2));
+            test_i8(-2, &to_big(_1), to_big(_NEG1));
+            test_u8(1, &to_big(_1), to_big(_2));
+            test_i16(-2, &to_big(_1), to_big(_NEG1));
+            test_u16(1, &to_big(_1), to_big(_2));
+            test_i32(-2, &to_big(_1), to_big(_NEG1));
+            test_u32(1, &to_big(_1), to_big(_2));
+            test_i64(-2, &to_big(_1), to_big(_NEG1));
+            test_u64(1, &to_big(_1), to_big(_2));
+            #[cfg(has_i128)]
+            test_i128(-2, &to_big(_1), to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(1, &to_big(_1), to_big(_2));
+            test_bigint(BigInt::from(1), &to_big(_1), to_big(_2));
+
+            test_f32_some(1.0, &to_big(_1), to_big(_2));
+            test_f32_none(1.0 / 0.0, &to_big(_1));
+            test_f64_some(1.0, &to_big(_1), to_big(_2));
+            test_f64_none(1.0 / 0.0, &to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_add_primitive() {
+            define_bigrational_op_primitive_test_funcs!(+);
+
+            test_isize(to_big(_1), -2, to_big(_NEG1));
+            test_usize(to_big(_1), 1, to_big(_2));
+            test_i8(to_big(_1), -2, to_big(_NEG1));
+            test_u8(to_big(_1), 1, to_big(_2));
+            test_i16(to_big(_1), -2, to_big(_NEG1));
+            test_u16(to_big(_1), 1, to_big(_2));
+            test_i32(to_big(_1), -2, to_big(_NEG1));
+            test_u32(to_big(_1), 1, to_big(_2));
+            test_i64(to_big(_1), -2, to_big(_NEG1));
+            test_u64(to_big(_1), 1, to_big(_2));
+            #[cfg(has_i128)]
+            test_i128(to_big(_1), -2, to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(to_big(_1), 1, to_big(_2));
+            test_bigint(to_big(_1), BigInt::from(1), to_big(_2));
+
+            test_f32_some(to_big(_1), 1.0, to_big(_2));
+            test_f32_none(to_big(_1), 1.0 / 0.0);
+            test_f64_some(to_big(_1), 1.0, to_big(_2));
+            test_f64_none(to_big(_1), 1.0 / 0.0);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_ref_add_primitive() {
+            define_bigrational_ref_op_primitive_test_funcs!(+);
+
+            test_isize(&to_big(_1), -2, to_big(_NEG1));
+            test_usize(&to_big(_1), 1, to_big(_2));
+            test_i8(&to_big(_1), -2, to_big(_NEG1));
+            test_u8(&to_big(_1), 1, to_big(_2));
+            test_i16(&to_big(_1), -2, to_big(_NEG1));
+            test_u16(&to_big(_1), 1, to_big(_2));
+            test_i32(&to_big(_1), -2, to_big(_NEG1));
+            test_u32(&to_big(_1), 1, to_big(_2));
+            test_i64(&to_big(_1), -2, to_big(_NEG1));
+            test_u64(&to_big(_1), 1, to_big(_2));
+            #[cfg(has_i128)]
+            test_i128(&to_big(_1), -2, to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(&to_big(_1), 1, to_big(_2));
+            test_bigint(&to_big(_1), BigInt::from(1), to_big(_2));
+
+            test_f32_some(&to_big(_1), 1.0, to_big(_2));
+            test_f32_none(&to_big(_1), 1.0 / 0.0);
+            test_f64_some(&to_big(_1), 1.0, to_big(_2));
+            test_f64_none(&to_big(_1), 1.0 / 0.0);
+        }
+
+        #[test]
         fn test_sub() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a - b, c);
@@ -1608,6 +2389,195 @@ mod test {
             test(_3_2, _1_2, _1);
             test(_1, _NEG1_2, _3_2);
             test_assign(_1_2, 1, _NEG1_2);
+        }
+
+        #[test]
+        fn test_primitive_sub_rational() {
+            fn test_isize(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i8(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+            }
+            // fn test_u8(a: u8, b: Rational, c: Rational) {
+            //     assert_eq!(a - b, c);
+            // }
+            // fn test_i16(a: i16, b: Rational, c: Rational) {
+            //     assert_eq!(a - b, c);
+            // }
+
+            test_isize(-1, _1, _NEG2);
+            test_i8(-1, _1, _NEG2);
+            // TODO: Not sure how to get these to pass on Rust 1.15.0 for travis; `isize::from()`
+            // these had not yet been implemented.
+            // test_u8(2, _1, _1);
+            // test_i16(-1, _1, _NEG2);
+        }
+
+        #[test]
+        fn test_primitive_sub_rational32() {
+            fn test_i8(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u8(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i16(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u16(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a - b, c);
+            }
+
+            test_i8(-1, _1I32, _NEG2I32);
+            test_u8(2, _1I32, _1I32);
+            test_i16(-1, _1I32, _NEG2I32);
+            test_u16(2, _1I32, _1I32);
+            test_i32(-1, _1I32, _NEG2I32);
+        }
+
+        #[test]
+        fn test_primitive_sub_rational64() {
+            fn test_i8(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u8(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i16(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u16(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i32(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_u32(a: u32, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+            fn test_i64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a - b, c);
+            }
+
+            test_i8(-1, _1I64, _NEG2I64);
+            test_u8(2, _1I64, _1I64);
+            test_i16(-1, _1I64, _NEG2I64);
+            test_u16(2, _1I64, _1I64);
+            test_i32(-1, _1I64, _NEG2I64);
+            test_u32(2, _1I64, _1I64);
+            test_i64(-1, _1I64, _NEG2I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_sub_bigrational() {
+            define_primitive_op_bigrational_test_funcs!(-);
+
+            test_isize(-1, to_big(_1), to_big(_NEG2));
+            test_usize(2, to_big(_1), to_big(_1));
+            test_i8(-1, to_big(_1), to_big(_NEG2));
+            test_u8(2, to_big(_1), to_big(_1));
+            test_i16(-1, to_big(_1), to_big(_NEG2));
+            test_u16(2, to_big(_1), to_big(_1));
+            test_i32(-1, to_big(_1), to_big(_NEG2));
+            test_u32(2, to_big(_1), to_big(_1));
+            test_i64(-1, to_big(_1), to_big(_NEG2));
+            test_u64(2, to_big(_1), to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(-1, to_big(_1), to_big(_NEG2));
+            #[cfg(has_i128)]
+            test_u128(2, to_big(_1), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_1), to_big(_1));
+
+            test_f32_some(2.0, to_big(_1), to_big(_1));
+            test_f32_none(1.0 / 0.0, to_big(_1));
+            test_f64_some(2.0, to_big(_1), to_big(_1));
+            test_f64_none(1.0 / 0.0, to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_sub_bigrational_ref() {
+            define_primitive_op_bigrational_ref_test_funcs!(-);
+
+            test_isize(-1, &to_big(_1), to_big(_NEG2));
+            test_usize(2, &to_big(_1), to_big(_1));
+            test_i8(-1, &to_big(_1), to_big(_NEG2));
+            test_u8(2, &to_big(_1), to_big(_1));
+            test_i16(-1, &to_big(_1), to_big(_NEG2));
+            test_u16(2, &to_big(_1), to_big(_1));
+            test_i32(-1, &to_big(_1), to_big(_NEG2));
+            test_u32(2, &to_big(_1), to_big(_1));
+            test_i64(-1, &to_big(_1), to_big(_NEG2));
+            test_u64(2, &to_big(_1), to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(-1, &to_big(_1), to_big(_NEG2));
+            #[cfg(has_i128)]
+            test_u128(2, &to_big(_1), to_big(_1));
+            test_bigint(BigInt::from(2), &to_big(_1), to_big(_1));
+
+            test_f32_some(2.0, &to_big(_1), to_big(_1));
+            test_f32_none(1.0 / 0.0, &to_big(_1));
+            test_f64_some(2.0, &to_big(_1), to_big(_1));
+            test_f64_none(1.0 / 0.0, &to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_sub_primitive() {
+            define_bigrational_op_primitive_test_funcs!(-);
+
+            test_isize(to_big(_2), 1, to_big(_1));
+            test_usize(to_big(_2), 1, to_big(_1));
+            test_i8(to_big(_2), 1, to_big(_1));
+            test_u8(to_big(_2), 1, to_big(_1));
+            test_i16(to_big(_2), 1, to_big(_1));
+            test_u16(to_big(_2), 1, to_big(_1));
+            test_i32(to_big(_2), 1, to_big(_1));
+            test_u32(to_big(_2), 1, to_big(_1));
+            test_i64(to_big(_2), 1, to_big(_1));
+            test_u64(to_big(_2), 1, to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(to_big(_2), 1, to_big(_1));
+            #[cfg(has_i128)]
+            test_u128(to_big(_2), 1, to_big(_1));
+            test_bigint(to_big(_2), BigInt::from(1), to_big(_1));
+
+            test_f32_some(to_big(_2), 1.0, to_big(_1));
+            test_f32_none(to_big(_2), 1.0 / 0.0);
+            test_f64_some(to_big(_2), 1.0, to_big(_1));
+            test_f64_none(to_big(_2), 1.0 / 0.0);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_ref_sub_primitive() {
+            define_bigrational_ref_op_primitive_test_funcs!(-);
+
+            test_isize(&to_big(_2), 1, to_big(_1));
+            test_usize(&to_big(_2), 1, to_big(_1));
+            test_i8(&to_big(_2), 1, to_big(_1));
+            test_u8(&to_big(_2), 1, to_big(_1));
+            test_i16(&to_big(_2), 1, to_big(_1));
+            test_u16(&to_big(_2), 1, to_big(_1));
+            test_i32(&to_big(_2), 1, to_big(_1));
+            test_u32(&to_big(_2), 1, to_big(_1));
+            test_i64(&to_big(_2), 1, to_big(_1));
+            test_u64(&to_big(_2), 1, to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(&to_big(_2), 1, to_big(_1));
+            #[cfg(has_i128)]
+            test_u128(&to_big(_2), 1, to_big(_1));
+            test_bigint(&to_big(_2), BigInt::from(1), to_big(_1));
+
+            test_f32_some(&to_big(_2), 1.0, to_big(_1));
+            test_f32_none(&to_big(_2), 1.0 / 0.0);
+            test_f64_some(&to_big(_2), 1.0, to_big(_1));
+            test_f64_none(&to_big(_2), 1.0 / 0.0);
         }
 
         #[test]
@@ -1645,6 +2615,195 @@ mod test {
         }
 
         #[test]
+        fn test_primitive_mul_rational() {
+            fn test_isize(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i8(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+            }
+            // fn test_u8(a: u8, b: Rational, c: Rational) {
+            //     assert_eq!(a * b, c);
+            // }
+            // fn test_i16(a: i16, b: Rational, c: Rational) {
+            //     assert_eq!(a * b, c);
+            // }
+
+            test_isize(-2, _1_2, _NEG1);
+            test_i8(-2, _1_2, _NEG1);
+            // TODO: Not sure how to get these to pass on Rust 1.15.0 for travis; `isize::from()`
+            // these had not yet been implemented.
+            // test_u8(2, _1_2, _1);
+            // test_i16(-2, _1_2, _NEG1);
+        }
+
+        #[test]
+        fn test_primitive_mul_rational32() {
+            fn test_i8(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u8(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i16(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u16(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a * b, c);
+            }
+
+            test_i8(-2, _1I32_2I32, _NEG1I32);
+            test_u8(2, _1I32_2I32, _1I32);
+            test_i16(-2, _1I32_2I32, _NEG1I32);
+            test_u16(2, _1I32_2I32, _1I32);
+            test_i32(-2, _1I32_2I32, _NEG1I32);
+        }
+
+        #[test]
+        fn test_primitive_mul_rational64() {
+            fn test_i8(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u8(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i16(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u16(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i32(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_u32(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+            fn test_i64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a * b, c);
+            }
+
+            test_i8(-2, _1I64_2I64, _NEG1I64);
+            test_u8(2, _1I64_2I64, _1I64);
+            test_i16(-2, _1I64_2I64, _NEG1I64);
+            test_u16(2, _1I64_2I64, _1I64);
+            test_i32(-2, _1I64_2I64, _NEG1I64);
+            test_u32(2, _1I64_2I64, _1I64);
+            test_i64(-2, _1I64_2I64, _NEG1I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_mul_bigrational() {
+            define_primitive_op_bigrational_test_funcs!(*);
+
+            test_isize(-2, to_big(_1_2), to_big(_NEG1));
+            test_usize(2, to_big(_1_2), to_big(_1));
+            test_i8(-2, to_big(_1_2), to_big(_NEG1));
+            test_u8(2, to_big(_1_2), to_big(_1));
+            test_i16(-2, to_big(_1_2), to_big(_NEG1));
+            test_u16(2, to_big(_1_2), to_big(_1));
+            test_i32(-2, to_big(_1_2), to_big(_NEG1));
+            test_u32(2, to_big(_1_2), to_big(_1));
+            test_i64(-2, to_big(_1_2), to_big(_NEG1));
+            test_u64(2, to_big(_1_2), to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(-2, to_big(_1_2), to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(2, to_big(_1_2), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_1_2), to_big(_1));
+
+            test_f32_some(2.0, to_big(_1_2), to_big(_1));
+            test_f32_none(2.0 / 0.0, to_big(_1_2));
+            test_f64_some(2.0, to_big(_1_2), to_big(_1));
+            test_f64_none(2.0 / 0.0, to_big(_1_2));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_mul_bigrational_ref() {
+            define_primitive_op_bigrational_ref_test_funcs!(*);
+
+            test_isize(-2, &to_big(_1_2), to_big(_NEG1));
+            test_usize(2, &to_big(_1), to_big(_2));
+            test_i8(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u8(2, &to_big(_1), to_big(_2));
+            test_i16(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u16(2, &to_big(_1), to_big(_2));
+            test_i32(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u32(2, &to_big(_1), to_big(_2));
+            test_i64(-2, &to_big(_1_2), to_big(_NEG1));
+            test_u64(2, &to_big(_1), to_big(_2));
+            #[cfg(has_i128)]
+            test_i128(-2, &to_big(_1_2), to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(2, &to_big(_1), to_big(_2));
+            test_bigint(BigInt::from(2), &to_big(_1_2), to_big(_1));
+
+            test_f32_some(2.0, &to_big(_1), to_big(_2));
+            test_f32_none(2.0 / 0.0, &to_big(_1));
+            test_f64_some(2.0, &to_big(_1), to_big(_2));
+            test_f64_none(2.0 / 0.0, &to_big(_1));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_mul_primitive() {
+            define_bigrational_op_primitive_test_funcs!(*);
+
+            test_isize(to_big(_1_2), -2, to_big(_NEG1));
+            test_usize(to_big(_1_2), 2, to_big(_1));
+            test_i8(to_big(_1_2), -2, to_big(_NEG1));
+            test_u8(to_big(_1_2), 2, to_big(_1));
+            test_i16(to_big(_1_2), -2, to_big(_NEG1));
+            test_u16(to_big(_1_2), 2, to_big(_1));
+            test_i32(to_big(_1_2), -2, to_big(_NEG1));
+            test_u32(to_big(_1_2), 2, to_big(_1));
+            test_i64(to_big(_1_2), -2, to_big(_NEG1));
+            test_u64(to_big(_1_2), 2, to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(to_big(_1_2), -2, to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(to_big(_1_2), 2, to_big(_1));
+            test_bigint(to_big(_1_2), BigInt::from(2), to_big(_1));
+
+            test_f32_some(to_big(_1_2), 2.0, to_big(_1));
+            test_f32_none(to_big(_1_2), 2.0 / 0.0);
+            test_f64_some(to_big(_1_2), 2.0, to_big(_1));
+            test_f64_none(to_big(_1_2), 2.0 / 0.0);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_ref_mul_primitive() {
+            define_bigrational_ref_op_primitive_test_funcs!(*);
+
+            test_isize(&to_big(_1_2), -2, to_big(_NEG1));
+            test_usize(&to_big(_1_2), 2, to_big(_1));
+            test_i8(&to_big(_1_2), -2, to_big(_NEG1));
+            test_u8(&to_big(_1_2), 2, to_big(_1));
+            test_i16(&to_big(_1_2), -2, to_big(_NEG1));
+            test_u16(&to_big(_1_2), 2, to_big(_1));
+            test_i32(&to_big(_1_2), -2, to_big(_NEG1));
+            test_u32(&to_big(_1_2), 2, to_big(_1));
+            test_i64(&to_big(_1_2), -2, to_big(_NEG1));
+            test_u64(&to_big(_1_2), 2, to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(&to_big(_1_2), -2, to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(&to_big(_1_2), 2, to_big(_1));
+            test_bigint(&to_big(_1_2), BigInt::from(2), to_big(_1));
+
+            test_f32_some(&to_big(_1_2), 2.0, to_big(_1));
+            test_f32_none(&to_big(_1_2), 2.0 / 0.0);
+            test_f64_some(&to_big(_1_2), 2.0, to_big(_1));
+            test_f64_none(&to_big(_1_2), 2.0 / 0.0);
+        }
+
+        #[test]
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a / b, c);
@@ -1676,6 +2835,195 @@ mod test {
             test(_3_2, _1_2, _1 + _2);
             test(_1, _NEG1_2, _NEG1_2 + _NEG1_2 + _NEG1_2 + _NEG1_2);
             test_assign(_1, 2, _1_2);
+        }
+
+        #[test]
+        fn test_primitive_div_rational() {
+            fn test_isize(a: isize, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i8(a: i8, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+            }
+            // fn test_u8(a: u8, b: Rational, c: Rational) {
+            //     assert_eq!(a / b, c);
+            // }
+            // fn test_i16(a: i16, b: Rational, c: Rational) {
+            //     assert_eq!(a / b, c);
+            // }
+
+            test_isize(-2, _2, _NEG1);
+            test_i8(-2, _2, _NEG1);
+            // TODO: Not sure how to get these to pass on Rust 1.15.0 for travis; `isize::from()`
+            // these had not yet been implemented.
+            // test_u8(2, _2, _1);
+            // test_i16(-2, _2, _NEG1);
+        }
+
+        #[test]
+        fn test_primitive_div_rational32() {
+            fn test_i8(a: i8, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u8(a: u8, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i16(a: i16, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u16(a: u16, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i32(a: i32, b: Rational32, c: Rational32) {
+                assert_eq!(a / b, c);
+            }
+
+            test_i8(-2, _2I32, _NEG1I32);
+            test_u8(2, _2I32, _1I32);
+            test_i16(-2, _2I32, _NEG1I32);
+            test_u16(2, _2I32, _1I32);
+            test_i32(-2, _2I32, _NEG1I32);
+        }
+
+        #[test]
+        fn test_primitive_div_rational64() {
+            fn test_i8(a: i8, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u8(a: u8, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i16(a: i16, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u16(a: u16, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i32(a: i32, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_u32(a: u32, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+            fn test_i64(a: i64, b: Rational64, c: Rational64) {
+                assert_eq!(a / b, c);
+            }
+
+            test_i8(-2, _2I64, _NEG1I64);
+            test_u8(2, _2I64, _1I64);
+            test_i16(-2, _2I64, _NEG1I64);
+            test_u16(2, _2I64, _1I64);
+            test_i32(-2, _2I64, _NEG1I64);
+            test_u32(2, _2I64, _1I64);
+            test_i64(-2, _2I64, _NEG1I64);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_div_bigrational() {
+            define_primitive_op_bigrational_test_funcs!(/);
+
+            test_isize(-2, to_big(_2), to_big(_NEG1));
+            test_usize(2, to_big(_2), to_big(_1));
+            test_i8(-2, to_big(_2), to_big(_NEG1));
+            test_u8(2, to_big(_2), to_big(_1));
+            test_i16(-2, to_big(_2), to_big(_NEG1));
+            test_u16(2, to_big(_2), to_big(_1));
+            test_i32(-2, to_big(_2), to_big(_NEG1));
+            test_u32(2, to_big(_2), to_big(_1));
+            test_i64(-2, to_big(_2), to_big(_NEG1));
+            test_u64(2, to_big(_2), to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(-2, to_big(_2), to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(2, to_big(_2), to_big(_1));
+            test_bigint(BigInt::from(2), to_big(_2), to_big(_1));
+
+            test_f32_some(2.0, to_big(_2), to_big(_1));
+            test_f32_none(2.0 / 0.0, to_big(_2));
+            test_f64_some(2.0, to_big(_2), to_big(_1));
+            test_f64_none(2.0 / 0.0, to_big(_2));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_primitive_div_bigrational_ref() {
+            define_primitive_op_bigrational_ref_test_funcs!(/);
+
+            test_isize(-2, &to_big(_2), to_big(_NEG1));
+            test_usize(2, &to_big(_2), to_big(_1));
+            test_i8(-2, &to_big(_2), to_big(_NEG1));
+            test_u8(2, &to_big(_2), to_big(_1));
+            test_i16(-2, &to_big(_2), to_big(_NEG1));
+            test_u16(2, &to_big(_2), to_big(_1));
+            test_i32(-2, &to_big(_2), to_big(_NEG1));
+            test_u32(2, &to_big(_2), to_big(_1));
+            test_i64(-2, &to_big(_2), to_big(_NEG1));
+            test_u64(2, &to_big(_2), to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(-2, &to_big(_2), to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(2, &to_big(_2), to_big(_1));
+            test_bigint(BigInt::from(2), &to_big(_2), to_big(_1));
+
+            test_f32_some(2.0, &to_big(_2), to_big(_1));
+            test_f32_none(2.0 / 0.0, &to_big(_2));
+            test_f64_some(2.0, &to_big(_2), to_big(_1));
+            test_f64_none(2.0 / 0.0, &to_big(_2));
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_div_primitive() {
+            define_bigrational_op_primitive_test_funcs!(/);
+
+            test_isize(to_big(_2), -2, to_big(_NEG1));
+            test_usize(to_big(_2), 2, to_big(_1));
+            test_i8(to_big(_2), -2, to_big(_NEG1));
+            test_u8(to_big(_2), 2, to_big(_1));
+            test_i16(to_big(_2), -2, to_big(_NEG1));
+            test_u16(to_big(_2), 2, to_big(_1));
+            test_i32(to_big(_2), -2, to_big(_NEG1));
+            test_u32(to_big(_2), 2, to_big(_1));
+            test_i64(to_big(_2), -2, to_big(_NEG1));
+            test_u64(to_big(_2), 2, to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(to_big(_2), -2, to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(to_big(_2), 2, to_big(_1));
+            test_bigint(to_big(_2), BigInt::from(2), to_big(_1));
+
+            test_f32_some(to_big(_2), 2.0, to_big(_1));
+            test_f32_none(to_big(_2), 2.0 / 0.0);
+            test_f64_some(to_big(_2), 2.0, to_big(_1));
+            test_f64_none(to_big(_2), 2.0 / 0.0);
+        }
+
+        #[cfg(feature = "bigint")]
+        #[test]
+        fn test_bigrational_ref_div_primitive() {
+            define_bigrational_ref_op_primitive_test_funcs!(/);
+
+            test_isize(&to_big(_2), -2, to_big(_NEG1));
+            test_usize(&to_big(_2), 2, to_big(_1));
+            test_i8(&to_big(_2), -2, to_big(_NEG1));
+            test_u8(&to_big(_2), 2, to_big(_1));
+            test_i16(&to_big(_2), -2, to_big(_NEG1));
+            test_u16(&to_big(_2), 2, to_big(_1));
+            test_i32(&to_big(_2), -2, to_big(_NEG1));
+            test_u32(&to_big(_2), 2, to_big(_1));
+            test_i64(&to_big(_2), -2, to_big(_NEG1));
+            test_u64(&to_big(_2), 2, to_big(_1));
+            #[cfg(has_i128)]
+            test_i128(&to_big(_2), -2, to_big(_NEG1));
+            #[cfg(has_i128)]
+            test_u128(&to_big(_2), 2, to_big(_1));
+            test_bigint(&to_big(_2), BigInt::from(2), to_big(_1));
+
+            test_f32_some(&to_big(_2), 2.0, to_big(_1));
+            test_f32_none(&to_big(_2), 2.0 / 0.0);
+            test_f64_some(&to_big(_2), 2.0, to_big(_1));
+            test_f64_none(&to_big(_2), 2.0 / 0.0);
         }
 
         #[test]
