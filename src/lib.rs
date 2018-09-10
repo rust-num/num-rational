@@ -990,6 +990,7 @@ impl_bigint_ops_primitive!(i128);
 #[cfg(all(has_i128, feature = "bigint"))]
 impl_bigint_ops_primitive!(u128);
 
+#[cfg(feature = "bigint")]
 macro_rules! impl_ops_float_for_bigrational {
     ($trait_:ident, $method:ident, $float:ident) => {
         impl $trait_<$float> for BigRational {
