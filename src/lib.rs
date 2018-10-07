@@ -237,6 +237,131 @@ impl<T: Clone + Integer> Ratio<T> {
     pub fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer.clone() % self.denom.clone(), self.denom.clone())
     }
+
+    #[cfg(feature = "std")]
+    pub fn as_decimal_string(&self, precision: usize) -> std::string::String
+    where
+        T: CheckedMul + fmt::Display
+    {
+        use std::string::String;
+
+        let int_len = {
+            // Build the number 10 from scratch so we can handle both signed and unsigned types (T of i8 or u8)
+            let mut _10 = T::one() + T::one() + T::one(); // 3
+            _10 = _10.clone() * _10 + T::one();           // 10
+
+            let mut ptr: T = T::one();
+            let mut len: usize = 0;
+
+            loop {
+                len += 1;
+
+                ptr = if let Some(p) = ptr.checked_mul(&_10) { p } else { break };
+
+                if ptr > *self.numer() {
+                    break;
+                }
+            }
+
+            len
+        };
+
+        let mut result = String::with_capacity(int_len + precision + if precision > 0 { 1 } else { 0 });
+
+        self.format_as_decimal(&mut result, precision).ok();
+
+        result
+    }
+
+    /// Writes the number into the output buffer in decimal representation.  
+    /// No leading or trailing zeroes (except a single zero for the integer part)
+    pub fn format_as_decimal(&self, out: &mut fmt::Write, mut precision: usize) -> fmt::Result
+    where
+        T: CheckedMul + fmt::Display
+    {
+        let (integer, mut remainder): (T, T) = self.numer().div_rem(self.denom());
+
+        write!(out, "{}", integer)?;
+
+        if !remainder.is_zero() && !precision.is_zero() {
+            let divisor = self.denom();
+
+            let mut dot = false;
+            let mut trailing_zeroes = 0;
+
+            // Build the number 10 from scratch so we can handle both signed and unsigned types (T of i8 or u8)
+            let mut _10 = T::one() + T::one() + T::one(); // 3
+            _10 = _10.clone() * _10 + T::one();           // 10
+
+            loop {
+                if precision.is_zero() { break }
+                if remainder.is_zero() { break }
+
+                precision -= 1;
+
+                let (rem, digit) = remainder.checked_mul(&_10)
+                    .map_or_else(
+                        || {
+                            // Capacity of T is not enough to multiply the remainder by 10
+                            let (reduced_divisor, reduced_divisor_rem) = divisor.div_rem(&_10);
+
+                            let mut digit = remainder.div_floor(&reduced_divisor);
+                            let mut remainder = remainder.clone();
+
+                            remainder = remainder - digit.clone() * reduced_divisor.clone();
+
+                            let mut red_div_rem_diff = (reduced_divisor_rem.clone() * digit.clone()).div_rem(&_10);
+
+                            loop {
+                                if red_div_rem_diff.0 > remainder {
+                                    digit = digit - T::one();
+                                    remainder = remainder + reduced_divisor.clone();
+                                    red_div_rem_diff = (reduced_divisor_rem.clone() * digit.clone()).div_rem(&_10);
+                                } else { break }
+                            }
+
+                            remainder = remainder - red_div_rem_diff.0;
+                            remainder = remainder * _10.clone();
+
+                            if red_div_rem_diff.1 > remainder {
+                                digit = digit - T::one();
+                                remainder = remainder + divisor.clone();
+                            }
+
+                            remainder = remainder - red_div_rem_diff.1;
+
+                            (remainder, digit)
+                        },
+                        |mut remainder| {
+                            let digit = remainder.div_floor(divisor);
+                            remainder = remainder - digit.clone() * divisor.clone();
+
+                            (remainder, digit)
+                        }
+                    );
+
+                remainder = rem;
+
+                if digit.is_zero() {
+                    trailing_zeroes += 1;
+                } else {
+                    if !dot {
+                        dot = true;
+                        write!(out, ".")?;
+                    }
+
+                    for _ in 0..trailing_zeroes {
+                        trailing_zeroes -= 1;
+                        write!(out, "0")?;
+                    }
+
+                    write!(out, "{}", digit)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: Clone + Integer + Pow<u32, Output = T>> Ratio<T> {
@@ -979,14 +1104,17 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 }
 
 // String conversions
-impl<T> fmt::Display for Ratio<T>
+impl<T: Clone + Integer> fmt::Display for Ratio<T>
 where
-    T: fmt::Display + Eq + One,
+    T: CheckedMul + fmt::Display,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.denom.is_one() {
             write!(f, "{}", self.numer)
+        } else if f.alternate() && f.precision().is_some() {
+            let precision = f.precision().unwrap();
+            self.format_as_decimal(f, precision)
         } else {
             write!(f, "{}/{}", self.numer, self.denom)
         }
@@ -2032,5 +2160,97 @@ mod test {
         let products = iter_products(&nums[..]);
         assert_eq!(products[0], products[1]);
         assert_eq!(products[0], products[2]);
+    }
+
+    mod formatter {
+        #[cfg(feature = "std")]
+        #[test]
+        fn format_as_decimal() {
+            use super::Ratio;
+
+            let data: [(u8, u8, &'static str); 60] = [
+                (1u8, 2u8, "0.5"),
+
+                (1u8, 255u8, "0.0039215686274509803921568627450980392156862745098039215686274509"),
+                (1u8, 254u8, "0.0039370078740157480314960629921259842519685039370078740157480314"),
+                (1u8, 253u8, "0.003952569169960474308300395256916996047430830039525691699604743"),
+                (1u8, 252u8, "0.0039682539682539682539682539682539682539682539682539682539682539"),
+                (1u8, 251u8, "0.0039840637450199203187250996015936254980079681274900398406374501"),
+                (1u8, 250u8, "0.004"),
+                (1u8, 112u8, "0.0089285714285714285714285714285714285714285714285714285714285714"),
+                (1u8, 111u8, "0.009009009009009009009009009009009009009009009009009009009009009"),
+                (1u8, 96u8, "0.0104166666666666666666666666666666666666666666666666666666666666"),
+                (1u8, 92u8, "0.0108695652173913043478260869565217391304347826086956521739130434"),
+                (1u8, 91u8, "0.0109890109890109890109890109890109890109890109890109890109890109"),
+                (1u8, 90u8, "0.0111111111111111111111111111111111111111111111111111111111111111"),
+                (1u8, 9u8, "0.1111111111111111111111111111111111111111111111111111111111111111"),
+                (1u8, 8u8, "0.125"),
+                (1u8, 7u8, "0.1428571428571428571428571428571428571428571428571428571428571428"),
+                (1u8, 6u8, "0.1666666666666666666666666666666666666666666666666666666666666666"),
+                (1u8, 5u8, "0.2"),
+                (1u8, 4u8, "0.25"),
+                (1u8, 3u8, "0.3333333333333333333333333333333333333333333333333333333333333333"),
+                (1u8, 2u8, "0.5"),
+                (1u8, 1u8, "1"),
+
+                (49u8, 255u8, "0.192156862745098039215686274509803921568627450980392156862745098"),
+                (49u8, 254u8, "0.1929133858267716535433070866141732283464566929133858267716535433"),
+                (49u8, 253u8, "0.193675889328063241106719367588932806324110671936758893280632411"),
+                (49u8, 252u8, "0.1944444444444444444444444444444444444444444444444444444444444444"),
+                (49u8, 251u8, "0.1952191235059760956175298804780876494023904382470119521912350597"),
+                (49u8, 250u8, "0.196"),
+                (49u8, 249u8, "0.1967871485943775100401606425702811244979919678714859437751004016"),
+                (49u8, 248u8, "0.1975806451612903225806451612903225806451612903225806451612903225"),
+                (49u8, 247u8, "0.1983805668016194331983805668016194331983805668016194331983805668"),
+                (49u8, 246u8, "0.1991869918699186991869918699186991869918699186991869918699186991"),
+                (49u8, 245u8, "0.2"),
+                (49u8, 69u8, "0.7101449275362318840579710144927536231884057971014492753623188405"),
+                (49u8, 68u8, "0.7205882352941176470588235294117647058823529411764705882352941176"),
+                (49u8, 67u8, "0.7313432835820895522388059701492537313432835820895522388059701492"),
+                (49u8, 66u8, "0.7424242424242424242424242424242424242424242424242424242424242424"),
+                (49u8, 65u8, "0.7538461538461538461538461538461538461538461538461538461538461538"),
+                (49u8, 64u8, "0.765625"),
+                (49u8, 63u8, "0.7777777777777777777777777777777777777777777777777777777777777777"),
+
+                (77u8, 255u8, "0.3019607843137254901960784313725490196078431372549019607843137254"),
+                (77u8, 254u8, "0.3031496062992125984251968503937007874015748031496062992125984251"),
+                (77u8, 253u8, "0.3043478260869565217391304347826086956521739130434782608695652173"),
+                (77u8, 252u8, "0.3055555555555555555555555555555555555555555555555555555555555555"),
+                (77u8, 251u8, "0.3067729083665338645418326693227091633466135458167330677290836653"),
+                (77u8, 250u8, "0.308"),
+                (77u8, 249u8, "0.3092369477911646586345381526104417670682730923694779116465863453"),
+                (77u8, 248u8, "0.3104838709677419354838709677419354838709677419354838709677419354"),
+                (77u8, 231u8, "0.3333333333333333333333333333333333333333333333333333333333333333"),
+                (77u8, 230u8, "0.3347826086956521739130434782608695652173913043478260869565217391"),
+                (77u8, 229u8, "0.3362445414847161572052401746724890829694323144104803493449781659"),
+                (77u8, 228u8, "0.3377192982456140350877192982456140350877192982456140350877192982"),
+                (77u8, 227u8, "0.3392070484581497797356828193832599118942731277533039647577092511"),
+                (77u8, 226u8, "0.3407079646017699115044247787610619469026548672566371681415929203"),
+                (77u8, 225u8, "0.3422222222222222222222222222222222222222222222222222222222222222"),
+                (77u8, 224u8, "0.34375"),
+                (77u8, 223u8, "0.3452914798206278026905829596412556053811659192825112107623318385"),
+                (77u8, 222u8, "0.3468468468468468468468468468468468468468468468468468468468468468"),
+                (77u8, 221u8, "0.3484162895927601809954751131221719457013574660633484162895927601"),
+                (77u8, 220u8, "0.35"),
+            ];
+
+            for i in data.iter() {
+                let ratio = Ratio::new(i.0, i.1);
+
+                assert_eq!(format!("{:#.64}", ratio), i.2);
+                assert_eq!(ratio.as_decimal_string(64), i.2);
+            }
+
+            #[cfg(feature="bigint")]
+            {
+                use super::super::BigUint;
+                for i in data.iter() {
+                    let ratio = Ratio::new(BigUint::from(i.0), BigUint::from(i.1));
+
+                    assert_eq!(format!("{:#.64}", ratio), i.2);
+                    assert_eq!(ratio.as_decimal_string(64), i.2);
+                }
+            }
+        }
     }
 }
