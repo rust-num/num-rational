@@ -1105,18 +1105,14 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 }
 
 // String conversions
-impl<T: Clone + Integer> fmt::Display for Ratio<T>
+impl<T> fmt::Display for Ratio<T>
 where
-    T: CheckedMul + fmt::Display,
+    T: fmt::Display + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.denom.is_one() {
             write!(f, "{}", self.numer)
-        } else if f.alternate() && f.precision().is_some() {
-            let precision = f.precision().unwrap();
-            self.format_as_decimal(f, precision)?;
-            Ok(())
         } else {
             write!(f, "{}/{}", self.numer, self.denom)
         }
@@ -2239,7 +2235,6 @@ mod test {
             for i in data.iter() {
                 let ratio = Ratio::new(i.0, i.1);
 
-                assert_eq!(format!("{:#.64}", ratio), i.2);
                 assert_eq!(ratio.as_decimal_string(64), i.2);
 
                 let mut value = ::std::string::String::new();
@@ -2254,7 +2249,6 @@ mod test {
                 for i in data.iter() {
                     let ratio = Ratio::new(BigUint::from(i.0), BigUint::from(i.1));
 
-                    assert_eq!(format!("{:#.64}", ratio), i.2);
                     assert_eq!(ratio.as_decimal_string(64), i.2);
 
                     let mut value = ::std::string::String::new();
