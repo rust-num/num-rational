@@ -239,7 +239,7 @@ impl<T: Clone + Integer> Ratio<T> {
     }
 
     #[cfg(feature = "std")]
-    pub fn as_decimal_string(&self, precision: usize) -> std::string::String
+    pub fn as_decimal_string(&self, precision: usize, trail_zeroes: bool) -> std::string::String
     where
         T: CheckedMul + fmt::Display
     {
@@ -268,15 +268,15 @@ impl<T: Clone + Integer> Ratio<T> {
 
         let mut result = String::with_capacity(int_len + precision + if precision > 0 { 1 } else { 0 });
 
-        self.format_as_decimal(&mut result, precision).ok();
+        self.format_as_decimal(&mut result, precision, trail_zeroes).ok();
 
         result
     }
 
     /// Writes the number into the output buffer in decimal representation.  
-    /// No leading or trailing zeroes (except a single zero for the integer part)  
+    /// No leading zeroes (except a single zero for the integer part)  
     /// Returns remainder of the division
-    pub fn format_as_decimal(&self, out: &mut fmt::Write, mut precision: usize) -> Result<T, fmt::Error>
+    pub fn format_as_decimal(&self, out: &mut fmt::Write, mut precision: usize, trail_zeroes: bool) -> Result<T, fmt::Error>
     where
         T: CheckedMul + fmt::Display
     {
@@ -284,79 +284,99 @@ impl<T: Clone + Integer> Ratio<T> {
 
         write!(out, "{}", integer)?;
 
-        if !remainder.is_zero() && !precision.is_zero() {
-            let divisor = self.denom();
-
+        if !precision.is_zero() {
             let mut dot = false;
             let mut trailing_zeroes = 0;
 
-            // Build the number 10 from scratch so we can handle both signed and unsigned types (T of i8 or u8)
-            let mut _10 = T::one() + T::one() + T::one(); // 3
-            _10 = _10.clone() * _10 + T::one();           // 10
+            if !remainder.is_zero() {
+                let divisor = self.denom();
 
-            loop {
-                if precision.is_zero() { break }
-                if remainder.is_zero() { break }
+                // Build the number 10 from scratch so we can handle both signed and unsigned types (T of i8 or u8)
+                let mut _10 = T::one() + T::one() + T::one(); // 3
+                _10 = _10.clone() * _10 + T::one();           // 10
 
-                precision -= 1;
+                loop {
+                    if precision.is_zero() { break }
+                    if remainder.is_zero() { break }
 
-                let (rem, digit) = remainder.checked_mul(&_10)
-                    .map_or_else(
-                        || {
-                            // Capacity of T is not enough to multiply the remainder by 10
-                            let (reduced_divisor, reduced_divisor_rem) = divisor.div_rem(&_10);
+                    precision -= 1;
 
-                            let mut digit = remainder.div_floor(&reduced_divisor);
-                            let mut remainder = remainder.clone();
+                    let (rem, digit) = remainder.checked_mul(&_10)
+                        .map_or_else(
+                            || {
+                                // Capacity of T is not enough to multiply the remainder by 10
+                                let (reduced_divisor, reduced_divisor_rem) = divisor.div_rem(&_10);
 
-                            remainder = remainder - digit.clone() * reduced_divisor.clone();
+                                let mut digit = remainder.div_floor(&reduced_divisor);
+                                let mut remainder = remainder.clone();
 
-                            let mut red_div_rem_diff = (reduced_divisor_rem.clone() * digit.clone()).div_rem(&_10);
+                                remainder = remainder - digit.clone() * reduced_divisor.clone();
 
-                            loop {
-                                if red_div_rem_diff.0 > remainder {
+                                let mut red_div_rem_diff = (reduced_divisor_rem.clone() * digit.clone()).div_rem(&_10);
+
+                                loop {
+                                    if red_div_rem_diff.0 > remainder {
+                                        digit = digit - T::one();
+                                        remainder = remainder + reduced_divisor.clone();
+                                        red_div_rem_diff = (reduced_divisor_rem.clone() * digit.clone()).div_rem(&_10);
+                                    } else { break }
+                                }
+
+                                remainder = remainder - red_div_rem_diff.0;
+                                remainder = remainder * _10.clone();
+
+                                if red_div_rem_diff.1 > remainder {
                                     digit = digit - T::one();
-                                    remainder = remainder + reduced_divisor.clone();
-                                    red_div_rem_diff = (reduced_divisor_rem.clone() * digit.clone()).div_rem(&_10);
-                                } else { break }
+                                    remainder = remainder + divisor.clone();
+                                }
+
+                                remainder = remainder - red_div_rem_diff.1;
+
+                                (remainder, digit)
+                            },
+                            |mut remainder| {
+                                let digit = remainder.div_floor(divisor);
+                                remainder = remainder - digit.clone() * divisor.clone();
+
+                                (remainder, digit)
                             }
+                        );
 
-                            remainder = remainder - red_div_rem_diff.0;
-                            remainder = remainder * _10.clone();
+                    remainder = rem;
 
-                            if red_div_rem_diff.1 > remainder {
-                                digit = digit - T::one();
-                                remainder = remainder + divisor.clone();
-                            }
-
-                            remainder = remainder - red_div_rem_diff.1;
-
-                            (remainder, digit)
-                        },
-                        |mut remainder| {
-                            let digit = remainder.div_floor(divisor);
-                            remainder = remainder - digit.clone() * divisor.clone();
-
-                            (remainder, digit)
+                    if digit.is_zero() {
+                        trailing_zeroes += 1;
+                    } else {
+                        if !dot {
+                            dot = true;
+                            write!(out, ".")?;
                         }
-                    );
 
-                remainder = rem;
+                        for _ in 0..trailing_zeroes {
+                            trailing_zeroes -= 1;
+                            write!(out, "0")?;
+                        }
 
-                if digit.is_zero() {
-                    trailing_zeroes += 1;
-                } else {
-                    if !dot {
-                        dot = true;
+                        write!(out, "{}", digit)?;
+                    }
+                }
+            }
+
+            if trail_zeroes {
+                if !dot {
+                    if !trailing_zeroes.is_zero() || !precision.is_zero() {
                         write!(out, ".")?;
                     }
+                }
 
-                    for _ in 0..trailing_zeroes {
-                        trailing_zeroes -= 1;
-                        write!(out, "0")?;
-                    }
+                while !trailing_zeroes.is_zero() {
+                    write!(out, "0")?;
+                    trailing_zeroes -= 1;
+                }
 
-                    write!(out, "{}", digit)?;
+                while !precision.is_zero() {
+                    write!(out, "0")?;
+                    precision -= 1;
                 }
             }
         }
@@ -2235,10 +2255,10 @@ mod test {
             for i in data.iter() {
                 let ratio = Ratio::new(i.0, i.1);
 
-                assert_eq!(ratio.as_decimal_string(64), i.2);
+                assert_eq!(ratio.as_decimal_string(64, false), i.2);
 
                 let mut value = ::std::string::String::new();
-                let result = ratio.format_as_decimal(&mut value, 64);
+                let result = ratio.format_as_decimal(&mut value, 64, false);
                 assert_eq!(value, i.2);
                 assert_eq!(result.unwrap().is_zero(), i.3);
             }
@@ -2249,13 +2269,26 @@ mod test {
                 for i in data.iter() {
                     let ratio = Ratio::new(BigUint::from(i.0), BigUint::from(i.1));
 
-                    assert_eq!(ratio.as_decimal_string(64), i.2);
+                    assert_eq!(ratio.as_decimal_string(64, false), i.2);
 
                     let mut value = ::std::string::String::new();
-                    let result = ratio.format_as_decimal(&mut value, 64);
+                    let result = ratio.format_as_decimal(&mut value, 64, false);
                     assert_eq!(value, i.2);
                     assert_eq!(result.unwrap().is_zero(), i.3);
                 }
+            }
+
+            { // Check the trailing zeroes functionality
+                let ratio = Ratio::new(5, 2);
+
+                assert_eq!(ratio.as_decimal_string(0, false), "2");
+                assert_eq!(ratio.as_decimal_string(0, true), "2");
+                assert_eq!(ratio.as_decimal_string(1, false), "2.5");
+                assert_eq!(ratio.as_decimal_string(1, true), "2.5");
+                assert_eq!(ratio.as_decimal_string(2, false), "2.5");
+                assert_eq!(ratio.as_decimal_string(2, true), "2.50");
+                assert_eq!(ratio.as_decimal_string(3, false), "2.5");
+                assert_eq!(ratio.as_decimal_string(3, true), "2.500");
             }
         }
     }
