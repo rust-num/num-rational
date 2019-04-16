@@ -1538,7 +1538,7 @@ mod test {
 
     mod arith {
         use super::super::{Ratio, Rational};
-        use super::{_0, _1, _1_2, _2, _3_2, _NEG1_2, to_big};
+        use super::{to_big, _0, _1, _1_2, _2, _3_2, _NEG1_2};
         use traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
 
         #[test]
