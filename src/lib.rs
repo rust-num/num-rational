@@ -743,43 +743,18 @@ where
     }
 }
 
-
-forward_all_binop!(impl Add, add);
-
-impl<T: Clone + Integer> Add<Ratio<T>> for Ratio<T> {
-    type Output = Ratio<T>;
-    #[inline]
-    // a/b + c/d = (a*lcm/b + c*lcm/d)/lcm where lcm = lcm(b,d)
-    fn add(self, rhs: Ratio<T>) -> Ratio<T> {
-        let lcm = self.denom.lcm(&rhs.denom.clone());
-        let lhs_numer = self.numer * (lcm.clone() / self.denom);
-        let rhs_numer = rhs.numer * (lcm.clone() / rhs.denom);
-
-        Ratio::new(lhs_numer + rhs_numer, lcm.clone())
-    }
-}
-
-impl<T: Clone + Integer> Add<T> for Ratio<T> {
-    type Output = Ratio<T>;
-    // a/b + c/1 = (a + c*b)/b
-    #[inline]
-    fn add(self: Ratio<T>, rhs: T) -> Ratio<T> {
-        Ratio::new(self.numer + (self.denom.clone() * rhs), self.denom)
-    }
-}
-
 macro_rules! arith_impl {
     (impl $imp:ident, $method:ident) => {
         forward_all_binop!(impl $imp, $method);
-        // Abstracts the a/b `op` c/d = (a*d `op` b*c) / (b*d) pattern
+        // Abstracts a/b `op` c/d = (a*lcm/b `op` c*lcm/d)/lcm where lcm = lcm(b,d)
         impl<T: Clone + Integer> $imp<Ratio<T>> for Ratio<T> {
             type Output = Ratio<T>;
             #[inline]
             fn $method(self, rhs: Ratio<T>) -> Ratio<T> {
-                Ratio::new(
-                    (self.numer * rhs.denom.clone()).$method(self.denom.clone() * rhs.numer),
-                    self.denom * rhs.denom,
-                )
+                let lcm = self.denom.lcm(&rhs.denom.clone());
+                let lhs_numer = self.numer * (lcm.clone() / self.denom);
+                let rhs_numer = rhs.numer * (lcm.clone() / rhs.denom);
+                Ratio::new(lhs_numer.$method(rhs_numer), lcm)
             }
         }
         // Abstracts the a/b `op` c/1 = (a*1 `op` b*c) / (b*1) = (a `op` b*c) / b pattern
@@ -793,6 +768,7 @@ macro_rules! arith_impl {
     };
 }
 
+arith_impl!(impl Add, add);
 arith_impl!(impl Sub, sub);
 arith_impl!(impl Rem, rem);
 
@@ -1565,8 +1541,8 @@ mod test {
         use super::{to_big, _0, _1, _1_2, _2, _3_2, _NEG1_2};
         use core::fmt::Debug;
         use integer::Integer;
-        use traits::NumCast;
         use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+
         #[test]
         fn test_add() {
             fn test(a: Rational, b: Rational, c: Rational) {
@@ -1604,13 +1580,12 @@ mod test {
 
         #[test]
         fn test_add_overflow() {
-
-            //As a concrete example for u8, which has a range of values from 0 to 255
-            //compares Ratio(1, 255) + Ratio(1, 255) to Ratio (1+1, 255)
-            //with old behavior, Ratio(1, 255) + Ratio(1, 255) would cause an overflow
+            // compares Ratio(1, T::max_value()) + Ratio(1, T::max_value())
+            // to Ratio(1+1, T::max_value()) for each integer type.
+            // Previously, this calculation would overflow.
             fn test_add_typed_overflow<T>()
             where
-                T: Integer + Bounded + NumCast + Clone + Debug,
+                T: Integer + Bounded + Clone + Debug,
             {
                 let _6 = T::one() + T::one() + T::one() + T::one() + T::one() + T::one();
                 let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
@@ -1676,6 +1651,34 @@ mod test {
             test(_3_2, _1_2, _1);
             test(_1, _NEG1_2, _3_2);
             test_assign(_1_2, 1, _NEG1_2);
+        }
+
+        #[test]
+        fn test_sub_overflow() {
+            // compares Ratio(1, T::max_value()) - Ratio(1, T::max_value()) to T::zero()
+            // for each integer type. Previously, this calculation would overflow.
+            fn test_sub_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug,
+            {
+                let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
+                assert!(T::is_zero(&(_1_max.clone() - _1_max.clone()).numer));
+            }
+            test_sub_typed_overflow::<u8>();
+            test_sub_typed_overflow::<u16>();
+            test_sub_typed_overflow::<u32>();
+            test_sub_typed_overflow::<u64>();
+            test_sub_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_add_typed_overflow::<u128>();
+
+            test_sub_typed_overflow::<i8>();
+            test_sub_typed_overflow::<i16>();
+            test_sub_typed_overflow::<i32>();
+            test_sub_typed_overflow::<i64>();
+            test_sub_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_sub_typed_overflow::<i128>();
         }
 
         #[test]
@@ -1776,6 +1779,35 @@ mod test {
             test(_2, _NEG1_2, _0);
             test(_1_2, _2, _1_2);
             test_assign(_3_2, 1, _1_2);
+        }
+
+        #[test]
+        fn test_rem_overflow() {
+            // tests that Ratio(1,1) % Ratio(1, T::max_value()) equals 0
+            // for each integer type. Previously, this calculation would overflow.
+            fn test_rem_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug,
+            {
+                let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
+                let _1_1: Ratio<T> = Ratio::new(T::one(), T::one());
+                assert!(T::is_zero(&(_1_1 % _1_max.clone()).numer));
+            }
+            test_rem_typed_overflow::<u8>();
+            test_rem_typed_overflow::<u16>();
+            test_rem_typed_overflow::<u32>();
+            test_rem_typed_overflow::<u64>();
+            test_rem_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_rem_typed_overflow::<u128>();
+
+            test_rem_typed_overflow::<i8>();
+            test_rem_typed_overflow::<i16>();
+            test_rem_typed_overflow::<i32>();
+            test_rem_typed_overflow::<i64>();
+            test_rem_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_rem_typed_overflow::<i128>();
         }
 
         #[test]
