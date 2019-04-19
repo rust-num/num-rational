@@ -819,19 +819,20 @@ macro_rules! checked_arith_impl {
         impl<T: Clone + Integer + CheckedMul + $imp> $imp for Ratio<T> {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-                let ad = otry!(self.numer.checked_mul(&rhs.denom));
-                let bc = otry!(self.denom.checked_mul(&rhs.numer));
-                let bd = otry!(self.denom.checked_mul(&rhs.denom));
-                Some(Ratio::new(otry!(ad.$method(&bc)), bd))
+                let gcd = self.denom.clone().gcd(&rhs.denom.clone());
+                let lcm = (self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom)?;
+                let lhs_numer = (lcm.clone() / self.denom.clone()).checked_mul(&self.numer)?;
+                let rhs_numer = (lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer)?;
+                Some(Ratio::new(lhs_numer.$method(&rhs_numer)?, lcm))
             }
         }
     };
 }
 
-// a/b + c/d = (a*d + b*c)/(b*d)
+// a/b + c/d = (lcm/b*a + lcm/d*c)/lcm, where lcm = lcm(b,d)
 checked_arith_impl!(impl CheckedAdd, checked_add);
 
-// a/b - c/d = (a*d - b*c)/(b*d)
+// a/b - c/d = (lcm/b*a - lcm/d*c)/lcm, where lcm = lcm(b,d)
 checked_arith_impl!(impl CheckedSub, checked_sub);
 
 impl<T> Neg for Ratio<T>
@@ -1585,13 +1586,14 @@ mod test {
             // Previously, this calculation would overflow.
             fn test_add_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug,
+                T: Integer + Bounded + Clone + Debug + CheckedAdd + CheckedMul,
             {
                 let _6 = T::one() + T::one() + T::one() + T::one() + T::one() + T::one();
-                let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
+                let _1_max = Ratio::new(T::one(), T::max_value());
                 let _2_max = Ratio::new(T::one() + T::one(), T::max_value());
                 let _6_max = Ratio::new(_6, T::max_value());
                 assert_eq!(_1_max.clone() + _1_max.clone(), _2_max);
+                assert_eq!(_1_max.clone().checked_add(&_1_max), Some(_2_max.clone()));
                 assert_eq!(
                     _1_max.clone()
                         + _1_max.clone()
@@ -1600,6 +1602,20 @@ mod test {
                         + _1_max.clone()
                         + _1_max.clone(),
                     _6_max
+                );
+                assert_eq!(
+                    _1_max
+                        .clone()
+                        .checked_add(&_1_max)
+                        .unwrap()
+                        .checked_add(&_1_max)
+                        .unwrap()
+                        .checked_add(&_1_max)
+                        .unwrap()
+                        .checked_add(&_1_max)
+                        .unwrap()
+                        .checked_add(&_1_max),
+                    Some(_6_max.clone())
                 );
             }
             test_add_typed_overflow::<u8>();
@@ -1659,10 +1675,13 @@ mod test {
             // for each integer type. Previously, this calculation would overflow.
             fn test_sub_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug,
+                T: Integer + Bounded + Clone + Debug + CheckedSub + CheckedMul,
             {
                 let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
                 assert!(T::is_zero(&(_1_max.clone() - _1_max.clone()).numer));
+                assert!(T::is_zero(
+                    &(_1_max.clone().checked_sub(&_1_max).unwrap().numer)
+                ));
             }
             test_sub_typed_overflow::<u8>();
             test_sub_typed_overflow::<u16>();
