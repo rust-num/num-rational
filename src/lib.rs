@@ -820,10 +820,10 @@ macro_rules! checked_arith_impl {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
                 let gcd = self.denom.clone().gcd(&rhs.denom.clone());
-                let lcm = (self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom)?;
-                let lhs_numer = (lcm.clone() / self.denom.clone()).checked_mul(&self.numer)?;
-                let rhs_numer = (lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer)?;
-                Some(Ratio::new(lhs_numer.$method(&rhs_numer)?, lcm))
+                let lcm = otry!((self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom));
+                let lhs_numer = otry!((lcm.clone() / self.denom.clone()).checked_mul(&self.numer));
+                let rhs_numer = otry!((lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer));
+                Some(Ratio::new(otry!(lhs_numer.$method(&rhs_numer)), lcm))
             }
         }
     };
