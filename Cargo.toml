@@ -8,7 +8,7 @@ categories = ["algorithms", "data-structures", "science", "no-std"]
 license = "MIT/Apache-2.0"
 name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
-version = "0.2.1"
+version = "0.2.2"
 readme = "README.md"
 build = "build.rs"
 exclude = ["/ci/*", "/.travis.yml", "/bors.toml"]
@@ -28,7 +28,7 @@ version = "0.1.38"
 default-features = false
 
 [dependencies.num-traits]
-version = "0.2.4"
+version = "0.2.7"
 default-features = false
 
 [dependencies.serde]
