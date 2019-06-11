@@ -893,6 +893,12 @@ impl<T: Clone + Integer> Zero for Ratio<T> {
     fn is_zero(&self) -> bool {
         self.numer.is_zero()
     }
+
+    #[inline]
+    fn set_zero(&mut self) {
+        self.numer.set_zero();
+        self.denom.set_one();
+    }
 }
 
 impl<T: Clone + Integer> One for Ratio<T> {
@@ -904,6 +910,12 @@ impl<T: Clone + Integer> One for Ratio<T> {
     #[inline]
     fn is_one(&self) -> bool {
         self.numer == self.denom
+    }
+
+    #[inline]
+    fn set_one(&mut self) {
+        self.numer.set_one();
+        self.denom.set_one();
     }
 }
 
@@ -1313,7 +1325,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
 mod test {
     #[cfg(feature = "bigint")]
     use super::BigRational;
-    use super::{Ratio, Rational};
+    use super::{Ratio, Rational, Rational64};
 
     use core::f64;
     use core::i32;
@@ -2032,5 +2044,31 @@ mod test {
         let products = iter_products(&nums[..]);
         assert_eq!(products[0], products[1]);
         assert_eq!(products[0], products[2]);
+    }
+
+    #[test]
+    fn test_num_zero() {
+        let zero = Rational64::zero();
+        assert!(zero.is_zero());
+
+        let mut r = Rational64::new(123, 456);
+        assert!(!r.is_zero());
+        assert_eq!(&r + &zero, r);
+
+        r.set_zero();
+        assert!(r.is_zero());
+    }
+
+    #[test]
+    fn test_num_one() {
+        let one = Rational64::one();
+        assert!(one.is_one());
+
+        let mut r = Rational64::new(123, 456);
+        assert!(!r.is_one());
+        assert_eq!(&r * &one, r);
+
+        r.set_one();
+        assert!(r.is_one());
     }
 }
