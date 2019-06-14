@@ -68,6 +68,42 @@ pub type Rational64 = Ratio<i64>;
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
+macro_rules! maybe_const {
+    ($( $(#[$attr:meta])* pub fn $name:ident $args:tt -> $ret:ty $body:block )*) => {$(
+        #[cfg(has_const_fn)]
+        $(#[$attr])* pub const fn $name $args -> $ret $body
+
+        #[cfg(not(has_const_fn))]
+        $(#[$attr])* pub fn $name $args -> $ret $body
+    )*}
+}
+
+/// These method are `const` for Rust 1.31 and later.
+impl<T> Ratio<T> {
+    maybe_const! {
+        /// Creates a `Ratio` without checking for `denom == 0` or reducing.
+        #[inline]
+        pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
+            Ratio {
+                numer: numer,
+                denom: denom,
+            }
+        }
+
+        /// Gets an immutable reference to the numerator.
+        #[inline]
+        pub fn numer(&self) -> &T {
+            &self.numer
+        }
+
+        /// Gets an immutable reference to the denominator.
+        #[inline]
+        pub fn denom(&self) -> &T {
+            &self.denom
+        }
+    }
+}
+
 impl<T: Clone + Integer> Ratio<T> {
     /// Creates a new `Ratio`. Fails if `denom` is zero.
     #[inline]
@@ -86,31 +122,10 @@ impl<T: Clone + Integer> Ratio<T> {
         Ratio::new_raw(t, One::one())
     }
 
-    /// Creates a `Ratio` without checking for `denom == 0` or reducing.
-    #[inline]
-    pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
-        Ratio {
-            numer: numer,
-            denom: denom,
-        }
-    }
-
     /// Converts to an integer, rounding towards zero.
     #[inline]
     pub fn to_integer(&self) -> T {
         self.trunc().numer
-    }
-
-    /// Gets an immutable reference to the numerator.
-    #[inline]
-    pub fn numer<'a>(&'a self) -> &'a T {
-        &self.numer
-    }
-
-    /// Gets an immutable reference to the denominator.
-    #[inline]
-    pub fn denom<'a>(&'a self) -> &'a T {
-        &self.denom
     }
 
     /// Returns true if the rational number is an integer (denominator is 1).
@@ -2070,5 +2085,20 @@ mod test {
 
         r.set_one();
         assert!(r.is_one());
+    }
+
+    #[cfg(has_const_fn)]
+    #[test]
+    fn test_const() {
+        const N: Ratio<i32> = Ratio::new_raw(123, 456);
+        const N_NUMER: &i32 = N.numer();
+        const N_DENOM: &i32 = N.denom();
+
+        assert_eq!(N_NUMER, &123);
+        assert_eq!(N_DENOM, &456);
+
+        let r = N.reduced();
+        assert_eq!(r.numer(), &(123 / 3));
+        assert_eq!(r.denom(), &(456 / 3));
     }
 }
