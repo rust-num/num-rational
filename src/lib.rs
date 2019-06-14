@@ -506,9 +506,11 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> AddAssign for Ratio<T> {
         fn add_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom.clone();
-            self.numer += self.denom.clone() * other.numer;
-            self.denom *= other.denom;
+            let lcm = self.denom.lcm(&other.denom.clone());
+            let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+            let rhs_numer = other.numer * (lcm.clone() / other.denom);
+            self.numer = lhs_numer + rhs_numer;
+            self.denom = lcm;
             self.reduce();
         }
     }
@@ -531,18 +533,22 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> RemAssign for Ratio<T> {
         fn rem_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom.clone();
-            self.numer %= self.denom.clone() * other.numer;
-            self.denom *= other.denom;
+            let lcm = self.denom.lcm(&other.denom.clone());
+            let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+            let rhs_numer = other.numer * (lcm.clone() / other.denom);
+            self.numer = lhs_numer % rhs_numer;
+            self.denom = lcm;
             self.reduce();
         }
     }
 
     impl<T: Clone + Integer + NumAssign> SubAssign for Ratio<T> {
         fn sub_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom.clone();
-            self.numer -= self.denom.clone() * other.numer;
-            self.denom *= other.denom;
+            let lcm = self.denom.lcm(&other.denom.clone());
+            let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+            let rhs_numer = other.numer * (lcm.clone() / other.denom);
+            self.numer = lhs_numer - rhs_numer;
+            self.denom = lcm;
             self.reduce();
         }
     }
