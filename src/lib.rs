@@ -506,11 +506,15 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> AddAssign for Ratio<T> {
         fn add_assign(&mut self, other: Ratio<T>) {
-            let lcm = self.denom.lcm(&other.denom.clone());
-            let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
-            let rhs_numer = other.numer * (lcm.clone() / other.denom);
-            self.numer = lhs_numer + rhs_numer;
-            self.denom = lcm;
+            if self.denom == other.denom {
+                self.numer += other.numer
+            } else {
+                let lcm = self.denom.lcm(&other.denom.clone());
+                let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+                let rhs_numer = other.numer * (lcm.clone() / other.denom);
+                self.numer = lhs_numer + rhs_numer;
+                self.denom = lcm;
+            }
             self.reduce();
         }
     }
@@ -533,22 +537,30 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> RemAssign for Ratio<T> {
         fn rem_assign(&mut self, other: Ratio<T>) {
-            let lcm = self.denom.lcm(&other.denom.clone());
-            let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
-            let rhs_numer = other.numer * (lcm.clone() / other.denom);
-            self.numer = lhs_numer % rhs_numer;
-            self.denom = lcm;
+            if self.denom == other.denom {
+                self.numer %= other.numer
+            } else {
+                let lcm = self.denom.lcm(&other.denom.clone());
+                let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+                let rhs_numer = other.numer * (lcm.clone() / other.denom);
+                self.numer = lhs_numer % rhs_numer;
+                self.denom = lcm;
+            }
             self.reduce();
         }
     }
 
     impl<T: Clone + Integer + NumAssign> SubAssign for Ratio<T> {
         fn sub_assign(&mut self, other: Ratio<T>) {
-            let lcm = self.denom.lcm(&other.denom.clone());
-            let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
-            let rhs_numer = other.numer * (lcm.clone() / other.denom);
-            self.numer = lhs_numer - rhs_numer;
-            self.denom = lcm;
+            if self.denom == other.denom {
+                self.numer -= other.numer
+            } else {
+                let lcm = self.denom.lcm(&other.denom.clone());
+                let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+                let rhs_numer = other.numer * (lcm.clone() / other.denom);
+                self.numer = lhs_numer - rhs_numer;
+                self.denom = lcm;
+            }
             self.reduce();
         }
     }
@@ -757,6 +769,9 @@ macro_rules! arith_impl {
             type Output = Ratio<T>;
             #[inline]
             fn $method(self, rhs: Ratio<T>) -> Ratio<T> {
+                if self.denom == rhs.denom {
+                    return Ratio::new(self.numer.$method(rhs.numer), rhs.denom);
+                }
                 let lcm = self.denom.lcm(&rhs.denom.clone());
                 let lhs_numer = self.numer * (lcm.clone() / self.denom);
                 let rhs_numer = rhs.numer * (lcm.clone() / rhs.denom);
@@ -1337,6 +1352,7 @@ mod test {
     };
     pub const _1_2: Rational = Ratio { numer: 1, denom: 2 };
     pub const _3_2: Rational = Ratio { numer: 3, denom: 2 };
+    pub const _5_2: Rational = Ratio { numer: 5, denom: 2 };
     pub const _NEG1_2: Rational = Ratio {
         numer: -1,
         denom: 2,
@@ -1545,7 +1561,7 @@ mod test {
 
     mod arith {
         use super::super::{Ratio, Rational};
-        use super::{to_big, _0, _1, _1_2, _2, _3_2, _NEG1_2};
+        use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _NEG1_2};
         use core::fmt::Debug;
         use integer::Integer;
         use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
@@ -1801,6 +1817,8 @@ mod test {
             }
 
             test(_3_2, _1, _1_2);
+            test(_3_2, _1_2, _0);
+            test(_5_2, _3_2, _1);
             test(_2, _NEG1_2, _0);
             test(_1_2, _2, _1_2);
             test_assign(_3_2, 1, _1_2);
