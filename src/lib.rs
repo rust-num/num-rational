@@ -519,19 +519,31 @@ mod opassign {
         }
     }
 
+    // (a/b) / (c/d) = (a/gcd1)*(d/gcd2) / ((c/gcd1)*(b/gcd2))
+    // where gcd1 = gcd(a,c); gcd2 = gcd(b,d)
     impl<T: Clone + Integer + NumAssign> DivAssign for Ratio<T> {
         fn div_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom;
-            self.denom *= other.numer;
-            self.reduce();
+            let numer_gcd = self.numer.gcd(&other.numer.clone());
+            let denom_gcd = self.denom.gcd(&other.denom.clone());
+            self.numer /= numer_gcd.clone();
+            self.numer *= other.denom / denom_gcd.clone();
+            self.denom /= denom_gcd.clone();
+            self.denom *= other.numer / numer_gcd.clone();
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
+    // a/b * c/d = (a/gcd1)*(c/gcd2) / ((d/gcd1)*(b/gcd2))
+    // where gcd1 = gcd(a,d); gcd2 = gcd(b,c)
     impl<T: Clone + Integer + NumAssign> MulAssign for Ratio<T> {
         fn mul_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.numer;
-            self.denom *= other.denom;
-            self.reduce();
+            let gcd1 = self.numer.gcd(&other.denom.clone());
+            let gcd2 = self.denom.gcd(&other.numer.clone());
+            self.numer /= gcd1.clone();
+            self.numer *= other.numer / gcd2.clone();
+            self.denom /= gcd2;
+            self.denom *= other.denom / gcd1;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
@@ -575,15 +587,19 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> DivAssign<T> for Ratio<T> {
         fn div_assign(&mut self, other: T) {
-            self.denom *= other;
-            self.reduce();
+            let gcd = self.numer.gcd(&other);
+            self.numer /= gcd.clone();
+            self.denom *= other / gcd;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
     impl<T: Clone + Integer + NumAssign> MulAssign<T> for Ratio<T> {
         fn mul_assign(&mut self, other: T) {
-            self.numer *= other;
-            self.reduce();
+            let gcd = self.denom.gcd(&other);
+            self.denom /= gcd.clone();
+            self.numer *= other / gcd;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
@@ -720,7 +736,12 @@ where
     type Output = Ratio<T>;
     #[inline]
     fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
-        Ratio::new(self.numer * rhs.numer, self.denom * rhs.denom)
+        let gcd1 = self.numer.gcd(&rhs.denom.clone());
+        let gcd2 = self.denom.gcd(&rhs.numer.clone());
+        Ratio::new(
+            self.numer / gcd1.clone() * (rhs.numer / gcd2.clone()),
+            self.denom / gcd2 * (rhs.denom / gcd1),
+        )
     }
 }
 // a/b * c/1 = (a*c) / (b*1) = (a*c) / b
@@ -731,7 +752,8 @@ where
     type Output = Ratio<T>;
     #[inline]
     fn mul(self, rhs: T) -> Ratio<T> {
-        Ratio::new(self.numer * rhs, self.denom)
+        let gcd = self.denom.gcd(&rhs);
+        Ratio::new(self.numer * (rhs / gcd.clone()), self.denom / gcd.clone())
     }
 }
 
@@ -745,7 +767,12 @@ where
 
     #[inline]
     fn div(self, rhs: Ratio<T>) -> Ratio<T> {
-        Ratio::new(self.numer * rhs.denom, self.denom * rhs.numer)
+        let numer_gcd = self.numer.gcd(&rhs.numer);
+        let denom_gcd = self.denom.gcd(&rhs.denom);
+        Ratio::new(
+            self.numer / numer_gcd.clone() * (rhs.denom / denom_gcd.clone()),
+            self.denom / denom_gcd * (rhs.numer / numer_gcd),
+        )
     }
 }
 // (a/b) / (c/1) = (a*1) / (b*c) = a / (b*c)
@@ -757,7 +784,8 @@ where
 
     #[inline]
     fn div(self, rhs: T) -> Ratio<T> {
-        Ratio::new(self.numer, self.denom * rhs)
+        let gcd = self.numer.gcd(&rhs);
+        Ratio::new(self.numer / gcd.clone(), self.denom * (rhs / gcd))
     }
 }
 
@@ -1564,7 +1592,7 @@ mod test {
         use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _NEG1_2};
         use core::fmt::Debug;
         use integer::Integer;
-        use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+        use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
 
         #[test]
         fn test_add() {
@@ -1711,7 +1739,7 @@ mod test {
             test_sub_typed_overflow::<u64>();
             test_sub_typed_overflow::<usize>();
             #[cfg(has_u128)]
-            test_add_typed_overflow::<u128>();
+            test_sub_typed_overflow::<u128>();
 
             test_sub_typed_overflow::<i8>();
             test_sub_typed_overflow::<i16>();
@@ -1757,6 +1785,52 @@ mod test {
         }
 
         #[test]
+        fn test_mul_overflow() {
+            fn test_mul_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign,
+            {
+                // 1/big * 2/3 = 1/(max/4*3), where big is max/2
+                let two = T::one() + T::one();
+                let _3 = T::one() + T::one() + T::one();
+                // make big = max/2, but also divisible by 2
+                let big = T::max_value() / two.clone() / two.clone() * two.clone();
+                let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
+                let _2_3: Ratio<T> = Ratio::new(two.clone(), _3.clone());
+                let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
+                assert_eq!(expected.clone(), _1_big.clone() * _2_3.clone());
+                let mut tmp = _1_big.clone();
+                tmp *= _2_3;
+                assert_eq!(expected, tmp);
+
+                // big/3 * 3 = big/1
+                // make big = max/2, but make it indivisible by 3
+                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
+                let big_3 = Ratio::new(big.clone(), _3.clone());
+                let expected = Ratio::new(big.clone(), T::one());
+                assert_eq!(expected, big_3.clone() * _3.clone());
+                let mut tmp = big_3.clone();
+                tmp *= _3.clone();
+                assert_eq!(expected, tmp);
+            }
+            test_mul_typed_overflow::<u16>();
+            test_mul_typed_overflow::<u8>();
+            test_mul_typed_overflow::<u32>();
+            test_mul_typed_overflow::<u64>();
+            test_mul_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_mul_typed_overflow::<u128>();
+
+            test_mul_typed_overflow::<i8>();
+            test_mul_typed_overflow::<i16>();
+            test_mul_typed_overflow::<i32>();
+            test_mul_typed_overflow::<i64>();
+            test_mul_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_mul_typed_overflow::<i128>();
+        }
+
+        #[test]
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a / b, c);
@@ -1788,6 +1862,52 @@ mod test {
             test(_3_2, _1_2, _1 + _2);
             test(_1, _NEG1_2, _NEG1_2 + _NEG1_2 + _NEG1_2 + _NEG1_2);
             test_assign(_1, 2, _1_2);
+        }
+
+        #[test]
+        fn test_div_overflow() {
+            fn test_div_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign,
+            {
+                // 1/big / 3/2 = 1/(max/4*3), where big is max/2
+                let two = T::one() + T::one();
+                let _3 = T::one() + T::one() + T::one();
+                // big ~ max/2, and big is divisible by 2
+                let big = T::max_value() / two.clone() / two.clone() * two.clone();
+                let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
+                let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
+                let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
+                assert_eq!(expected.clone(), _1_big.clone() / _3_two.clone());
+                let mut tmp = _1_big.clone();
+                tmp /= _3_two;
+                assert_eq!(expected, tmp);
+
+                // 3/big / 3 = 1/big where big is max/2
+                // big ~ max/2, and big is not divisible by 3
+                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
+                let _3_big = Ratio::new(_3.clone(), big.clone());
+                let expected = Ratio::new(T::one(), big.clone());
+                assert_eq!(expected, _3_big.clone() / _3.clone());
+                let mut tmp = _3_big.clone();
+                tmp /= _3.clone();
+                assert_eq!(expected, tmp);
+            }
+            test_div_typed_overflow::<u8>();
+            test_div_typed_overflow::<u16>();
+            test_div_typed_overflow::<u32>();
+            test_div_typed_overflow::<u64>();
+            test_div_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_div_typed_overflow::<u128>();
+
+            test_div_typed_overflow::<i8>();
+            test_div_typed_overflow::<i16>();
+            test_div_typed_overflow::<i32>();
+            test_div_typed_overflow::<i64>();
+            test_div_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_div_typed_overflow::<i128>();
         }
 
         #[test]
