@@ -1637,36 +1637,18 @@ mod test {
             // Previously, this calculation would overflow.
             fn test_add_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug + CheckedAdd + CheckedMul,
+                T: Integer + Bounded + Clone + Debug + NumAssign,
             {
-                let _6 = T::one() + T::one() + T::one() + T::one() + T::one() + T::one();
                 let _1_max = Ratio::new(T::one(), T::max_value());
                 let _2_max = Ratio::new(T::one() + T::one(), T::max_value());
-                let _6_max = Ratio::new(_6, T::max_value());
                 assert_eq!(_1_max.clone() + _1_max.clone(), _2_max);
-                assert_eq!(_1_max.clone().checked_add(&_1_max), Some(_2_max.clone()));
                 assert_eq!(
-                    _1_max.clone()
-                        + _1_max.clone()
-                        + _1_max.clone()
-                        + _1_max.clone()
-                        + _1_max.clone()
-                        + _1_max.clone(),
-                    _6_max
-                );
-                assert_eq!(
-                    _1_max
-                        .clone()
-                        .checked_add(&_1_max)
-                        .unwrap()
-                        .checked_add(&_1_max)
-                        .unwrap()
-                        .checked_add(&_1_max)
-                        .unwrap()
-                        .checked_add(&_1_max)
-                        .unwrap()
-                        .checked_add(&_1_max),
-                    Some(_6_max.clone())
+                    {
+                        let mut tmp = _1_max.clone();
+                        tmp += _1_max.clone();
+                        tmp
+                    },
+                    _2_max.clone()
                 );
             }
             test_add_typed_overflow::<u8>();
@@ -1726,13 +1708,15 @@ mod test {
             // for each integer type. Previously, this calculation would overflow.
             fn test_sub_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug + CheckedSub + CheckedMul,
+                T: Integer + Bounded + Clone + Debug + NumAssign,
             {
                 let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
                 assert!(T::is_zero(&(_1_max.clone() - _1_max.clone()).numer));
-                assert!(T::is_zero(
-                    &(_1_max.clone().checked_sub(&_1_max).unwrap().numer)
-                ));
+                {
+                    let mut tmp: Ratio<T> = _1_max.clone();
+                    tmp -= _1_max.clone();
+                    assert!(T::is_zero(&tmp.numer));
+                }
             }
             test_sub_typed_overflow::<u8>();
             test_sub_typed_overflow::<u16>();
@@ -1802,9 +1786,11 @@ mod test {
                 assert!(catch_unwind(AssertUnwindSafe(|| big.clone() * _3.clone())).is_err());
                 let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
                 assert_eq!(expected.clone(), _1_big.clone() * _2_3.clone());
-                let mut tmp = _1_big.clone();
-                tmp *= _2_3;
-                assert_eq!(expected, tmp);
+                assert_eq!(expected, {
+                    let mut tmp = _1_big.clone();
+                    tmp *= _2_3;
+                    tmp
+                });
 
                 // big/3 * 3 = big/1
                 // make big = max/2, but make it indivisible by 3
@@ -1813,9 +1799,11 @@ mod test {
                 let big_3 = Ratio::new(big.clone(), _3.clone());
                 let expected = Ratio::new(big.clone(), T::one());
                 assert_eq!(expected, big_3.clone() * _3.clone());
-                let mut tmp = big_3.clone();
-                tmp *= _3.clone();
-                assert_eq!(expected, tmp);
+                assert_eq!(expected, {
+                    let mut tmp = big_3.clone();
+                    tmp *= _3.clone();
+                    tmp
+                });
             }
             test_mul_typed_overflow::<u16>();
             test_mul_typed_overflow::<u8>();
@@ -1885,9 +1873,11 @@ mod test {
                 let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
                 let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
                 assert_eq!(expected.clone(), _1_big.clone() / _3_two.clone());
-                let mut tmp = _1_big.clone();
-                tmp /= _3_two;
-                assert_eq!(expected, tmp);
+                assert_eq!(expected, {
+                    let mut tmp = _1_big.clone();
+                    tmp /= _3_two;
+                    tmp
+                });
 
                 // 3/big / 3 = 1/big where big is max/2
                 // big ~ max/2, and big is not divisible by 3
@@ -1896,9 +1886,11 @@ mod test {
                 let _3_big = Ratio::new(_3.clone(), big.clone());
                 let expected = Ratio::new(T::one(), big.clone());
                 assert_eq!(expected, _3_big.clone() / _3.clone());
-                let mut tmp = _3_big.clone();
-                tmp /= _3.clone();
-                assert_eq!(expected, tmp);
+                assert_eq!(expected, {
+                    let mut tmp = _3_big.clone();
+                    tmp /= _3.clone();
+                    tmp
+                });
             }
             test_div_typed_overflow::<u8>();
             test_div_typed_overflow::<u16>();
@@ -1953,15 +1945,23 @@ mod test {
 
         #[test]
         fn test_rem_overflow() {
-            // tests that Ratio(1,1) % Ratio(1, T::max_value()) equals 0
+            // tests that Ratio(1,2) % Ratio(1, T::max_value()) equals 0
             // for each integer type. Previously, this calculation would overflow.
             fn test_rem_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug,
+                T: Integer + Bounded + Clone + Debug + NumAssign,
             {
-                let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
-                let _1_1: Ratio<T> = Ratio::new(T::one(), T::one());
-                assert!(T::is_zero(&(_1_1 % _1_max.clone()).numer));
+                let two = T::one() + T::one();
+                //value near to maximum, but divisible by two
+                let max_div2 = T::max_value() / two.clone() * two.clone();
+                let _1_max: Ratio<T> = Ratio::new(T::one(), max_div2.clone());
+                let _1_two: Ratio<T> = Ratio::new(T::one(), two);
+                assert!(T::is_zero(&(_1_two.clone() % _1_max.clone()).numer));
+                {
+                    let mut tmp: Ratio<T> = _1_two.clone();
+                    tmp %= _1_max.clone();
+                    assert!(T::is_zero(&tmp.numer));
+                }
             }
             test_rem_typed_overflow::<u8>();
             test_rem_typed_overflow::<u16>();
