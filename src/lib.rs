@@ -1592,8 +1592,6 @@ mod test {
         use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _NEG1_2};
         use core::fmt::Debug;
         use integer::Integer;
-        #[cfg(feature = "std")]
-        use std::panic::{catch_unwind, AssertUnwindSafe};
         use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
 
         #[test]
@@ -1774,7 +1772,7 @@ mod test {
         fn test_mul_overflow() {
             fn test_mul_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug + NumAssign,
+                T: Integer + Bounded + Clone + Debug + NumAssign + CheckedMul,
             {
                 let two = T::one() + T::one();
                 let _3 = T::one() + T::one() + T::one();
@@ -1784,9 +1782,7 @@ mod test {
                 let big = T::max_value() / two.clone() / two.clone() * two.clone();
                 let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
                 let _2_3: Ratio<T> = Ratio::new(two.clone(), _3.clone());
-                if cfg!(std) {
-                    assert!(catch_unwind(AssertUnwindSafe(|| big.clone() * _3.clone())).is_err());
-                }
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
                 assert_eq!(expected.clone(), _1_big.clone() * _2_3.clone());
                 assert_eq!(expected, {
@@ -1798,9 +1794,7 @@ mod test {
                 // big/3 * 3 = big/1
                 // make big = max/2, but make it indivisible by 3
                 let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
-                if cfg!(std) {
-                    assert!(catch_unwind(AssertUnwindSafe(|| big.clone() * _3.clone())).is_err());
-                }
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let big_3 = Ratio::new(big.clone(), _3.clone());
                 let expected = Ratio::new(big.clone(), T::one());
                 assert_eq!(expected, big_3.clone() * _3.clone());
@@ -1865,7 +1859,7 @@ mod test {
         fn test_div_overflow() {
             fn test_div_typed_overflow<T>()
             where
-                T: Integer + Bounded + Clone + Debug + NumAssign,
+                T: Integer + Bounded + Clone + Debug + NumAssign + CheckedMul,
             {
                 let two = T::one() + T::one();
                 let _3 = T::one() + T::one() + T::one();
@@ -1873,9 +1867,7 @@ mod test {
                 // 1/big / 3/2 = 1/(max/4*3), where big is max/2
                 // big ~ max/2, and big is divisible by 2
                 let big = T::max_value() / two.clone() / two.clone() * two.clone();
-                if cfg!(std) {
-                    assert!(catch_unwind(AssertUnwindSafe(|| big.clone() * _3.clone())).is_err());
-                }
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
                 let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
                 let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
@@ -1889,9 +1881,7 @@ mod test {
                 // 3/big / 3 = 1/big where big is max/2
                 // big ~ max/2, and big is not divisible by 3
                 let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
-                if cfg!(std) {
-                    assert!(catch_unwind(AssertUnwindSafe(|| big.clone() * _3.clone())).is_err());
-                }
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let _3_big = Ratio::new(_3.clone(), big.clone());
                 let expected = Ratio::new(T::one(), big.clone());
                 assert_eq!(expected, _3_big.clone() / _3.clone());
