@@ -519,30 +519,28 @@ mod opassign {
         }
     }
 
-    // (a/b) / (c/d) = (a/gcd1)*(d/gcd2) / ((c/gcd1)*(b/gcd2))
-    // where gcd1 = gcd(a,c); gcd2 = gcd(b,d)
+    // (a/b) / (c/d) = (a/gcd_ac)*(d/gcd_bd) / ((c/gcd_ac)*(b/gcd_bd))
     impl<T: Clone + Integer + NumAssign> DivAssign for Ratio<T> {
         fn div_assign(&mut self, other: Ratio<T>) {
-            let numer_gcd = self.numer.gcd(&other.numer.clone());
-            let denom_gcd = self.denom.gcd(&other.denom.clone());
-            self.numer /= numer_gcd.clone();
-            self.numer *= other.denom / denom_gcd.clone();
-            self.denom /= denom_gcd.clone();
-            self.denom *= other.numer / numer_gcd.clone();
+            let gcd_ac = self.numer.gcd(&other.numer.clone());
+            let gcd_bd = self.denom.gcd(&other.denom.clone());
+            self.numer /= gcd_ac.clone();
+            self.numer *= other.denom / gcd_bd.clone();
+            self.denom /= gcd_bd.clone();
+            self.denom *= other.numer / gcd_ac.clone();
             self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
-    // a/b * c/d = (a/gcd1)*(c/gcd2) / ((d/gcd1)*(b/gcd2))
-    // where gcd1 = gcd(a,d); gcd2 = gcd(b,c)
+    // a/b * c/d = (a/gcd_ad)*(c/gcd_bc) / ((d/gcd_ad)*(b/gcd_bc))
     impl<T: Clone + Integer + NumAssign> MulAssign for Ratio<T> {
         fn mul_assign(&mut self, other: Ratio<T>) {
-            let gcd1 = self.numer.gcd(&other.denom.clone());
-            let gcd2 = self.denom.gcd(&other.numer.clone());
-            self.numer /= gcd1.clone();
-            self.numer *= other.numer / gcd2.clone();
-            self.denom /= gcd2;
-            self.denom *= other.denom / gcd1;
+            let gcd_ad = self.numer.gcd(&other.denom.clone());
+            let gcd_bc = self.denom.gcd(&other.numer.clone());
+            self.numer /= gcd_ad.clone();
+            self.numer *= other.numer / gcd_bc.clone();
+            self.denom /= gcd_bc;
+            self.denom *= other.denom / gcd_ad;
             self.reduce(); //TODO: remove this line. see #8.
         }
     }
@@ -728,7 +726,7 @@ macro_rules! forward_all_binop {
 
 // Arithmetic
 forward_all_binop!(impl Mul, mul);
-// a/b * c/d = (a*c)/(b*d)
+// a/b * c/d = (a/gcd_ad)*(c/gcd_bc) / ((d/gcd_ad)*(b/gcd_bc))
 impl<T> Mul<Ratio<T>> for Ratio<T>
 where
     T: Clone + Integer,
@@ -736,11 +734,11 @@ where
     type Output = Ratio<T>;
     #[inline]
     fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
-        let gcd1 = self.numer.gcd(&rhs.denom.clone());
-        let gcd2 = self.denom.gcd(&rhs.numer.clone());
+        let gcd_ad = self.numer.gcd(&rhs.denom.clone());
+        let gcd_bc = self.denom.gcd(&rhs.numer.clone());
         Ratio::new(
-            self.numer / gcd1.clone() * (rhs.numer / gcd2.clone()),
-            self.denom / gcd2 * (rhs.denom / gcd1),
+            self.numer / gcd_ad.clone() * (rhs.numer / gcd_bc.clone()),
+            self.denom / gcd_bc * (rhs.denom / gcd_ad),
         )
     }
 }
@@ -758,7 +756,7 @@ where
 }
 
 forward_all_binop!(impl Div, div);
-// (a/b) / (c/d) = (a*d) / (b*c)
+// (a/b) / (c/d) = (a/gcd_ac)*(d/gcd_bd) / ((c/gcd_ac)*(b/gcd_bd))
 impl<T> Div<Ratio<T>> for Ratio<T>
 where
     T: Clone + Integer,
@@ -767,11 +765,11 @@ where
 
     #[inline]
     fn div(self, rhs: Ratio<T>) -> Ratio<T> {
-        let numer_gcd = self.numer.gcd(&rhs.numer);
-        let denom_gcd = self.denom.gcd(&rhs.denom);
+        let gcd_ac = self.numer.gcd(&rhs.numer);
+        let gcd_bd = self.denom.gcd(&rhs.denom);
         Ratio::new(
-            self.numer / numer_gcd.clone() * (rhs.denom / denom_gcd.clone()),
-            self.denom / denom_gcd * (rhs.numer / numer_gcd),
+            self.numer / gcd_ac.clone() * (rhs.denom / gcd_bd.clone()),
+            self.denom / gcd_bd * (rhs.numer / gcd_ac),
         )
     }
 }
