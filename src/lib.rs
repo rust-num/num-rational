@@ -25,6 +25,8 @@
 extern crate std;
 
 use core::cmp;
+#[cfg(all(feature = "bigint", feature = "std"))]
+use core::convert::From;
 use core::fmt;
 use core::fmt::{Binary, Display, Formatter, LowerExp, LowerHex, Octal, UpperExp, UpperHex};
 use core::hash::{Hash, Hasher};
@@ -33,11 +35,15 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
+#[cfg(all(feature = "bigint", feature = "std"))]
+use num_bigint::ToBigInt;
 #[cfg(feature = "bigint")]
 use num_bigint::{BigInt, BigUint, Sign};
 
 use num_integer::Integer;
 use num_traits::float::FloatCore;
+#[cfg(all(feature = "bigint", feature = "std"))]
+use num_traits::ToPrimitive;
 use num_traits::{
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
     Pow, Signed, Zero,
@@ -1360,6 +1366,121 @@ where
     Some(Ratio::new(n1, d1))
 }
 
+#[cfg(all(feature = "bigint", feature = "std"))]
+impl<T: Clone + Integer + Signed + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
+    fn to_i64(&self) -> Option<i64> {
+        (self.numer.clone() / self.denom.clone()).to_i64()
+    }
+
+    #[cfg(has_i128)]
+    fn to_i128(&self) -> Option<i128> {
+        (self.numer.clone() / self.denom.clone()).to_i128()
+    }
+
+    fn to_u64(&self) -> Option<u64> {
+        (self.numer.clone() / self.denom.clone()).to_u64()
+    }
+
+    #[cfg(has_i128)]
+    fn to_u128(&self) -> Option<u128> {
+        (self.numer.clone() / self.denom.clone()).to_u128()
+    }
+
+    fn to_f64(&self) -> Option<f64> {
+        assert_eq!(
+            std::f64::RADIX,
+            2,
+            "only floating point implementations with radix 2 are supported"
+        );
+
+        // Inclusive upper bound to the range of exactly-representable ints in an f64.
+        const MAX_EXACT_INT: u64 = 1u64 << std::f64::MANTISSA_DIGITS;
+
+        let numer: T = self.numer().abs();
+        let denom: T = self.denom().abs();
+        let sign: T = self.numer().signum() * self.denom().signum();
+        let flo_sign = if sign.is_negative() { -1.0 } else { 1.0 };
+
+        if numer.is_zero() {
+            return Some(0.0 * flo_sign);
+        }
+
+        // Fast track: both sides can losslessly be converted to f64s. In this case, letting the
+        // FPU do the job is faster and easier. In any other case, converting to f64s may lead
+        // to an inexact result: https://stackoverflow.com/questions/56641441/.
+        if let (Some(n), Some(d)) = (numer.to_u64(), denom.to_u64()) {
+            if n <= MAX_EXACT_INT && d <= MAX_EXACT_INT {
+                return Some(flo_sign * n.to_f64().unwrap() / d.to_f64().unwrap());
+            }
+        }
+
+        // Otherwise, the goal is to obtain a quotient with at least 55 bits. 53 of these bits will
+        // be used as the mantissa of the resulting float, and the remaining two are for rounding.
+        // There's an error of up to 1 on the number of resulting bits, so we may get either 55 or
+        // 56 bits.
+        let mut numer = numer.to_bigint()?;
+        let mut denom = denom.to_bigint()?;
+        let (is_diff_positive, absolute_diff) = match numer.bits().checked_sub(denom.bits()) {
+            Some(diff) => (true, diff),
+            None => (false, denom.bits() - numer.bits()),
+        };
+
+        // Filter out overflows and underflows. After this step, the signed difference fits in an
+        // isize.
+        if is_diff_positive && absolute_diff > std::f64::MAX_EXP as usize {
+            return Some(std::f64::INFINITY * flo_sign);
+        }
+        if !is_diff_positive
+            && absolute_diff > -std::f64::MIN_EXP as usize + std::f64::MANTISSA_DIGITS as usize + 1
+        {
+            return Some(0.0 * flo_sign);
+        }
+        let diff = if is_diff_positive {
+            absolute_diff.to_isize().unwrap()
+        } else {
+            -absolute_diff.to_isize().unwrap()
+        };
+
+        // Shift is chosen so that the quotient will have 55 or 56 bits. The exception is if the
+        // quotient is going to be subnormal, in which case it may have fewer bits.
+        let shift: isize = std::cmp::max(diff, std::f64::MIN_EXP as isize)
+            - std::f64::MANTISSA_DIGITS as isize
+            - 2;
+        if shift >= 0 {
+            denom <<= shift as usize
+        } else {
+            numer <<= -shift as usize
+        };
+
+        let (quotient, remainder) = numer.div_rem(&denom);
+
+        // This is guaranteed to fit since we've set up quotient to be at most 56 bits.
+        let mut quotient = quotient.to_u64().unwrap();
+        let n_rounding_bits = {
+            let quotient_bits = 64 - quotient.leading_zeros() as isize;
+            let subnormal_bits = std::f64::MIN_EXP as isize - shift;
+            std::cmp::max(quotient_bits, subnormal_bits) - std::f64::MANTISSA_DIGITS as isize
+        } as usize;
+        debug_assert!(n_rounding_bits == 2 || n_rounding_bits == 3);
+        let rounding_bit_mask = (1u64 << n_rounding_bits) - 1;
+
+        // Round to 53 bits with round-to-even. For rounding, we need to take into account both
+        // our rounding bits and the division's remainder.
+        let ls_bit = quotient & (1u64 << n_rounding_bits) != 0;
+        let ms_rounding_bit = quotient & (1u64 << (n_rounding_bits - 1)) != 0;
+        let ls_rounding_bits = quotient & (rounding_bit_mask >> 1) != 0;
+        if ms_rounding_bit && (ls_bit || ls_rounding_bits || !remainder.is_zero()) {
+            quotient += 1u64 << n_rounding_bits;
+        }
+        quotient &= !rounding_bit_mask;
+
+        // The quotient is guaranteed to be exactly representable as it's now 53 bits + 2 or 3
+        // trailing zeros, so there is no risk of a rounding error here.
+        let q_float = quotient as f64;
+        Some(q_float * f64::exp2(shift as f64) * flo_sign)
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "std")]
 fn hash<T: Hash>(x: &T) -> u64 {
@@ -1372,6 +1493,8 @@ fn hash<T: Hash>(x: &T) -> u64 {
 
 #[cfg(test)]
 mod test {
+    #[cfg(all(feature = "bigint", feature = "std"))]
+    use super::BigInt;
     #[cfg(feature = "bigint")]
     use super::BigRational;
     use super::{Ratio, Rational, Rational64};
@@ -1381,6 +1504,8 @@ mod test {
     use core::isize;
     use core::str::FromStr;
     use num_integer::Integer;
+    #[cfg(all(feature = "bigint", feature = "std"))]
+    use num_traits::ToPrimitive;
     use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
 
     pub const _0: Rational = Ratio { numer: 0, denom: 1 };
@@ -2639,5 +2764,73 @@ mod test {
         let r = N.reduced();
         assert_eq!(r.numer(), &(123 / 3));
         assert_eq!(r.denom(), &(456 / 3));
+    }
+
+    #[test]
+    #[cfg(all(feature = "bigint", feature = "std"))]
+    fn test_ratio_to_i64() {
+        assert_eq!(5, Rational64::new(70, 14).to_u64().unwrap());
+        assert_eq!(-3, Rational64::new(-31, 8).to_i64().unwrap());
+        assert_eq!(None, Rational64::new(-31, 8).to_u64());
+    }
+
+    #[test]
+    #[cfg(all(feature = "bigint", feature = "std", has_i128))]
+    fn test_ratio_to_i128() {
+        assert_eq!(
+            1i128 << 70,
+            Ratio::<i128>::new(1i128 << 77, 1i128 << 7)
+                .to_i128()
+                .unwrap()
+        );
+    }
+
+    #[test]
+    #[cfg(all(feature = "bigint", feature = "std"))]
+    fn test_ratio_to_f64() {
+        assert_eq!(0.5f64, Rational64::new(1, 2).to_f64().unwrap());
+        assert_eq!(-0.5f64, Rational64::new(1, -2).to_f64().unwrap());
+        assert_eq!(0.0f64, Rational64::new(0, 2).to_f64().unwrap());
+        assert_eq!(-0.0f64, Rational64::new(0, -2).to_f64().unwrap());
+        assert_eq!(
+            8f64,
+            Rational64::new((1 << 57) + 1, 1 << 54).to_f64().unwrap()
+        );
+        assert_eq!(
+            1.0000000000000002f64,
+            Rational64::new((1 << 52) + 1, 1 << 52).to_f64().unwrap()
+        );
+        assert_eq!(
+            1.0000000000000002f64,
+            Rational64::new((1 << 60) + (1 << 8), 1 << 60)
+                .to_f64()
+                .unwrap()
+        );
+        assert_eq!(
+            BigRational::new(
+                "1234567890987654321234567890987654321234567890"
+                    .parse()
+                    .unwrap(),
+                "3".parse().unwrap()
+            )
+            .to_f64()
+            .unwrap(),
+            411522630329218100000000000000000000000000000f64
+        );
+        assert_eq!(
+            BigRational::new(1.into(), BigInt::one() << 1050,)
+                .to_f64()
+                .unwrap(),
+            0f64
+        );
+        assert_eq!(
+            BigRational::new(
+                "1234567890987654321234567890".parse().unwrap(),
+                "987654321234567890987654321".parse().unwrap()
+            )
+            .to_f64()
+            .unwrap(),
+            1.2499999893125f64
+        );
     }
 }
