@@ -837,9 +837,12 @@ where
 {
     #[inline]
     fn checked_mul(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
+        let gcd_ad = self.numer.gcd(&rhs.denom);
+        let gcd_bc = self.denom.gcd(&rhs.numer);
         Some(Ratio::new(
-            otry!(self.numer.checked_mul(&rhs.numer)),
-            otry!(self.denom.checked_mul(&rhs.denom)),
+            otry!((self.numer.clone() / gcd_ad.clone())
+                .checked_mul(&(rhs.numer.clone() / gcd_bc.clone()))),
+            otry!((self.denom.clone() / gcd_bc).checked_mul(&(rhs.denom.clone() / gcd_ad))),
         ))
     }
 }
@@ -851,12 +854,17 @@ where
 {
     #[inline]
     fn checked_div(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-        let bc = otry!(self.denom.checked_mul(&rhs.numer));
-        if bc.is_zero() {
-            None
-        } else {
-            Some(Ratio::new(otry!(self.numer.checked_mul(&rhs.denom)), bc))
+        let gcd_ac = self.numer.gcd(&rhs.numer);
+        let gcd_bd = self.denom.gcd(&rhs.denom);
+        let denom = otry!((self.denom.clone() / gcd_bd.clone())
+            .checked_mul(&(rhs.numer.clone() / gcd_ac.clone())));
+        if denom.is_zero() {
+            return None;
         }
+        Some(Ratio::new(
+            otry!((self.numer.clone() / gcd_ac).checked_mul(&(rhs.denom.clone() / gcd_bd))),
+            denom,
+        ))
     }
 }
 
@@ -1783,6 +1791,10 @@ mod test {
                 assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
                 assert_eq!(expected.clone(), _1_big.clone() * _2_3.clone());
+                assert_eq!(
+                    Some(expected.clone()),
+                    _1_big.clone().checked_mul(&_2_3.clone())
+                );
                 assert_eq!(expected, {
                     let mut tmp = _1_big.clone();
                     tmp *= _2_3;
@@ -1870,6 +1882,10 @@ mod test {
                 let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
                 let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
                 assert_eq!(expected.clone(), _1_big.clone() / _3_two.clone());
+                assert_eq!(
+                    Some(expected.clone()),
+                    _1_big.clone().checked_div(&_3_two.clone())
+                );
                 assert_eq!(expected, {
                     let mut tmp = _1_big.clone();
                     tmp /= _3_two;
