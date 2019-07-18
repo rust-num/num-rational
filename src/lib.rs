@@ -400,6 +400,9 @@ impl<T: Clone + Integer> Ord for Ratio<T> {
 
         // With equal numerators, the denominators can be inversely compared
         if self.numer == other.numer {
+            if self.numer.is_zero() {
+                return cmp::Ordering::Equal;
+            }
             let ord = self.denom.cmp(&other.denom);
             return if self.numer < T::zero() {
                 ord
@@ -1473,6 +1476,9 @@ mod test {
 
         assert!(_0 >= _0 && _1 >= _1);
         assert!(_1 >= _0 && !(_0 >= _1));
+
+        let _0_2: Rational = Ratio::new_raw(0, 2);
+        assert_eq!(_0, _0_2);
     }
 
     #[test]
