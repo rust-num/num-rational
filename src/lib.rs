@@ -509,7 +509,7 @@ mod opassign {
             if self.denom == other.denom {
                 self.numer += other.numer
             } else {
-                let lcm = self.denom.lcm(&other.denom.clone());
+                let lcm = self.denom.lcm(&other.denom);
                 let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
                 let rhs_numer = other.numer * (lcm.clone() / other.denom);
                 self.numer = lhs_numer + rhs_numer;
@@ -522,12 +522,12 @@ mod opassign {
     // (a/b) / (c/d) = (a/gcd_ac)*(d/gcd_bd) / ((c/gcd_ac)*(b/gcd_bd))
     impl<T: Clone + Integer + NumAssign> DivAssign for Ratio<T> {
         fn div_assign(&mut self, other: Ratio<T>) {
-            let gcd_ac = self.numer.gcd(&other.numer.clone());
-            let gcd_bd = self.denom.gcd(&other.denom.clone());
+            let gcd_ac = self.numer.gcd(&other.numer);
+            let gcd_bd = self.denom.gcd(&other.denom);
             self.numer /= gcd_ac.clone();
             self.numer *= other.denom / gcd_bd.clone();
-            self.denom /= gcd_bd.clone();
-            self.denom *= other.numer / gcd_ac.clone();
+            self.denom /= gcd_bd;
+            self.denom *= other.numer / gcd_ac;
             self.reduce(); //TODO: remove this line. see #8.
         }
     }
@@ -535,8 +535,8 @@ mod opassign {
     // a/b * c/d = (a/gcd_ad)*(c/gcd_bc) / ((d/gcd_ad)*(b/gcd_bc))
     impl<T: Clone + Integer + NumAssign> MulAssign for Ratio<T> {
         fn mul_assign(&mut self, other: Ratio<T>) {
-            let gcd_ad = self.numer.gcd(&other.denom.clone());
-            let gcd_bc = self.denom.gcd(&other.numer.clone());
+            let gcd_ad = self.numer.gcd(&other.denom);
+            let gcd_bc = self.denom.gcd(&other.numer);
             self.numer /= gcd_ad.clone();
             self.numer *= other.numer / gcd_bc.clone();
             self.denom /= gcd_bc;
@@ -550,7 +550,7 @@ mod opassign {
             if self.denom == other.denom {
                 self.numer %= other.numer
             } else {
-                let lcm = self.denom.lcm(&other.denom.clone());
+                let lcm = self.denom.lcm(&other.denom);
                 let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
                 let rhs_numer = other.numer * (lcm.clone() / other.denom);
                 self.numer = lhs_numer % rhs_numer;
@@ -565,7 +565,7 @@ mod opassign {
             if self.denom == other.denom {
                 self.numer -= other.numer
             } else {
-                let lcm = self.denom.lcm(&other.denom.clone());
+                let lcm = self.denom.lcm(&other.denom);
                 let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
                 let rhs_numer = other.numer * (lcm.clone() / other.denom);
                 self.numer = lhs_numer - rhs_numer;
@@ -734,8 +734,8 @@ where
     type Output = Ratio<T>;
     #[inline]
     fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
-        let gcd_ad = self.numer.gcd(&rhs.denom.clone());
-        let gcd_bc = self.denom.gcd(&rhs.numer.clone());
+        let gcd_ad = self.numer.gcd(&rhs.denom);
+        let gcd_bc = self.denom.gcd(&rhs.numer);
         Ratio::new(
             self.numer / gcd_ad.clone() * (rhs.numer / gcd_bc.clone()),
             self.denom / gcd_bc * (rhs.denom / gcd_ad),
@@ -751,7 +751,7 @@ where
     #[inline]
     fn mul(self, rhs: T) -> Ratio<T> {
         let gcd = self.denom.gcd(&rhs);
-        Ratio::new(self.numer * (rhs / gcd.clone()), self.denom / gcd.clone())
+        Ratio::new(self.numer * (rhs / gcd.clone()), self.denom / gcd)
     }
 }
 
@@ -798,7 +798,7 @@ macro_rules! arith_impl {
                 if self.denom == rhs.denom {
                     return Ratio::new(self.numer.$method(rhs.numer), rhs.denom);
                 }
-                let lcm = self.denom.lcm(&rhs.denom.clone());
+                let lcm = self.denom.lcm(&rhs.denom);
                 let lhs_numer = self.numer * (lcm.clone() / self.denom);
                 let rhs_numer = rhs.numer * (lcm.clone() / rhs.denom);
                 Ratio::new(lhs_numer.$method(rhs_numer), lcm)
@@ -874,7 +874,7 @@ macro_rules! checked_arith_impl {
         impl<T: Clone + Integer + CheckedMul + $imp> $imp for Ratio<T> {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-                let gcd = self.denom.clone().gcd(&rhs.denom.clone());
+                let gcd = self.denom.clone().gcd(&rhs.denom);
                 let lcm = otry!((self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom));
                 let lhs_numer = otry!((lcm.clone() / self.denom.clone()).checked_mul(&self.numer));
                 let rhs_numer = otry!((lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer));
