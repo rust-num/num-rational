@@ -385,7 +385,7 @@ impl<T: Clone + Integer> Ord for Ratio<T> {
 
         // With equal numerators, the denominators can be inversely compared
         if self.numer == other.numer {
-            if T::is_zero(self.numer()) {
+            if self.numer.is_zero() {
                 return cmp::Ordering::Equal;
             }
             let ord = self.denom.cmp(&other.denom);
