@@ -43,6 +43,7 @@ use num_traits::{
 };
 
 mod pow;
+use fmt::{Binary, Display, Formatter, LowerHex, Octal, UpperHex};
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -1000,16 +1001,136 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 }
 
 // String conversions
-impl<T> fmt::Display for Ratio<T>
+impl<T> Display for Ratio<T>
 where
-    T: fmt::Display + Eq + One,
+    T: Display + Clone + Integer,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.denom.is_one() {
-            write!(f, "{}", self.numer)
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        //write!(f,"{}", self.denom);
+        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let tmp = if self.denom.is_one() {
+            alloc::format!("{}", self.numer)
         } else {
-            write!(f, "{}/{}", self.numer, self.denom)
+            alloc::format!("{}/{}", self.numer, self.denom)
+        };
+        if non_negative {
+            f.pad_integral(non_negative, "", &tmp)
+        } else {
+            f.pad_integral(non_negative, "", &tmp[1..tmp.len()])
+        }
+    }
+    // fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    //     let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+    //     let tmp = if self.denom.is_one() {
+    //         std::format!("{}", self.numer)
+    //     } else {
+    //         std::format!("{}/{}", self.numer, self.denom)
+    //     };
+    //     if non_negative {
+    //         f.pad_integral(non_negative, "", &tmp)
+    //     } else {
+    //         f.pad_integral(non_negative, "", &tmp[1..tmp.len()])
+    //     }
+    // }
+}
+
+impl<T> Octal for Ratio<T>
+where
+    T: Octal + Clone + Integer,
+{
+    /// Renders as `numer/denom`. If denom=1, renders as numer.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let prefix = "0o";
+        let tmp = if self.denom.is_one() {
+            alloc::format!("{:o}", self.numer)
+        } else {
+            if f.alternate() {
+                alloc::format!("{:o}/{:#o}", self.numer, self.denom)
+            } else {
+                alloc::format!("{:o}/{:o}", self.numer, self.denom)
+            }
+        };
+        if non_negative {
+            f.pad_integral(non_negative, prefix, &tmp)
+        } else {
+            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
+        }
+    }
+}
+
+impl<T> Binary for Ratio<T>
+where
+    T: Binary + Clone + Integer,
+{
+    /// Renders as `numer/denom`. If denom=1, renders as numer.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let prefix = "0b";
+        let tmp = if self.denom.is_one() {
+            alloc::format!("{:b}", self.numer)
+        } else {
+            if f.alternate() {
+                alloc::format!("{:b}/{:#b}", self.numer, self.denom)
+            } else {
+                alloc::format!("{:b}/{:b}", self.numer, self.denom)
+            }
+        };
+        if non_negative {
+            f.pad_integral(non_negative, prefix, &tmp)
+        } else {
+            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
+        }
+    }
+}
+
+impl<T> LowerHex for Ratio<T>
+where
+    T: LowerHex + Clone + Integer,
+{
+    /// Renders as `numer/denom`. If denom=1, renders as numer.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let prefix = "0x";
+        let tmp = if self.denom.is_one() {
+            alloc::format!("{:x}", self.numer)
+        } else {
+            if f.alternate() {
+                alloc::format!("{:x}/{:#x}", self.numer, self.denom)
+            } else {
+                alloc::format!("{:x}/{:x}", self.numer, self.denom)
+            }
+        };
+        if non_negative {
+            f.pad_integral(non_negative, prefix, &tmp)
+        } else {
+            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
+        }
+    }
+}
+
+impl<T> UpperHex for Ratio<T>
+where
+    T: UpperHex + Clone + Integer,
+{
+    /// Renders as `numer/denom`. If denom=1, renders as numer.
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let prefix = "0x";
+        let tmp = if self.denom.is_one() {
+            alloc::format!("{:X}", self.numer)
+        } else {
+            if f.alternate() {
+                alloc::format!("{:X}/{:#X}", self.numer, self.denom)
+            } else {
+                alloc::format!("{:X}/{:X}", self.numer, self.denom)
+            }
+        };
+        if non_negative {
+            f.pad_integral(non_negative, prefix, &tmp)
+        } else {
+            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
         }
     }
 }
@@ -1560,11 +1681,27 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn test_show() {
-        use std::string::ToString;
-        assert_eq!(format!("{}", _2), "2".to_string());
-        assert_eq!(format!("{}", _1_2), "1/2".to_string());
-        assert_eq!(format!("{}", _0), "0".to_string());
-        assert_eq!(format!("{}", Ratio::from_integer(-2)), "-2".to_string());
+        // Test:
+        // :b :o :x, :X, :?
+        // alternate or not (#)
+        // positive and negative
+        // padding
+        // does not test precision (i.e. truncation)
+        assert_eq!(&format!("{}", _2), "2");
+        assert_eq!(&format!("{}", _1_2), "1/2");
+        assert_eq!(&format!("{:7}", _1_2), "    1/2"); //test padding
+        assert_eq!(&format!("{}", -_1_2), "-1/2"); // test negatives
+        assert_eq!(&format!("{:7}", -_1_2), "   -1/2"); //test padding and negatives
+        assert_eq!(&format!("{:07}", -_1_2), "-0001/2");
+        assert_eq!(&format!("{}", _0), "0");
+        assert_eq!(&format!("{}", Ratio::from_integer(-2)), "-2");
+        assert_eq!(&format!("{:b}", _2), "10");
+        assert_eq!(&format!("{:b}", _1_2), "1/10");
+        assert_eq!(&format!("{:b}", _0), "0");
+        assert_eq!(&format!("{:b}", Ratio::from_integer(2)), "10");
+        assert_eq!(&format!("{:#b}", _1_2), "0b1/0b10");
+        assert_eq!(&format!("{:010b}", _1_2), "0000001/10");
+        assert_eq!(&format!("{:#010b}", _1_2), "0b001/0b10");
     }
 
     mod arith {
