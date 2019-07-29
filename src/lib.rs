@@ -1003,20 +1003,14 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 // String conversions
 impl<T> Display for Ratio<T>
 where
-    T: Display + Clone + Integer,
+    T: Display + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = *self >= Self::zero();
-        let tmp = if self.denom.is_one() {
-            alloc::format!("{}", self.numer)
+        if self.denom.is_one() {
+            write!(f, "{}", self.numer)
         } else {
-            alloc::format!("{}/{}", self.numer, self.denom)
-        };
-        if non_negative {
-            f.pad_integral(non_negative, "", &tmp)
-        } else {
-            f.pad_integral(non_negative, "", &tmp[1..tmp.len()])
+            write!(f, "{}/{}", self.numer, self.denom)
         }
     }
 }
@@ -1675,9 +1669,7 @@ mod test {
         // does not test precision (i.e. truncation)
         assert_eq!(&format!("{}", _2), "2");
         assert_eq!(&format!("{}", _1_2), "1/2");
-        assert_eq!(&format!("{:7}", _1_2), "    1/2"); //test padding
         assert_eq!(&format!("{}", -_1_2), "-1/2"); // test negatives
-        assert_eq!(&format!("{:7}", -_1_2), "   -1/2"); //test padding and negatives
         assert_eq!(&format!("{:07}", -_1_2), "-0001/2");
         assert_eq!(&format!("{}", _0), "0");
         assert_eq!(&format!("{}", Ratio::from_integer(-2)), "-2");
