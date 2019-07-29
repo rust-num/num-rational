@@ -1007,8 +1007,7 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        //write!(f,"{}", self.denom);
-        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let non_negative = *self >= Self::zero();
         let tmp = if self.denom.is_one() {
             alloc::format!("{}", self.numer)
         } else {
@@ -1020,19 +1019,6 @@ where
             f.pad_integral(non_negative, "", &tmp[1..tmp.len()])
         }
     }
-    // fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-    //     let non_negative = !(self < &<Ratio<T> as Zero>::zero());
-    //     let tmp = if self.denom.is_one() {
-    //         std::format!("{}", self.numer)
-    //     } else {
-    //         std::format!("{}/{}", self.numer, self.denom)
-    //     };
-    //     if non_negative {
-    //         f.pad_integral(non_negative, "", &tmp)
-    //     } else {
-    //         f.pad_integral(non_negative, "", &tmp[1..tmp.len()])
-    //     }
-    // }
 }
 
 impl<T> Octal for Ratio<T>
@@ -1041,7 +1027,7 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let non_negative = *self >= Self::zero();
         let prefix = "0o";
         let tmp = if self.denom.is_one() {
             alloc::format!("{:o}", self.numer)
@@ -1066,7 +1052,7 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let non_negative = *self >= Self::zero();
         let prefix = "0b";
         let tmp = if self.denom.is_one() {
             alloc::format!("{:b}", self.numer)
@@ -1091,7 +1077,7 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let non_negative = *self >= Self::zero();
         let prefix = "0x";
         let tmp = if self.denom.is_one() {
             alloc::format!("{:x}", self.numer)
@@ -1116,7 +1102,7 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = !(self < &<Ratio<T> as Zero>::zero());
+        let non_negative = *self >= Self::zero();
         let prefix = "0x";
         let tmp = if self.denom.is_one() {
             alloc::format!("{:X}", self.numer)
