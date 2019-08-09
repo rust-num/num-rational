@@ -22,7 +22,7 @@
 
 
 #[cfg(feature = "std")]
-#[cfg_attr(test, macro_use)]
+#[macro_use]
 extern crate std;
 
 use core::cmp;
@@ -1026,12 +1026,12 @@ where
         let non_negative = *self >= Self::zero();
         let prefix = "0o";
         let tmp = if self.denom.is_one() {
-            std::format!("{:o}", self.numer)
+            format!("{:o}", self.numer)
         } else {
             if f.alternate() {
-                std::format!("{:o}/{:#o}", self.numer, self.denom)
+                format!("{:o}/{:#o}", self.numer, self.denom)
             } else {
-                std::format!("{:o}/{:o}", self.numer, self.denom)
+                format!("{:o}/{:o}", self.numer, self.denom)
             }
         };
         if non_negative {
@@ -1052,12 +1052,12 @@ where
         let non_negative = *self >= Self::zero();
         let prefix = "0b";
         let tmp = if self.denom.is_one() {
-            std::format!("{:b}", self.numer)
+            format!("{:b}", self.numer)
         } else {
             if f.alternate() {
-                std::format!("{:b}/{:#b}", self.numer, self.denom)
+                format!("{:b}/{:#b}", self.numer, self.denom)
             } else {
-                std::format!("{:b}/{:b}", self.numer, self.denom)
+                format!("{:b}/{:b}", self.numer, self.denom)
             }
         };
         if non_negative {
@@ -1078,12 +1078,12 @@ where
         let non_negative = *self >= Self::zero();
         let prefix = "0x";
         let tmp = if self.denom.is_one() {
-            std::format!("{:x}", self.numer)
+            format!("{:x}", self.numer)
         } else {
             if f.alternate() {
-                std::format!("{:x}/{:#x}", self.numer, self.denom)
+                format!("{:x}/{:#x}", self.numer, self.denom)
             } else {
-                std::format!("{:x}/{:x}", self.numer, self.denom)
+                format!("{:x}/{:x}", self.numer, self.denom)
             }
         };
         if non_negative {
@@ -1104,12 +1104,12 @@ where
         let non_negative = *self >= Self::zero();
         let prefix = "0x";
         let tmp = if self.denom.is_one() {
-            std::format!("{:X}", self.numer)
+            format!("{:X}", self.numer)
         } else {
             if f.alternate() {
-                std::format!("{:X}/{:#X}", self.numer, self.denom)
+                format!("{:X}/{:#X}", self.numer, self.denom)
             } else {
-                std::format!("{:X}/{:X}", self.numer, self.denom)
+                format!("{:X}/{:X}", self.numer, self.denom)
             }
         };
         if non_negative {
