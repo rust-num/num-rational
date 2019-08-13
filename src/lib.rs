@@ -1023,9 +1023,8 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = *self >= Self::zero();
         let prefix = "0o";
-        let tmp = if self.denom.is_one() {
+        let pre_pad = if self.denom.is_one() {
             format!("{:o}", self.numer)
         } else {
             if f.alternate() {
@@ -1034,11 +1033,7 @@ where
                 format!("{:o}/{:o}", self.numer, self.denom)
             }
         };
-        if non_negative {
-            f.pad_integral(non_negative, prefix, &tmp)
-        } else {
-            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
-        }
+        f.pad_integral(true, prefix, &pre_pad)
     }
 }
 
@@ -1049,9 +1044,8 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = *self >= Self::zero();
         let prefix = "0b";
-        let tmp = if self.denom.is_one() {
+        let pre_pad = if self.denom.is_one() {
             format!("{:b}", self.numer)
         } else {
             if f.alternate() {
@@ -1060,11 +1054,9 @@ where
                 format!("{:b}/{:b}", self.numer, self.denom)
             }
         };
-        if non_negative {
-            f.pad_integral(non_negative, prefix, &tmp)
-        } else {
-            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
-        }
+        // negative numbers are printed as two's compliment
+        // with no negative sign
+        f.pad_integral(true, prefix, &pre_pad)
     }
 }
 
@@ -1075,9 +1067,8 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = *self >= Self::zero();
         let prefix = "0x";
-        let tmp = if self.denom.is_one() {
+        let pre_pad = if self.denom.is_one() {
             format!("{:x}", self.numer)
         } else {
             if f.alternate() {
@@ -1086,11 +1077,7 @@ where
                 format!("{:x}/{:x}", self.numer, self.denom)
             }
         };
-        if non_negative {
-            f.pad_integral(non_negative, prefix, &tmp)
-        } else {
-            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
-        }
+        f.pad_integral(true, prefix, &pre_pad)
     }
 }
 
@@ -1101,9 +1088,8 @@ where
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let non_negative = *self >= Self::zero();
         let prefix = "0x";
-        let tmp = if self.denom.is_one() {
+        let pre_pad = if self.denom.is_one() {
             format!("{:X}", self.numer)
         } else {
             if f.alternate() {
@@ -1112,11 +1098,7 @@ where
                 format!("{:X}/{:X}", self.numer, self.denom)
             }
         };
-        if non_negative {
-            f.pad_integral(non_negative, prefix, &tmp)
-        } else {
-            f.pad_integral(non_negative, prefix, &tmp[1..tmp.len()])
-        }
+        f.pad_integral(true, prefix, &pre_pad)
     }
 }
 
@@ -1676,14 +1658,17 @@ mod test {
         assert_eq!(&format!("{}", _1_2), "1/2");
         assert_eq!(&format!("{}", -_1_2), "-1/2"); // test negatives
         assert_eq!(&format!("{}", _0), "0");
-        assert_eq!(&format!("{}", Ratio::from_integer(-2)), "-2");
+        assert_eq!(&format!("{}", -_2), "-2");
         assert_eq!(&format!("{:b}", _2), "10");
         assert_eq!(&format!("{:b}", _1_2), "1/10");
         assert_eq!(&format!("{:b}", _0), "0");
-        assert_eq!(&format!("{:b}", Ratio::from_integer(2)), "10");
+        assert_eq!(&format!("{:b}", _2), "10");
         assert_eq!(&format!("{:#b}", _1_2), "0b1/0b10");
         assert_eq!(&format!("{:010b}", _1_2), "0000001/10");
         assert_eq!(&format!("{:#010b}", _1_2), "0b001/0b10");
+        let half_i8: Ratio<i8> = Ratio::new(1_i8, 2_i8);
+        assert_eq!(&format!("{:b}", -half_i8), "11111111/10");
+        assert_eq!(&format!("{:#b}", -half_i8), "0b11111111/0b10");
     }
 
     mod arith {
