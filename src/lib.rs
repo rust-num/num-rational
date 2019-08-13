@@ -1426,7 +1426,26 @@ mod test {
         numer: -2,
         denom: 1,
     };
+    pub const _8: Rational = Ratio { numer: 8, denom: 1 };
+    pub const _15: Rational = Ratio {
+        numer: 15,
+        denom: 1,
+    };
+    pub const _16: Rational = Ratio {
+        numer: 16,
+        denom: 1,
+    };
+
     pub const _1_2: Rational = Ratio { numer: 1, denom: 2 };
+    pub const _1_8: Rational = Ratio { numer: 1, denom: 8 };
+    pub const _1_15: Rational = Ratio {
+        numer: 1,
+        denom: 15,
+    };
+    pub const _1_16: Rational = Ratio {
+        numer: 1,
+        denom: 16,
+    };
     pub const _3_2: Rational = Ratio { numer: 3, denom: 2 };
     pub const _5_2: Rational = Ratio { numer: 5, denom: 2 };
     pub const _NEG1_2: Rational = Ratio {
@@ -1662,13 +1681,43 @@ mod test {
         assert_eq!(&format!("{:b}", _2), "10");
         assert_eq!(&format!("{:b}", _1_2), "1/10");
         assert_eq!(&format!("{:b}", _0), "0");
-        assert_eq!(&format!("{:b}", _2), "10");
         assert_eq!(&format!("{:#b}", _1_2), "0b1/0b10");
         assert_eq!(&format!("{:010b}", _1_2), "0000001/10");
         assert_eq!(&format!("{:#010b}", _1_2), "0b001/0b10");
         let half_i8: Ratio<i8> = Ratio::new(1_i8, 2_i8);
         assert_eq!(&format!("{:b}", -half_i8), "11111111/10");
         assert_eq!(&format!("{:#b}", -half_i8), "0b11111111/0b10");
+
+        assert_eq!(&format!("{:o}", _8), "10");
+        assert_eq!(&format!("{:o}", _1_8), "1/10");
+        assert_eq!(&format!("{:o}", _0), "0");
+        assert_eq!(&format!("{:#o}", _1_8), "0o1/0o10");
+        assert_eq!(&format!("{:010o}", _1_8), "0000001/10");
+        assert_eq!(&format!("{:#010o}", _1_8), "0o001/0o10");
+        assert_eq!(&format!("{:o}", -half_i8), "377/2");
+        assert_eq!(&format!("{:#o}", -half_i8), "0o377/0o2");
+
+        assert_eq!(&format!("{:x}", _16), "10");
+        assert_eq!(&format!("{:x}", _15), "f");
+        assert_eq!(&format!("{:x}", _1_16), "1/10");
+        assert_eq!(&format!("{:x}", _1_15), "1/f");
+        assert_eq!(&format!("{:x}", _0), "0");
+        assert_eq!(&format!("{:#x}", _1_16), "0x1/0x10");
+        assert_eq!(&format!("{:010x}", _1_16), "0000001/10");
+        assert_eq!(&format!("{:#010x}", _1_16), "0x001/0x10");
+        assert_eq!(&format!("{:x}", -half_i8), "ff/2");
+        assert_eq!(&format!("{:#x}", -half_i8), "0xff/0x2");
+
+        assert_eq!(&format!("{:X}", _16), "10");
+        assert_eq!(&format!("{:X}", _15), "F");
+        assert_eq!(&format!("{:X}", _1_16), "1/10");
+        assert_eq!(&format!("{:X}", _1_15), "1/F");
+        assert_eq!(&format!("{:X}", _0), "0");
+        assert_eq!(&format!("{:#X}", _1_16), "0x1/0x10");
+        assert_eq!(&format!("{:010X}", _1_16), "0000001/10");
+        assert_eq!(&format!("{:#010X}", _1_16), "0x001/0x10");
+        assert_eq!(&format!("{:X}", -half_i8), "FF/2");
+        assert_eq!(&format!("{:#X}", -half_i8), "0xFF/0x2");
     }
 
     mod arith {
