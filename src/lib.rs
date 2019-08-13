@@ -68,6 +68,42 @@ pub type Rational64 = Ratio<i64>;
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
+macro_rules! maybe_const {
+    ($( $(#[$attr:meta])* pub fn $name:ident $args:tt -> $ret:ty $body:block )*) => {$(
+        #[cfg(has_const_fn)]
+        $(#[$attr])* pub const fn $name $args -> $ret $body
+
+        #[cfg(not(has_const_fn))]
+        $(#[$attr])* pub fn $name $args -> $ret $body
+    )*}
+}
+
+/// These method are `const` for Rust 1.31 and later.
+impl<T> Ratio<T> {
+    maybe_const! {
+        /// Creates a `Ratio` without checking for `denom == 0` or reducing.
+        #[inline]
+        pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
+            Ratio {
+                numer: numer,
+                denom: denom,
+            }
+        }
+
+        /// Gets an immutable reference to the numerator.
+        #[inline]
+        pub fn numer(&self) -> &T {
+            &self.numer
+        }
+
+        /// Gets an immutable reference to the denominator.
+        #[inline]
+        pub fn denom(&self) -> &T {
+            &self.denom
+        }
+    }
+}
+
 impl<T: Clone + Integer> Ratio<T> {
     /// Creates a new `Ratio`. Fails if `denom` is zero.
     #[inline]
@@ -86,31 +122,10 @@ impl<T: Clone + Integer> Ratio<T> {
         Ratio::new_raw(t, One::one())
     }
 
-    /// Creates a `Ratio` without checking for `denom == 0` or reducing.
-    #[inline]
-    pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
-        Ratio {
-            numer: numer,
-            denom: denom,
-        }
-    }
-
     /// Converts to an integer, rounding towards zero.
     #[inline]
     pub fn to_integer(&self) -> T {
         self.trunc().numer
-    }
-
-    /// Gets an immutable reference to the numerator.
-    #[inline]
-    pub fn numer<'a>(&'a self) -> &'a T {
-        &self.numer
-    }
-
-    /// Gets an immutable reference to the denominator.
-    #[inline]
-    pub fn denom<'a>(&'a self) -> &'a T {
-        &self.denom
     }
 
     /// Returns true if the rational number is an integer (denominator is 1).
@@ -385,6 +400,9 @@ impl<T: Clone + Integer> Ord for Ratio<T> {
 
         // With equal numerators, the denominators can be inversely compared
         if self.numer == other.numer {
+            if self.numer.is_zero() {
+                return cmp::Ordering::Equal;
+            }
             let ord = self.denom.cmp(&other.denom);
             return if self.numer < T::zero() {
                 ord
@@ -506,43 +524,71 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> AddAssign for Ratio<T> {
         fn add_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom.clone();
-            self.numer += self.denom.clone() * other.numer;
-            self.denom *= other.denom;
+            if self.denom == other.denom {
+                self.numer += other.numer
+            } else {
+                let lcm = self.denom.lcm(&other.denom);
+                let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+                let rhs_numer = other.numer * (lcm.clone() / other.denom);
+                self.numer = lhs_numer + rhs_numer;
+                self.denom = lcm;
+            }
             self.reduce();
         }
     }
 
+    // (a/b) / (c/d) = (a/gcd_ac)*(d/gcd_bd) / ((c/gcd_ac)*(b/gcd_bd))
     impl<T: Clone + Integer + NumAssign> DivAssign for Ratio<T> {
         fn div_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom;
-            self.denom *= other.numer;
-            self.reduce();
+            let gcd_ac = self.numer.gcd(&other.numer);
+            let gcd_bd = self.denom.gcd(&other.denom);
+            self.numer /= gcd_ac.clone();
+            self.numer *= other.denom / gcd_bd.clone();
+            self.denom /= gcd_bd;
+            self.denom *= other.numer / gcd_ac;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
+    // a/b * c/d = (a/gcd_ad)*(c/gcd_bc) / ((d/gcd_ad)*(b/gcd_bc))
     impl<T: Clone + Integer + NumAssign> MulAssign for Ratio<T> {
         fn mul_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.numer;
-            self.denom *= other.denom;
-            self.reduce();
+            let gcd_ad = self.numer.gcd(&other.denom);
+            let gcd_bc = self.denom.gcd(&other.numer);
+            self.numer /= gcd_ad.clone();
+            self.numer *= other.numer / gcd_bc.clone();
+            self.denom /= gcd_bc;
+            self.denom *= other.denom / gcd_ad;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
     impl<T: Clone + Integer + NumAssign> RemAssign for Ratio<T> {
         fn rem_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom.clone();
-            self.numer %= self.denom.clone() * other.numer;
-            self.denom *= other.denom;
+            if self.denom == other.denom {
+                self.numer %= other.numer
+            } else {
+                let lcm = self.denom.lcm(&other.denom);
+                let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+                let rhs_numer = other.numer * (lcm.clone() / other.denom);
+                self.numer = lhs_numer % rhs_numer;
+                self.denom = lcm;
+            }
             self.reduce();
         }
     }
 
     impl<T: Clone + Integer + NumAssign> SubAssign for Ratio<T> {
         fn sub_assign(&mut self, other: Ratio<T>) {
-            self.numer *= other.denom.clone();
-            self.numer -= self.denom.clone() * other.numer;
-            self.denom *= other.denom;
+            if self.denom == other.denom {
+                self.numer -= other.numer
+            } else {
+                let lcm = self.denom.lcm(&other.denom);
+                let lhs_numer = self.numer.clone() * (lcm.clone() / self.denom.clone());
+                let rhs_numer = other.numer * (lcm.clone() / other.denom);
+                self.numer = lhs_numer - rhs_numer;
+                self.denom = lcm;
+            }
             self.reduce();
         }
     }
@@ -557,15 +603,19 @@ mod opassign {
 
     impl<T: Clone + Integer + NumAssign> DivAssign<T> for Ratio<T> {
         fn div_assign(&mut self, other: T) {
-            self.denom *= other;
-            self.reduce();
+            let gcd = self.numer.gcd(&other);
+            self.numer /= gcd.clone();
+            self.denom *= other / gcd;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
     impl<T: Clone + Integer + NumAssign> MulAssign<T> for Ratio<T> {
         fn mul_assign(&mut self, other: T) {
-            self.numer *= other;
-            self.reduce();
+            let gcd = self.denom.gcd(&other);
+            self.denom /= gcd.clone();
+            self.numer *= other / gcd;
+            self.reduce(); //TODO: remove this line. see #8.
         }
     }
 
@@ -694,7 +744,7 @@ macro_rules! forward_all_binop {
 
 // Arithmetic
 forward_all_binop!(impl Mul, mul);
-// a/b * c/d = (a*c)/(b*d)
+// a/b * c/d = (a/gcd_ad)*(c/gcd_bc) / ((d/gcd_ad)*(b/gcd_bc))
 impl<T> Mul<Ratio<T>> for Ratio<T>
 where
     T: Clone + Integer,
@@ -702,7 +752,12 @@ where
     type Output = Ratio<T>;
     #[inline]
     fn mul(self, rhs: Ratio<T>) -> Ratio<T> {
-        Ratio::new(self.numer * rhs.numer, self.denom * rhs.denom)
+        let gcd_ad = self.numer.gcd(&rhs.denom);
+        let gcd_bc = self.denom.gcd(&rhs.numer);
+        Ratio::new(
+            self.numer / gcd_ad.clone() * (rhs.numer / gcd_bc.clone()),
+            self.denom / gcd_bc * (rhs.denom / gcd_ad),
+        )
     }
 }
 // a/b * c/1 = (a*c) / (b*1) = (a*c) / b
@@ -713,12 +768,13 @@ where
     type Output = Ratio<T>;
     #[inline]
     fn mul(self, rhs: T) -> Ratio<T> {
-        Ratio::new(self.numer * rhs, self.denom)
+        let gcd = self.denom.gcd(&rhs);
+        Ratio::new(self.numer * (rhs / gcd.clone()), self.denom / gcd)
     }
 }
 
 forward_all_binop!(impl Div, div);
-// (a/b) / (c/d) = (a*d) / (b*c)
+// (a/b) / (c/d) = (a/gcd_ac)*(d/gcd_bd) / ((c/gcd_ac)*(b/gcd_bd))
 impl<T> Div<Ratio<T>> for Ratio<T>
 where
     T: Clone + Integer,
@@ -727,7 +783,12 @@ where
 
     #[inline]
     fn div(self, rhs: Ratio<T>) -> Ratio<T> {
-        Ratio::new(self.numer * rhs.denom, self.denom * rhs.numer)
+        let gcd_ac = self.numer.gcd(&rhs.numer);
+        let gcd_bd = self.denom.gcd(&rhs.denom);
+        Ratio::new(
+            self.numer / gcd_ac.clone() * (rhs.denom / gcd_bd.clone()),
+            self.denom / gcd_bd * (rhs.numer / gcd_ac),
+        )
     }
 }
 // (a/b) / (c/1) = (a*1) / (b*c) = a / (b*c)
@@ -739,22 +800,26 @@ where
 
     #[inline]
     fn div(self, rhs: T) -> Ratio<T> {
-        Ratio::new(self.numer, self.denom * rhs)
+        let gcd = self.numer.gcd(&rhs);
+        Ratio::new(self.numer / gcd.clone(), self.denom * (rhs / gcd))
     }
 }
 
 macro_rules! arith_impl {
     (impl $imp:ident, $method:ident) => {
         forward_all_binop!(impl $imp, $method);
-        // Abstracts the a/b `op` c/d = (a*d `op` b*c) / (b*d) pattern
+        // Abstracts a/b `op` c/d = (a*lcm/b `op` c*lcm/d)/lcm where lcm = lcm(b,d)
         impl<T: Clone + Integer> $imp<Ratio<T>> for Ratio<T> {
             type Output = Ratio<T>;
             #[inline]
             fn $method(self, rhs: Ratio<T>) -> Ratio<T> {
-                Ratio::new(
-                    (self.numer * rhs.denom.clone()).$method(self.denom.clone() * rhs.numer),
-                    self.denom * rhs.denom,
-                )
+                if self.denom == rhs.denom {
+                    return Ratio::new(self.numer.$method(rhs.numer), rhs.denom);
+                }
+                let lcm = self.denom.lcm(&rhs.denom);
+                let lhs_numer = self.numer * (lcm.clone() / self.denom);
+                let rhs_numer = rhs.numer * (lcm.clone() / rhs.denom);
+                Ratio::new(lhs_numer.$method(rhs_numer), lcm)
             }
         }
         // Abstracts the a/b `op` c/1 = (a*1 `op` b*c) / (b*1) = (a `op` b*c) / b pattern
@@ -790,9 +855,12 @@ where
 {
     #[inline]
     fn checked_mul(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
+        let gcd_ad = self.numer.gcd(&rhs.denom);
+        let gcd_bc = self.denom.gcd(&rhs.numer);
         Some(Ratio::new(
-            otry!(self.numer.checked_mul(&rhs.numer)),
-            otry!(self.denom.checked_mul(&rhs.denom)),
+            otry!((self.numer.clone() / gcd_ad.clone())
+                .checked_mul(&(rhs.numer.clone() / gcd_bc.clone()))),
+            otry!((self.denom.clone() / gcd_bc).checked_mul(&(rhs.denom.clone() / gcd_ad))),
         ))
     }
 }
@@ -804,12 +872,17 @@ where
 {
     #[inline]
     fn checked_div(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-        let bc = otry!(self.denom.checked_mul(&rhs.numer));
-        if bc.is_zero() {
-            None
-        } else {
-            Some(Ratio::new(otry!(self.numer.checked_mul(&rhs.denom)), bc))
+        let gcd_ac = self.numer.gcd(&rhs.numer);
+        let gcd_bd = self.denom.gcd(&rhs.denom);
+        let denom = otry!((self.denom.clone() / gcd_bd.clone())
+            .checked_mul(&(rhs.numer.clone() / gcd_ac.clone())));
+        if denom.is_zero() {
+            return None;
         }
+        Some(Ratio::new(
+            otry!((self.numer.clone() / gcd_ac).checked_mul(&(rhs.denom.clone() / gcd_bd))),
+            denom,
+        ))
     }
 }
 
@@ -819,19 +892,20 @@ macro_rules! checked_arith_impl {
         impl<T: Clone + Integer + CheckedMul + $imp> $imp for Ratio<T> {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
-                let ad = otry!(self.numer.checked_mul(&rhs.denom));
-                let bc = otry!(self.denom.checked_mul(&rhs.numer));
-                let bd = otry!(self.denom.checked_mul(&rhs.denom));
-                Some(Ratio::new(otry!(ad.$method(&bc)), bd))
+                let gcd = self.denom.clone().gcd(&rhs.denom);
+                let lcm = otry!((self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom));
+                let lhs_numer = otry!((lcm.clone() / self.denom.clone()).checked_mul(&self.numer));
+                let rhs_numer = otry!((lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer));
+                Some(Ratio::new(otry!(lhs_numer.$method(&rhs_numer)), lcm))
             }
         }
     };
 }
 
-// a/b + c/d = (a*d + b*c)/(b*d)
+// a/b + c/d = (lcm/b*a + lcm/d*c)/lcm, where lcm = lcm(b,d)
 checked_arith_impl!(impl CheckedAdd, checked_add);
 
-// a/b - c/d = (a*d - b*c)/(b*d)
+// a/b - c/d = (lcm/b*a - lcm/d*c)/lcm, where lcm = lcm(b,d)
 checked_arith_impl!(impl CheckedSub, checked_sub);
 
 impl<T> Neg for Ratio<T>
@@ -893,6 +967,12 @@ impl<T: Clone + Integer> Zero for Ratio<T> {
     fn is_zero(&self) -> bool {
         self.numer.is_zero()
     }
+
+    #[inline]
+    fn set_zero(&mut self) {
+        self.numer.set_zero();
+        self.denom.set_one();
+    }
 }
 
 impl<T: Clone + Integer> One for Ratio<T> {
@@ -904,6 +984,12 @@ impl<T: Clone + Integer> One for Ratio<T> {
     #[inline]
     fn is_one(&self) -> bool {
         self.numer == self.denom
+    }
+
+    #[inline]
+    fn set_one(&mut self) {
+        self.numer.set_one();
+        self.denom.set_one();
     }
 }
 
@@ -1313,7 +1399,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
 mod test {
     #[cfg(feature = "bigint")]
     use super::BigRational;
-    use super::{Ratio, Rational};
+    use super::{Ratio, Rational, Rational64};
 
     use core::f64;
     use core::i32;
@@ -1330,6 +1416,7 @@ mod test {
     };
     pub const _1_2: Rational = Ratio { numer: 1, denom: 2 };
     pub const _3_2: Rational = Ratio { numer: 3, denom: 2 };
+    pub const _5_2: Rational = Ratio { numer: 5, denom: 2 };
     pub const _NEG1_2: Rational = Ratio {
         numer: -1,
         denom: 2,
@@ -1446,6 +1533,9 @@ mod test {
 
         assert!(_0 >= _0 && _1 >= _1);
         assert!(_1 >= _0 && !(_0 >= _1));
+
+        let _0_2: Rational = Ratio::new_raw(0, 2);
+        assert_eq!(_0, _0_2);
     }
 
     #[test]
@@ -1538,8 +1628,10 @@ mod test {
 
     mod arith {
         use super::super::{Ratio, Rational};
-        use super::{_0, _1, _1_2, _2, _3_2, _NEG1_2, to_big};
-        use traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+        use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _NEG1_2};
+        use core::fmt::Debug;
+        use integer::Integer;
+        use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
 
         #[test]
         fn test_add() {
@@ -1577,6 +1669,44 @@ mod test {
         }
 
         #[test]
+        fn test_add_overflow() {
+            // compares Ratio(1, T::max_value()) + Ratio(1, T::max_value())
+            // to Ratio(1+1, T::max_value()) for each integer type.
+            // Previously, this calculation would overflow.
+            fn test_add_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign,
+            {
+                let _1_max = Ratio::new(T::one(), T::max_value());
+                let _2_max = Ratio::new(T::one() + T::one(), T::max_value());
+                assert_eq!(_1_max.clone() + _1_max.clone(), _2_max);
+                assert_eq!(
+                    {
+                        let mut tmp = _1_max.clone();
+                        tmp += _1_max.clone();
+                        tmp
+                    },
+                    _2_max.clone()
+                );
+            }
+            test_add_typed_overflow::<u8>();
+            test_add_typed_overflow::<u16>();
+            test_add_typed_overflow::<u32>();
+            test_add_typed_overflow::<u64>();
+            test_add_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_add_typed_overflow::<u128>();
+
+            test_add_typed_overflow::<i8>();
+            test_add_typed_overflow::<i16>();
+            test_add_typed_overflow::<i32>();
+            test_add_typed_overflow::<i64>();
+            test_add_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_add_typed_overflow::<i128>();
+        }
+
+        #[test]
         fn test_sub() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a - b, c);
@@ -1608,6 +1738,39 @@ mod test {
             test(_3_2, _1_2, _1);
             test(_1, _NEG1_2, _3_2);
             test_assign(_1_2, 1, _NEG1_2);
+        }
+
+        #[test]
+        fn test_sub_overflow() {
+            // compares Ratio(1, T::max_value()) - Ratio(1, T::max_value()) to T::zero()
+            // for each integer type. Previously, this calculation would overflow.
+            fn test_sub_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign,
+            {
+                let _1_max: Ratio<T> = Ratio::new(T::one(), T::max_value());
+                assert!(T::is_zero(&(_1_max.clone() - _1_max.clone()).numer));
+                {
+                    let mut tmp: Ratio<T> = _1_max.clone();
+                    tmp -= _1_max.clone();
+                    assert!(T::is_zero(&tmp.numer));
+                }
+            }
+            test_sub_typed_overflow::<u8>();
+            test_sub_typed_overflow::<u16>();
+            test_sub_typed_overflow::<u32>();
+            test_sub_typed_overflow::<u64>();
+            test_sub_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_sub_typed_overflow::<u128>();
+
+            test_sub_typed_overflow::<i8>();
+            test_sub_typed_overflow::<i16>();
+            test_sub_typed_overflow::<i32>();
+            test_sub_typed_overflow::<i64>();
+            test_sub_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_sub_typed_overflow::<i128>();
         }
 
         #[test]
@@ -1645,6 +1808,63 @@ mod test {
         }
 
         #[test]
+        fn test_mul_overflow() {
+            fn test_mul_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign + CheckedMul,
+            {
+                let two = T::one() + T::one();
+                let _3 = T::one() + T::one() + T::one();
+
+                // 1/big * 2/3 = 1/(max/4*3), where big is max/2
+                // make big = max/2, but also divisible by 2
+                let big = T::max_value() / two.clone() / two.clone() * two.clone();
+                let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
+                let _2_3: Ratio<T> = Ratio::new(two.clone(), _3.clone());
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
+                let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
+                assert_eq!(expected.clone(), _1_big.clone() * _2_3.clone());
+                assert_eq!(
+                    Some(expected.clone()),
+                    _1_big.clone().checked_mul(&_2_3.clone())
+                );
+                assert_eq!(expected, {
+                    let mut tmp = _1_big.clone();
+                    tmp *= _2_3;
+                    tmp
+                });
+
+                // big/3 * 3 = big/1
+                // make big = max/2, but make it indivisible by 3
+                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
+                let big_3 = Ratio::new(big.clone(), _3.clone());
+                let expected = Ratio::new(big.clone(), T::one());
+                assert_eq!(expected, big_3.clone() * _3.clone());
+                assert_eq!(expected, {
+                    let mut tmp = big_3.clone();
+                    tmp *= _3.clone();
+                    tmp
+                });
+            }
+            test_mul_typed_overflow::<u16>();
+            test_mul_typed_overflow::<u8>();
+            test_mul_typed_overflow::<u32>();
+            test_mul_typed_overflow::<u64>();
+            test_mul_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_mul_typed_overflow::<u128>();
+
+            test_mul_typed_overflow::<i8>();
+            test_mul_typed_overflow::<i16>();
+            test_mul_typed_overflow::<i32>();
+            test_mul_typed_overflow::<i64>();
+            test_mul_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_mul_typed_overflow::<i128>();
+        }
+
+        #[test]
         fn test_div() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a / b, c);
@@ -1679,6 +1899,63 @@ mod test {
         }
 
         #[test]
+        fn test_div_overflow() {
+            fn test_div_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign + CheckedMul,
+            {
+                let two = T::one() + T::one();
+                let _3 = T::one() + T::one() + T::one();
+
+                // 1/big / 3/2 = 1/(max/4*3), where big is max/2
+                // big ~ max/2, and big is divisible by 2
+                let big = T::max_value() / two.clone() / two.clone() * two.clone();
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
+                let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
+                let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
+                let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
+                assert_eq!(expected.clone(), _1_big.clone() / _3_two.clone());
+                assert_eq!(
+                    Some(expected.clone()),
+                    _1_big.clone().checked_div(&_3_two.clone())
+                );
+                assert_eq!(expected, {
+                    let mut tmp = _1_big.clone();
+                    tmp /= _3_two;
+                    tmp
+                });
+
+                // 3/big / 3 = 1/big where big is max/2
+                // big ~ max/2, and big is not divisible by 3
+                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
+                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
+                let _3_big = Ratio::new(_3.clone(), big.clone());
+                let expected = Ratio::new(T::one(), big.clone());
+                assert_eq!(expected, _3_big.clone() / _3.clone());
+                assert_eq!(expected, {
+                    let mut tmp = _3_big.clone();
+                    tmp /= _3.clone();
+                    tmp
+                });
+            }
+            test_div_typed_overflow::<u8>();
+            test_div_typed_overflow::<u16>();
+            test_div_typed_overflow::<u32>();
+            test_div_typed_overflow::<u64>();
+            test_div_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_div_typed_overflow::<u128>();
+
+            test_div_typed_overflow::<i8>();
+            test_div_typed_overflow::<i16>();
+            test_div_typed_overflow::<i32>();
+            test_div_typed_overflow::<i64>();
+            test_div_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_div_typed_overflow::<i128>();
+        }
+
+        #[test]
         fn test_rem() {
             fn test(a: Rational, b: Rational, c: Rational) {
                 assert_eq!(a % b, c);
@@ -1705,9 +1982,48 @@ mod test {
             }
 
             test(_3_2, _1, _1_2);
+            test(_3_2, _1_2, _0);
+            test(_5_2, _3_2, _1);
             test(_2, _NEG1_2, _0);
             test(_1_2, _2, _1_2);
             test_assign(_3_2, 1, _1_2);
+        }
+
+        #[test]
+        fn test_rem_overflow() {
+            // tests that Ratio(1,2) % Ratio(1, T::max_value()) equals 0
+            // for each integer type. Previously, this calculation would overflow.
+            fn test_rem_typed_overflow<T>()
+            where
+                T: Integer + Bounded + Clone + Debug + NumAssign,
+            {
+                let two = T::one() + T::one();
+                //value near to maximum, but divisible by two
+                let max_div2 = T::max_value() / two.clone() * two.clone();
+                let _1_max: Ratio<T> = Ratio::new(T::one(), max_div2.clone());
+                let _1_two: Ratio<T> = Ratio::new(T::one(), two);
+                assert!(T::is_zero(&(_1_two.clone() % _1_max.clone()).numer));
+                {
+                    let mut tmp: Ratio<T> = _1_two.clone();
+                    tmp %= _1_max.clone();
+                    assert!(T::is_zero(&tmp.numer));
+                }
+            }
+            test_rem_typed_overflow::<u8>();
+            test_rem_typed_overflow::<u16>();
+            test_rem_typed_overflow::<u32>();
+            test_rem_typed_overflow::<u64>();
+            test_rem_typed_overflow::<usize>();
+            #[cfg(has_u128)]
+            test_rem_typed_overflow::<u128>();
+
+            test_rem_typed_overflow::<i8>();
+            test_rem_typed_overflow::<i16>();
+            test_rem_typed_overflow::<i32>();
+            test_rem_typed_overflow::<i64>();
+            test_rem_typed_overflow::<isize>();
+            #[cfg(has_i128)]
+            test_rem_typed_overflow::<i128>();
         }
 
         #[test]
@@ -2032,5 +2348,46 @@ mod test {
         let products = iter_products(&nums[..]);
         assert_eq!(products[0], products[1]);
         assert_eq!(products[0], products[2]);
+    }
+
+    #[test]
+    fn test_num_zero() {
+        let zero = Rational64::zero();
+        assert!(zero.is_zero());
+
+        let mut r = Rational64::new(123, 456);
+        assert!(!r.is_zero());
+        assert_eq!(&r + &zero, r);
+
+        r.set_zero();
+        assert!(r.is_zero());
+    }
+
+    #[test]
+    fn test_num_one() {
+        let one = Rational64::one();
+        assert!(one.is_one());
+
+        let mut r = Rational64::new(123, 456);
+        assert!(!r.is_one());
+        assert_eq!(&r * &one, r);
+
+        r.set_one();
+        assert!(r.is_one());
+    }
+
+    #[cfg(has_const_fn)]
+    #[test]
+    fn test_const() {
+        const N: Ratio<i32> = Ratio::new_raw(123, 456);
+        const N_NUMER: &i32 = N.numer();
+        const N_DENOM: &i32 = N.denom();
+
+        assert_eq!(N_NUMER, &123);
+        assert_eq!(N_DENOM, &456);
+
+        let r = N.reduced();
+        assert_eq!(r.numer(), &(123 / 3));
+        assert_eq!(r.denom(), &(456 / 3));
     }
 }

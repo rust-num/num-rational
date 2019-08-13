@@ -1,3 +1,11 @@
+# Release 0.2.2 (2019-06-10)
+
+- [`Ratio` now implements `Zero::set_zero` and `One::set_one`][47].
+
+**Contributors**: @cuviper, @ignatenkobrain, @vks
+
+[47]: https://github.com/rust-num/num-rational/pull/47
+
 # Release 0.2.1 (2018-06-22)
 
 - Maintenance release to fix `html_root_url`.
