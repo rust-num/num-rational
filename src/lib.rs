@@ -1019,7 +1019,7 @@ where
 #[cfg(feature = "std")]
 impl<T> Octal for Ratio<T>
 where
-    T: Octal + Clone + Integer,
+    T: Octal + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -1040,7 +1040,7 @@ where
 #[cfg(feature = "std")]
 impl<T> Binary for Ratio<T>
 where
-    T: Binary + Clone + Integer,
+    T: Binary + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -1063,7 +1063,7 @@ where
 #[cfg(feature = "std")]
 impl<T> LowerHex for Ratio<T>
 where
-    T: LowerHex + Clone + Integer,
+    T: LowerHex + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -1084,7 +1084,7 @@ where
 #[cfg(feature = "std")]
 impl<T> UpperHex for Ratio<T>
 where
-    T: UpperHex + Clone + Integer,
+    T: UpperHex + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
