@@ -14,7 +14,7 @@ build = "build.rs"
 exclude = ["/ci/*", "/.travis.yml", "/bors.toml"]
 
 [package.metadata.docs.rs]
-features = ["std", "bigint-std", "serde"]
+features = ["std", "bigint-std", "serde", "quickcheck"]
 
 [dependencies]
 
@@ -34,6 +34,11 @@ default-features = false
 [dependencies.serde]
 optional = true
 version = "1.0.0"
+default-features = false
+
+[dependencies.quickcheck]
+optional = true
+version = "0.9.0"
 default-features = false
 
 [features]

@@ -21,6 +21,8 @@
 extern crate num_bigint as bigint;
 #[cfg(feature = "serde")]
 extern crate serde;
+#[cfg(feature = "quickcheck")]
+extern crate quickcheck;
 
 extern crate num_integer as integer;
 extern crate num_traits as traits;
@@ -46,6 +48,9 @@ use traits::{
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
     Pow, Signed, Zero,
 };
+
+#[cfg(feature = "quickcheck")]
+use quickcheck::{Arbitrary, Gen};
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -251,6 +256,17 @@ impl<T: Clone + Integer> Ratio<T> {
     #[inline]
     pub fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer.clone() % self.denom.clone(), self.denom.clone())
+    }
+}
+
+#[cfg(feature = "quickcheck")]
+impl<T:Arbitrary + Zero> Arbitrary<Ratio<T>> {
+    fn arbitrary<G: gen>(g: &mut G) -> Ratio<T> {
+        let denom = T::arbitrary(g: &mut G);
+        while denom.is_zero() {
+            denom = T::arbitrary(g: &mut G);
+        }
+        Ratio::new(T::arbitrary(), denom);
     }
 }
 
