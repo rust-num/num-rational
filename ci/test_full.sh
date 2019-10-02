@@ -8,7 +8,7 @@ FEATURES="std bigint-std serde"
 if [[ "$TRAVIS_RUST_VERSION" =~ ^(nightly|beta|stable|1.26.0|1.31.0)$ ]]; then
   FEATURES="$FEATURES i128"
 fi
-if [[ "$TRAVIS_RUST_VERSION" =~ ^(nightly|beta|stable|1.31.0)$ ]]; then
+if [[ "$TRAVIS_RUST_VERSION" =~ ^(nightly|beta|stable)$ ]]; then
   FEATURES="$FEATURES quickcheck"
 fi
 
