@@ -22,7 +22,6 @@ extern crate num_bigint as bigint;
 #[cfg(feature = "serde")]
 extern crate serde;
 #[cfg(feature = "quickcheck")]
-#[cfg(feature = "std")]
 extern crate quickcheck;
 
 extern crate num_integer as integer;
@@ -51,12 +50,7 @@ use traits::{
 };
 
 #[cfg(feature = "quickcheck")]
-#[cfg(feature = "std")]
 use quickcheck::{Arbitrary, Gen};
-
-#[cfg(feature = "quickcheck")]
-#[cfg(feature = "std")]
-use std::boxed::Box;
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
@@ -266,7 +260,6 @@ impl<T: Clone + Integer> Ratio<T> {
 }
 
 #[cfg(feature = "quickcheck")]
-#[cfg(feature = "std")]
 impl<T:Arbitrary + Integer> Arbitrary for Ratio<T> {
     fn arbitrary<G: Gen>(g: &mut G) -> Ratio<T> {
         let mut denom = T::arbitrary(g);
@@ -276,14 +269,15 @@ impl<T:Arbitrary + Integer> Arbitrary for Ratio<T> {
         Ratio::new(T::arbitrary(g), denom)
     }
 
-    fn shrink(&self) -> Box<dyn Iterator<Item = Ratio<T>>> {
+    #[cfg(feature = "std")]
+    fn shrink(&self) -> std::boxed::Box<dyn Iterator<Item = Ratio<T>>> {
         let numer = self.numer.shrink().next().unwrap_or(T::zero());
         let denom = if self.denom.is_one() {
             self.denom.clone()
         } else {
             self.denom.shrink().next().unwrap_or(T::one())
         };
-        Box::new(std::iter::once(Ratio::new(numer, denom)))
+        std::boxed::Box::new(std::iter::once(Ratio::new(numer, denom)))
     }
 }
 
