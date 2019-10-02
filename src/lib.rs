@@ -19,10 +19,10 @@
 
 #[cfg(feature = "bigint")]
 extern crate num_bigint as bigint;
-#[cfg(feature = "serde")]
-extern crate serde;
 #[cfg(feature = "quickcheck")]
 extern crate quickcheck;
+#[cfg(feature = "serde")]
+extern crate serde;
 
 extern crate num_integer as integer;
 extern crate num_traits as traits;
@@ -260,7 +260,7 @@ impl<T: Clone + Integer> Ratio<T> {
 }
 
 #[cfg(feature = "quickcheck")]
-impl<T:Arbitrary + Integer> Arbitrary for Ratio<T> {
+impl<T: Arbitrary + Integer> Arbitrary for Ratio<T> {
     fn arbitrary<G: Gen>(g: &mut G) -> Ratio<T> {
         let mut denom = T::arbitrary(g);
         while denom.is_zero() {
