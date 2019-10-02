@@ -270,7 +270,7 @@ impl<T:Arbitrary + Integer> Arbitrary for Ratio<T> {
     }
 
     #[cfg(feature = "std")]
-    fn shrink(&self) -> std::boxed::Box<dyn Iterator<Item = Ratio<T>>> {
+    fn shrink(&self) -> std::boxed::Box<Iterator<Item = Ratio<T>>> {
         let numer = self.numer.shrink().next().unwrap_or(T::zero());
         let denom = if self.denom.is_one() {
             self.denom.clone()
