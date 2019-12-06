@@ -1017,8 +1017,8 @@ where
 }
 
 macro_rules! impl_formatting {
-    ($trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
-        impl<T: $trait + PartialEq + One> $trait for Ratio<T> {
+    ($fmt_trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
+        impl<T: $fmt_trait + PartialEq + One> $fmt_trait for Ratio<T> {
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
                 let pre_pad = if self.denom.is_one() {
                     format!($fmt_str, self.numer)
@@ -1666,19 +1666,22 @@ mod test {
         assert_eq!(&format!("{:X}", -half_i8), "FF/2");
         assert_eq!(&format!("{:#X}", -half_i8), "0xFF/0x2");
 
-        assert_eq!(&format!("{:e}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1e0");
-        assert_eq!(&format!("{:#e}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1e0");
-        assert_eq!(&format!("{:e}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1e3");
-        assert_eq!(&format!("{:#e}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1e3");
-        assert_eq!(&format!("{:e}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1e3/7e0");
-        assert_eq!(&format!("{:#e}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1e3/7e0");
+        let _one_tehth_1_f = Ratio{numer:0.1_f32, denom:1.0_f32};
+        let _1000_f = Ratio{numer:1000.0_f32, denom:1.0_f32};
+        let _1_big_f = Ratio{numer:1.0_f32, denom:std::f32::MAX};
+        assert_eq!(&format!("{:e}", _one_tehth_1_f ), "1e-1");
+        assert_eq!(&format!("{:#e}", _one_tehth_1_f), "1e-1");
+        assert_eq!(&format!("{:e}", _1000_f), "1e3");
+        assert_eq!(&format!("{:#e}", _1000_f), "1e3");
+        assert_eq!(&format!("{:e}", _1_big_f), "1e0/3.4028235e38");
+        assert_eq!(&format!("{:#e}", _1_big_f), "1e0/3.4028235e38");
 
-        assert_eq!(&format!("{:E}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1E0");
-        assert_eq!(&format!("{:#E}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1E0");
-        assert_eq!(&format!("{:E}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1E3");
-        assert_eq!(&format!("{:#E}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1E3");
-        assert_eq!(&format!("{:E}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1E3/7E0");
-        assert_eq!(&format!("{:#E}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1E3/7E0");
+        assert_eq!(&format!("{:E}", _one_tehth_1_f), "1E-1");
+        assert_eq!(&format!("{:#E}", _one_tehth_1_f), "1E-1");
+        assert_eq!(&format!("{:E}", _1000_f), "1E3");
+        assert_eq!(&format!("{:#E}", _1000_f), "1E3");
+        assert_eq!(&format!("{:E}", _1_big_f), "1E0/3.4028235E38");
+        assert_eq!(&format!("{:#E}", _1_big_f), "1E0/3.4028235E38");
     }
 
     mod arith {
