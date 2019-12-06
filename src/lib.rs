@@ -1032,7 +1032,6 @@ macro_rules! impl_formatting {
                 f.pad_integral(true, $prefix, &pre_pad)
             }
         }
-        
     };
 }
 
@@ -1666,10 +1665,19 @@ mod test {
         assert_eq!(&format!("{:X}", -half_i8), "FF/2");
         assert_eq!(&format!("{:#X}", -half_i8), "0xFF/0x2");
 
-        let _one_tehth_1_f = Ratio{numer:0.1_f32, denom:1.0_f32};
-        let _1000_f = Ratio{numer:1000.0_f32, denom:1.0_f32};
-        let _1_big_f = Ratio{numer:1.0_f32, denom:3.14159e38};
-        assert_eq!(&format!("{:e}", _one_tehth_1_f ), "1e-1");
+        let _one_tehth_1_f = Ratio {
+            numer: 0.1_f32,
+            denom: 1.0_f32,
+        };
+        let _1000_f = Ratio {
+            numer: 1000.0_f32,
+            denom: 1.0_f32,
+        };
+        let _1_big_f = Ratio {
+            numer: 1.0_f32,
+            denom: 3.14159e38,
+        };
+        assert_eq!(&format!("{:e}", _one_tehth_1_f), "1e-1");
         assert_eq!(&format!("{:#e}", _one_tehth_1_f), "1e-1");
         assert_eq!(&format!("{:e}", _1000_f), "1e3");
         assert_eq!(&format!("{:#e}", _1000_f), "1e3");
