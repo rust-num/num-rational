@@ -1016,91 +1016,38 @@ where
     }
 }
 
-#[cfg(feature = "std")]
-impl<T> Octal for Ratio<T>
-where
-    T: Octal + Eq + One,
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let prefix = "0o";
-        let pre_pad = if self.denom.is_one() {
-            format!("{:o}", self.numer)
-        } else {
-            if f.alternate() {
-                format!("{:o}/{:#o}", self.numer, self.denom)
-            } else {
-                format!("{:o}/{:o}", self.numer, self.denom)
+macro_rules! impl_formatting {
+    ($trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
+        impl<T: $trait + PartialEq + One> $trait for Ratio<T> {
+            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+                let pre_pad = if self.denom.is_one() {
+                    format!($fmt_str, self.numer)
+                } else {
+                    if f.alternate() {
+                        format!(concat!($fmt_str, "/", $fmt_alt), self.numer, self.denom)
+                    } else {
+                        format!(concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
+                    }
+                };
+                f.pad_integral(true, $prefix, &pre_pad)
             }
-        };
-        f.pad_integral(true, prefix, &pre_pad)
-    }
+        }
+        
+    };
 }
 
 #[cfg(feature = "std")]
-impl<T> Binary for Ratio<T>
-where
-    T: Binary + Eq + One,
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let prefix = "0b";
-        let pre_pad = if self.denom.is_one() {
-            format!("{:b}", self.numer)
-        } else {
-            if f.alternate() {
-                format!("{:b}/{:#b}", self.numer, self.denom)
-            } else {
-                format!("{:b}/{:b}", self.numer, self.denom)
-            }
-        };
-        // negative numbers are printed as two's compliment
-        // with no negative sign
-        f.pad_integral(true, prefix, &pre_pad)
-    }
-}
-
+impl_formatting!(Octal, "0o", "{:o}", "{:#o}");
 #[cfg(feature = "std")]
-impl<T> LowerHex for Ratio<T>
-where
-    T: LowerHex + Eq + One,
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let prefix = "0x";
-        let pre_pad = if self.denom.is_one() {
-            format!("{:x}", self.numer)
-        } else {
-            if f.alternate() {
-                format!("{:x}/{:#x}", self.numer, self.denom)
-            } else {
-                format!("{:x}/{:x}", self.numer, self.denom)
-            }
-        };
-        f.pad_integral(true, prefix, &pre_pad)
-    }
-}
-
+impl_formatting!(Binary, "0b", "{:b}", "{:#b}");
 #[cfg(feature = "std")]
-impl<T> UpperHex for Ratio<T>
-where
-    T: UpperHex + Eq + One,
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let prefix = "0x";
-        let pre_pad = if self.denom.is_one() {
-            format!("{:X}", self.numer)
-        } else {
-            if f.alternate() {
-                format!("{:X}/{:#X}", self.numer, self.denom)
-            } else {
-                format!("{:X}/{:X}", self.numer, self.denom)
-            }
-        };
-        f.pad_integral(true, prefix, &pre_pad)
-    }
-}
+impl_formatting!(LowerHex, "0x", "{:x}", "{:#x}");
+#[cfg(feature = "std")]
+impl_formatting!(UpperHex, "0x", "{:X}", "{:#X}");
+#[cfg(feature = "std")]
+impl_formatting!(LowerExp, "", "{:e}", "{:#e}");
+#[cfg(feature = "std")]
+impl_formatting!(UpperExp, "", "{:E}", "{:#E}");
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     type Err = ParseRatioError;
@@ -1718,6 +1665,20 @@ mod test {
         assert_eq!(&format!("{:#010X}", _1_16), "0x001/0x10");
         assert_eq!(&format!("{:X}", -half_i8), "FF/2");
         assert_eq!(&format!("{:#X}", -half_i8), "0xFF/0x2");
+
+        assert_eq!(&format!("{:e}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1e0");
+        assert_eq!(&format!("{:#e}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1e0");
+        assert_eq!(&format!("{:e}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1e3");
+        assert_eq!(&format!("{:#e}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1e3");
+        assert_eq!(&format!("{:e}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1e3/7e0");
+        assert_eq!(&format!("{:#e}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1e3/7e0");
+
+        assert_eq!(&format!("{:E}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1E0");
+        assert_eq!(&format!("{:#E}", Ratio{numer:1.0_f32, denom:1.0_f32}), "1E0");
+        assert_eq!(&format!("{:E}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1E3");
+        assert_eq!(&format!("{:#E}", Ratio{numer:1000.0_f32, denom:1.0_f32}), "1E3");
+        assert_eq!(&format!("{:E}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1E3/7E0");
+        assert_eq!(&format!("{:#E}", Ratio{numer:1000.0_f32, denom:7.0_f32}), "1E3/7E0");
     }
 
     mod arith {
