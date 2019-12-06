@@ -1668,20 +1668,20 @@ mod test {
 
         let _one_tehth_1_f = Ratio{numer:0.1_f32, denom:1.0_f32};
         let _1000_f = Ratio{numer:1000.0_f32, denom:1.0_f32};
-        let _1_big_f = Ratio{numer:1.0_f32, denom:std::f32::MAX};
+        let _1_big_f = Ratio{numer:1.0_f32, denom:3.14159e38};
         assert_eq!(&format!("{:e}", _one_tehth_1_f ), "1e-1");
         assert_eq!(&format!("{:#e}", _one_tehth_1_f), "1e-1");
         assert_eq!(&format!("{:e}", _1000_f), "1e3");
         assert_eq!(&format!("{:#e}", _1000_f), "1e3");
-        assert_eq!(&format!("{:e}", _1_big_f), "1e0/3.4028235e38");
-        assert_eq!(&format!("{:#e}", _1_big_f), "1e0/3.4028235e38");
+        assert_eq!(&format!("{:e}", _1_big_f), "1e0/3.14159e38");
+        assert_eq!(&format!("{:#e}", _1_big_f), "1e0/3.14159e38");
 
         assert_eq!(&format!("{:E}", _one_tehth_1_f), "1E-1");
         assert_eq!(&format!("{:#E}", _one_tehth_1_f), "1E-1");
         assert_eq!(&format!("{:E}", _1000_f), "1E3");
         assert_eq!(&format!("{:#E}", _1000_f), "1E3");
-        assert_eq!(&format!("{:E}", _1_big_f), "1E0/3.4028235E38");
-        assert_eq!(&format!("{:#E}", _1_big_f), "1E0/3.4028235E38");
+        assert_eq!(&format!("{:E}", _1_big_f), "1E0/3.14159E38");
+        assert_eq!(&format!("{:#E}", _1_big_f), "1E0/3.14159E38");
     }
 
     mod arith {
