@@ -1019,6 +1019,7 @@ where
 macro_rules! impl_formatting {
     ($fmt_trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
         impl<T: $fmt_trait + PartialEq + One> $fmt_trait for Ratio<T> {
+            #[cfg(feature = "std")]
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
                 let pre_pad = if self.denom.is_one() {
                     format!($fmt_str, self.numer)
@@ -1031,21 +1032,27 @@ macro_rules! impl_formatting {
                 };
                 f.pad_integral(true, $prefix, &pre_pad)
             }
+            #[cfg(not(feature = "std"))]
+            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+                if self.denom.is_one() {
+                    write!(f, $fmt_str, self.numer)
+                } else {
+                    if f.alternate() {
+                        write!(f, concat!($fmt_str, "/", $fmt_alt), self.numer, self.denom)
+                    } else {
+                        write!(f, concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
+                    }
+                }
+            }
         }
     };
 }
 
-#[cfg(feature = "std")]
 impl_formatting!(Octal, "0o", "{:o}", "{:#o}");
-#[cfg(feature = "std")]
 impl_formatting!(Binary, "0b", "{:b}", "{:#b}");
-#[cfg(feature = "std")]
 impl_formatting!(LowerHex, "0x", "{:x}", "{:#x}");
-#[cfg(feature = "std")]
 impl_formatting!(UpperHex, "0x", "{:X}", "{:#X}");
-#[cfg(feature = "std")]
 impl_formatting!(LowerExp, "", "{:e}", "{:#e}");
-#[cfg(feature = "std")]
 impl_formatting!(UpperExp, "", "{:E}", "{:#E}");
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
@@ -1608,6 +1615,70 @@ mod test {
         assert!(!_1_2.is_integer());
         assert!(!_3_2.is_integer());
         assert!(!_NEG1_2.is_integer());
+    }
+
+    #[cfg(not(feature = "std"))]
+    use core::fmt;
+    #[cfg(not(feature = "std"))]
+    use fmt::Write;
+    #[cfg(not(feature = "std"))]
+    const TESTER_BUF_SIZE: usize = 32;
+    #[cfg(not(feature = "std"))]
+    #[derive(Debug)]
+    struct NoStdTester {
+        cursor: usize,
+        buf: [u8; TESTER_BUF_SIZE],
+    }
+
+    #[cfg(not(feature = "std"))]
+    impl NoStdTester {
+        fn new() -> NoStdTester {
+            NoStdTester {
+                buf: [0; TESTER_BUF_SIZE],
+                cursor: 0,
+            }
+        }
+
+        fn clear(&mut self) {
+            self.cursor = 0;
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
+    impl Write for NoStdTester {
+        fn write_str(&mut self, s: &str) -> fmt::Result {
+            for byte in s.bytes() {
+                self.buf[self.cursor] = byte;
+                self.cursor += 1;
+                if self.cursor >= self.buf.len() {
+                    return Err(fmt::Error {});
+                }
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
+    impl PartialEq<str> for NoStdTester {
+        fn eq(&self, other: &str) -> bool {
+            let other = other.as_bytes();
+            for index in 0..self.cursor {
+                if self.buf.get(index) != other.get(index) {
+                    return false;
+                }
+            }
+            true
+        }
+    }
+
+    #[test]
+    #[cfg(not(feature = "std"))]
+    fn test_show() {
+        let err_msg = "Formatted output too long";
+        let mut tester = NoStdTester::new();
+        write!(tester, "{:o}", _8).expect(err_msg);
+        assert_eq!(tester, *"10");
+        tester.clear();
     }
 
     #[test]
