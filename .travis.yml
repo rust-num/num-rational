@@ -35,6 +35,34 @@ matrix:
         - rustup component add rustfmt
       script:
         - cargo fmt --all -- --check
+    - name: "coverage"
+      env: 
+        - secure: "ex6uHA2LG46QPoiNtru1u66WVWCTp68JmUN/ANUGlNXP3kTMNzc+fdjif+lWPEtSzAbYjbUnVoH1/gK1L1TbRvLACkU7g/b6e7mExZ0mumhERhWrSV8mZfidRtop/p1PWDsuKSfol2UKF/QCq2F11wRSfarM1Mq057p8ZXdabzVH88z6yC3ZFiuoNsNVUynPMDWlCrqdRYDAimMwtCEDiwoOb3dp4r7QP3Bo26yzsJy5t/a3lt8hhv5ZsRnmBeZYFb+aBpJHyOtuMWqH1VjSGwk6Vejr/G8aL71o1EZfqEGX/KuMXI6vC2bX8zLnBbA9iHrsXn62pvUa2BeM11lEIbBl2/xaDkwoGHV4MsP3Hr3c4DyepdR6MN8yIZuZxWxhPDy9HfbUiLs6BmzQfTfAvQ19tTUyoWRp/QcL6vgMm+RsSWJkqRpgogkdfZtnJPRnIcMLvc3gFxrNkRKvSyJYqkpg8KU+fHVrH8rutPGsoHaQu9Pbmr12rLwFpCae5ro0ZBqa67rMg7fQf6QSCUax9hRMGX32QacDhV4T+F92zmcaB0Ycj3vtnsEzmI3CB1t/JSfFMbytK5tlsLEKX8k6jx5UaMZ/ncTP9UsQT8Z6IE6lxC6NATxZgwZ+mLoGOTZ1n8Lw3FstqtC9rJuojbrVnwYTvVdPKXaHix1m04qC51Q="
+      rust: stable
+      addons:
+        apt:
+          packages:
+            - libcurl4-openssl-dev
+            - libelf-dev
+            - libdw-dev
+            - cmake
+            - gcc
+            - binutils-dev
+            - libiberty-dev
+      after_success: |
+        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
+        tar xzf master.tar.gz &&
+        cd kcov-master &&
+        mkdir build &&
+        cd build &&
+        cmake .. &&
+        make &&
+        make install DESTDIR=../../kcov-build &&
+        cd ../.. &&
+        rm -rf kcov-master &&
+        for file in target/debug/num_rational-*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
+        bash <(curl -s https://codecov.io/bash) &&
+        echo "Uploaded code coverage"
 notifications:
   email:
     on_success: never
