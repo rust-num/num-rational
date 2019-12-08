@@ -4,6 +4,8 @@
 [![documentation](https://docs.rs/num-rational/badge.svg)](https://docs.rs/num-rational)
 ![minimum rustc 1.15](https://img.shields.io/badge/rustc-1.15+-red.svg)
 [![Travis status](https://travis-ci.org/rust-num/num-rational.svg?branch=master)](https://travis-ci.org/rust-num/num-rational)
+![Dependabot](https://badgen.net/dependabot/dependabot/dependabot-core/?icon=dependabot)
+[![dependency status](https://deps.rs/repo/github/maxbla/num-rational/status.svg)](https://deps.rs/repo/github/github/maxbla/num-rational)
 
 Generic `Rational` numbers (aka fractions) for Rust.
 
