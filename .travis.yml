@@ -2,6 +2,10 @@ language: rust
 arch:
   - amd64
   - arm64
+os:
+  - linux
+  - windows
+  - osx
 sudo: false
 rust:
   - 1.15.0
