@@ -1,4 +1,7 @@
 language: rust
+arch:
+  - amd64
+  - arm64
 sudo: false
 rust:
   - 1.15.0
