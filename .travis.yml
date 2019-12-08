@@ -4,8 +4,6 @@ arch:
   - arm64
 os:
   - linux
-  - windows
-  - osx
 sudo: false
 rust:
   - 1.15.0
@@ -19,6 +17,10 @@ script:
   - ./ci/test_full.sh
 matrix:
   include:
+    - name: "windows"
+      os: "windows"
+    - name: "macOS"
+      os: "osx"
     # try a target that doesn't have std at all
     - name: "no_std"
       rust: stable
