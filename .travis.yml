@@ -35,11 +35,10 @@ matrix:
     - name: "Clippy"
       before_script:
         - rustup component add clippy
-      script:
-        # adding fractions requires multiplication
-        - cargo clippy --\
-        --allow clippy::suspicious_op_assign_impl\
-        --allow clippy::suspicious_arithmetic_impl\
+      script: >
+        - cargo clippy --
+        --allow clippy::suspicious_op_assign_impl
+        --allow clippy::suspicious_arithmetic_impl
         --allow clippy::just-underscores-and-digits
     - name: "coverage"
       env:
