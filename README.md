@@ -6,6 +6,7 @@
 [![Travis status](https://travis-ci.org/rust-num/num-rational.svg?branch=master)](https://travis-ci.org/rust-num/num-rational)
 ![Dependabot](https://badgen.net/dependabot/dependabot/dependabot-core/?icon=dependabot)
 [![dependency status](https://deps.rs/repo/github/maxbla/num-rational/status.svg)](https://deps.rs/repo/github/github/maxbla/num-rational)
+[![codecov.io](http://codecov.io/github/rust-num/num-rational/coverage.svg?branch=master)](http://codecov.io/github/rust-num/num-rational?branch=master)
 
 Generic `Rational` numbers (aka fractions) for Rust.
 
