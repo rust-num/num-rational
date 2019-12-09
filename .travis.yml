@@ -68,6 +68,14 @@ matrix:
         for file in target/debug/num_rational-*; do [ -x "${file}" ] || continue; mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
         bash <(curl -s https://codecov.io/bash) &&
         echo "Uploaded code coverage"
+# dummy crates.io upload. remove --dry-run to make it work for real
+deploy:
+  env: CRATES_API_TOKEN=example
+  provider: script
+  before_script: cargo login $CRATES_API_TOKEN
+  script: cargo publish --dry-run
+  on:
+    branch: master
 notifications:
   email:
     on_success: never
