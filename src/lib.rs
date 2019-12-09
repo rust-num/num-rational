@@ -31,7 +31,7 @@
     unused_extern_crates,
     unused_import_braces,
     unused_qualifications,
-    unused_results,
+    unused_results
 )]
 
 #[cfg(feature = "bigint")]
@@ -1432,48 +1432,48 @@ mod test {
     use integer::Integer;
     use traits::{FromPrimitive, One, Pow, Signed, Zero};
 
-    pub(crate) const _0: Rational = Ratio { numer: 0, denom: 1 };
-    pub(crate) const _1: Rational = Ratio { numer: 1, denom: 1 };
-    pub(crate) const _2: Rational = Ratio { numer: 2, denom: 1 };
-    pub(crate) const _NEG2: Rational = Ratio {
+    const _0: Rational = Ratio { numer: 0, denom: 1 };
+    const _1: Rational = Ratio { numer: 1, denom: 1 };
+    const _2: Rational = Ratio { numer: 2, denom: 1 };
+    const _NEG2: Rational = Ratio {
         numer: -2,
         denom: 1,
     };
-    pub(crate) const _1_2: Rational = Ratio { numer: 1, denom: 2 };
-    pub(crate) const _3_2: Rational = Ratio { numer: 3, denom: 2 };
-    pub(crate) const _5_2: Rational = Ratio { numer: 5, denom: 2 };
-    pub(crate) const _NEG1_2: Rational = Ratio {
+    const _1_2: Rational = Ratio { numer: 1, denom: 2 };
+    const _3_2: Rational = Ratio { numer: 3, denom: 2 };
+    const _5_2: Rational = Ratio { numer: 5, denom: 2 };
+    const _NEG1_2: Rational = Ratio {
         numer: -1,
         denom: 2,
     };
-    pub(crate) const _1_NEG2: Rational = Ratio {
+    const _1_NEG2: Rational = Ratio {
         numer: 1,
         denom: -2,
     };
-    pub(crate) const _NEG1_NEG2: Rational = Ratio {
+    const _NEG1_NEG2: Rational = Ratio {
         numer: -1,
         denom: -2,
     };
-    pub(crate) const _1_3: Rational = Ratio { numer: 1, denom: 3 };
-    pub(crate) const _NEG1_3: Rational = Ratio {
+    const _1_3: Rational = Ratio { numer: 1, denom: 3 };
+    const _NEG1_3: Rational = Ratio {
         numer: -1,
         denom: 3,
     };
-    pub(crate) const _2_3: Rational = Ratio { numer: 2, denom: 3 };
-    pub(crate) const _NEG2_3: Rational = Ratio {
+    const _2_3: Rational = Ratio { numer: 2, denom: 3 };
+    const _NEG2_3: Rational = Ratio {
         numer: -2,
         denom: 3,
     };
 
     #[cfg(feature = "bigint")]
-    pub(crate) fn to_big(n: Rational) -> BigRational {
+    fn to_big(n: Rational) -> BigRational {
         Ratio::new(
             FromPrimitive::from_isize(n.numer).unwrap(),
             FromPrimitive::from_isize(n.denom).unwrap(),
         )
     }
     #[cfg(not(feature = "bigint"))]
-    pub(crate) fn to_big(n: Rational) -> Rational {
+    fn to_big(n: Rational) -> Rational {
         Ratio::new(
             FromPrimitive::from_isize(n.numer).unwrap(),
             FromPrimitive::from_isize(n.denom).unwrap(),

@@ -36,7 +36,7 @@ matrix:
       before_script:
         - rustup component add clippy
       script: >
-        - cargo clippy --
+        cargo clippy --
         --allow clippy::suspicious_op_assign_impl
         --allow clippy::suspicious_arithmetic_impl
         --allow clippy::just-underscores-and-digits
