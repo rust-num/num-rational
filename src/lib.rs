@@ -16,6 +16,23 @@
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.2")]
 #![no_std]
+#![allow(unknown_lints)]
+#![warn(
+    anonymous_parameters,
+    explicit_outlives_requirements,
+    indirect_structural_match,
+    keyword_idents,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    missing_doc_code_examples,
+    trivial_casts,
+    unreachable_pub,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results,
+)]
 
 #[cfg(feature = "bigint")]
 extern crate num_bigint as bigint;
@@ -351,7 +368,7 @@ impl Ratio<BigInt> {
             Some(Ratio::new(BigInt::from_biguint(bigint_sign, numer), denom))
         } else {
             let mut numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
-            numer = numer << (exponent as usize);
+            numer <<= exponent as usize;
             Some(Ratio::from_integer(BigInt::from_biguint(
                 bigint_sign,
                 numer,
@@ -1086,17 +1103,17 @@ impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     fn from_str(s: &str) -> Result<Ratio<T>, ParseRatioError> {
         let mut split = s.splitn(2, '/');
 
-        let n = try!(split.next().ok_or(ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
-        let num = try!(FromStr::from_str(n).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
+        let n = split.next().ok_or(ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
+        let num = FromStr::from_str(n).map_err(|_| ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
 
         let d = split.next().unwrap_or("1");
-        let den = try!(FromStr::from_str(d).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
+        let den = FromStr::from_str(d).map_err(|_| ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
 
         if Zero::is_zero(&den) {
             Err(ParseRatioError {
@@ -1138,7 +1155,7 @@ where
     {
         use serde::de::Error;
         use serde::de::Unexpected;
-        let (numer, denom): (T, T) = try!(serde::Deserialize::deserialize(deserializer));
+        let (numer, denom): (T, T) = serde::Deserialize::deserialize(deserializer)?;
         if denom.is_zero() {
             Err(Error::invalid_value(
                 Unexpected::Signed(0),
@@ -1151,6 +1168,7 @@ where
 }
 
 // FIXME: Bubble up specific errors
+/// An error created when trying to convert a string into a `Ratio`
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ParseRatioError {
     kind: RatioErrorKind,
@@ -1262,6 +1280,13 @@ from_primitive_integer!(u128, approximate_float_unsigned);
 from_primitive_integer!(usize, approximate_float_unsigned);
 
 impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
+    /// Trys to convert a floating point number into a Ratio.
+    /// Some floats cannot be converted into particular types of `Ratio<T>`
+    /// due to differences in maximum and minimum values.
+    /// As an example, `256.0_f32` cannot be converted to `Ratio<u8>`.
+    /// Many floats can only be approximated, as `f32` has 24 bits of
+    /// significand (23 bits past the decimal), but `Ratio<u8>` can have a
+    /// maximum of 8 bits of precision past the decimal.
     pub fn approximate_float<F: FloatCore + NumCast>(f: F) -> Option<Ratio<T>> {
         // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
         // to work well. Might want to choose something based on the types in the future, e.g.
@@ -1303,11 +1328,11 @@ where
         return None;
     }
 
-    let mut q = val;
-    let mut n0 = T::zero();
-    let mut d0 = T::one();
-    let mut n1 = T::one();
-    let mut d1 = T::zero();
+    let mut quotient = val;
+    let mut numer_0 = T::zero();
+    let mut denom_0 = T::one();
+    let mut numer_1 = T::one();
+    let mut denom_1 = T::zero();
 
     let t_max = T::max_value();
     let t_max_f = match <F as NumCast>::from(t_max.clone()) {
@@ -1319,50 +1344,50 @@ where
     let epsilon = t_max_f.recip();
 
     // Overflow
-    if q > t_max_f {
+    if quotient > t_max_f {
         return None;
     }
 
     for _ in 0..max_iterations {
-        let a = match <T as NumCast>::from(q) {
+        let coef = match <T as NumCast>::from(quotient) {
             None => break,
             Some(a) => a,
         };
 
-        let a_f = match <F as NumCast>::from(a.clone()) {
+        let coef_f = match <F as NumCast>::from(coef.clone()) {
             None => break,
             Some(a_f) => a_f,
         };
-        let f = q - a_f;
+        let f = quotient - coef_f;
 
         // Prevent overflow
-        if !a.is_zero()
-            && (n1 > t_max.clone() / a.clone()
-                || d1 > t_max.clone() / a.clone()
-                || a.clone() * n1.clone() > t_max.clone() - n0.clone()
-                || a.clone() * d1.clone() > t_max.clone() - d0.clone())
+        if !coef.is_zero()
+            && (numer_1 > t_max.clone() / coef.clone()
+                || denom_1 > t_max.clone() / coef.clone()
+                || coef.clone() * numer_1.clone() > t_max.clone() - numer_0.clone()
+                || coef.clone() * denom_1.clone() > t_max.clone() - denom_0.clone())
         {
             break;
         }
 
-        let n = a.clone() * n1.clone() + n0.clone();
-        let d = a.clone() * d1.clone() + d0.clone();
+        let numer = coef.clone() * numer_1.clone() + numer_0.clone();
+        let denom = coef.clone() * denom_1.clone() + denom_0.clone();
 
-        n0 = n1;
-        d0 = d1;
-        n1 = n.clone();
-        d1 = d.clone();
+        numer_0 = numer_1;
+        denom_0 = denom_1;
+        numer_1 = numer.clone();
+        denom_1 = denom.clone();
 
         // Simplify fraction. Doing so here instead of at the end
         // allows us to get closer to the target value without overflows
-        let g = Integer::gcd(&n1, &d1);
-        if !g.is_zero() {
-            n1 = n1 / g.clone();
-            d1 = d1 / g.clone();
+        let gcd = Integer::gcd(&numer_1, &denom_1);
+        if !gcd.is_zero() {
+            numer_1 = numer_1 / gcd.clone();
+            denom_1 = denom_1 / gcd;
         }
 
         // Close enough?
-        let (n_f, d_f) = match (<F as NumCast>::from(n), <F as NumCast>::from(d)) {
+        let (n_f, d_f) = match (<F as NumCast>::from(numer), <F as NumCast>::from(denom)) {
             (Some(n_f), Some(d_f)) => (n_f, d_f),
             _ => break,
         };
@@ -1374,15 +1399,15 @@ where
         if f < epsilon {
             break;
         }
-        q = f.recip();
+        quotient = f.recip();
     }
 
     // Overflow
-    if d1.is_zero() {
+    if denom_1.is_zero() {
         return None;
     }
 
-    Some(Ratio::new(n1, d1))
+    Some(Ratio::new(numer_1, denom_1))
 }
 
 #[cfg(test)]
@@ -1407,48 +1432,48 @@ mod test {
     use integer::Integer;
     use traits::{FromPrimitive, One, Pow, Signed, Zero};
 
-    pub const _0: Rational = Ratio { numer: 0, denom: 1 };
-    pub const _1: Rational = Ratio { numer: 1, denom: 1 };
-    pub const _2: Rational = Ratio { numer: 2, denom: 1 };
-    pub const _NEG2: Rational = Ratio {
+    pub(crate) const _0: Rational = Ratio { numer: 0, denom: 1 };
+    pub(crate) const _1: Rational = Ratio { numer: 1, denom: 1 };
+    pub(crate) const _2: Rational = Ratio { numer: 2, denom: 1 };
+    pub(crate) const _NEG2: Rational = Ratio {
         numer: -2,
         denom: 1,
     };
-    pub const _1_2: Rational = Ratio { numer: 1, denom: 2 };
-    pub const _3_2: Rational = Ratio { numer: 3, denom: 2 };
-    pub const _5_2: Rational = Ratio { numer: 5, denom: 2 };
-    pub const _NEG1_2: Rational = Ratio {
+    pub(crate) const _1_2: Rational = Ratio { numer: 1, denom: 2 };
+    pub(crate) const _3_2: Rational = Ratio { numer: 3, denom: 2 };
+    pub(crate) const _5_2: Rational = Ratio { numer: 5, denom: 2 };
+    pub(crate) const _NEG1_2: Rational = Ratio {
         numer: -1,
         denom: 2,
     };
-    pub const _1_NEG2: Rational = Ratio {
+    pub(crate) const _1_NEG2: Rational = Ratio {
         numer: 1,
         denom: -2,
     };
-    pub const _NEG1_NEG2: Rational = Ratio {
+    pub(crate) const _NEG1_NEG2: Rational = Ratio {
         numer: -1,
         denom: -2,
     };
-    pub const _1_3: Rational = Ratio { numer: 1, denom: 3 };
-    pub const _NEG1_3: Rational = Ratio {
+    pub(crate) const _1_3: Rational = Ratio { numer: 1, denom: 3 };
+    pub(crate) const _NEG1_3: Rational = Ratio {
         numer: -1,
         denom: 3,
     };
-    pub const _2_3: Rational = Ratio { numer: 2, denom: 3 };
-    pub const _NEG2_3: Rational = Ratio {
+    pub(crate) const _2_3: Rational = Ratio { numer: 2, denom: 3 };
+    pub(crate) const _NEG2_3: Rational = Ratio {
         numer: -2,
         denom: 3,
     };
 
     #[cfg(feature = "bigint")]
-    pub fn to_big(n: Rational) -> BigRational {
+    pub(crate) fn to_big(n: Rational) -> BigRational {
         Ratio::new(
             FromPrimitive::from_isize(n.numer).unwrap(),
             FromPrimitive::from_isize(n.denom).unwrap(),
         )
     }
     #[cfg(not(feature = "bigint"))]
-    pub fn to_big(n: Rational) -> Rational {
+    pub(crate) fn to_big(n: Rational) -> Rational {
         Ratio::new(
             FromPrimitive::from_isize(n.numer).unwrap(),
             FromPrimitive::from_isize(n.denom).unwrap(),
@@ -1814,15 +1839,15 @@ mod test {
                 T: Integer + Bounded + Clone + Debug + NumAssign + CheckedMul,
             {
                 let two = T::one() + T::one();
-                let _3 = T::one() + T::one() + T::one();
+                let three = T::one() + T::one() + T::one();
 
                 // 1/big * 2/3 = 1/(max/4*3), where big is max/2
                 // make big = max/2, but also divisible by 2
                 let big = T::max_value() / two.clone() / two.clone() * two.clone();
                 let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
-                let _2_3: Ratio<T> = Ratio::new(two.clone(), _3.clone());
-                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
-                let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
+                let _2_3: Ratio<T> = Ratio::new(two.clone(), three.clone());
+                assert_eq!(None, big.clone().checked_mul(&three.clone()));
+                let expected = Ratio::new(T::one(), big / two.clone() * three.clone());
                 assert_eq!(expected.clone(), _1_big.clone() * _2_3.clone());
                 assert_eq!(
                     Some(expected.clone()),
@@ -1836,14 +1861,14 @@ mod test {
 
                 // big/3 * 3 = big/1
                 // make big = max/2, but make it indivisible by 3
-                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
-                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
-                let big_3 = Ratio::new(big.clone(), _3.clone());
+                let big = T::max_value() / two.clone() / three.clone() * three.clone() + T::one();
+                assert_eq!(None, big.clone().checked_mul(&three.clone()));
+                let big_3 = Ratio::new(big.clone(), three.clone());
                 let expected = Ratio::new(big.clone(), T::one());
-                assert_eq!(expected, big_3.clone() * _3.clone());
+                assert_eq!(expected, big_3.clone() * three.clone());
                 assert_eq!(expected, {
                     let mut tmp = big_3.clone();
-                    tmp *= _3.clone();
+                    tmp *= three.clone();
                     tmp
                 });
             }
@@ -1905,15 +1930,15 @@ mod test {
                 T: Integer + Bounded + Clone + Debug + NumAssign + CheckedMul,
             {
                 let two = T::one() + T::one();
-                let _3 = T::one() + T::one() + T::one();
+                let three = T::one() + T::one() + T::one();
 
                 // 1/big / 3/2 = 1/(max/4*3), where big is max/2
                 // big ~ max/2, and big is divisible by 2
                 let big = T::max_value() / two.clone() / two.clone() * two.clone();
-                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
+                assert_eq!(None, big.clone().checked_mul(&three.clone()));
                 let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
-                let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
-                let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
+                let _3_two: Ratio<T> = Ratio::new(three.clone(), two.clone());
+                let expected = Ratio::new(T::one(), big.clone() / two.clone() * three.clone());
                 assert_eq!(expected.clone(), _1_big.clone() / _3_two.clone());
                 assert_eq!(
                     Some(expected.clone()),
@@ -1927,14 +1952,14 @@ mod test {
 
                 // 3/big / 3 = 1/big where big is max/2
                 // big ~ max/2, and big is not divisible by 3
-                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
-                assert_eq!(None, big.clone().checked_mul(&_3.clone()));
-                let _3_big = Ratio::new(_3.clone(), big.clone());
+                let big = T::max_value() / two.clone() / three.clone() * three.clone() + T::one();
+                assert_eq!(None, big.clone().checked_mul(&three.clone()));
+                let _3_big = Ratio::new(three.clone(), big.clone());
                 let expected = Ratio::new(T::one(), big.clone());
-                assert_eq!(expected, _3_big.clone() / _3.clone());
+                assert_eq!(expected, _3_big.clone() / three.clone());
                 assert_eq!(expected, {
                     let mut tmp = _3_big.clone();
-                    tmp /= _3.clone();
+                    tmp /= three.clone();
                     tmp
                 });
             }
