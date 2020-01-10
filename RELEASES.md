@@ -1,3 +1,15 @@
+# Release 0.2.3 (2020-01-09)
+
+- [`Ratio` now performs earlier reductions to avoid overflow with `+-*/%` operators][42].
+- [`Ratio::{new_raw, numer, denom}` are now `const fn` for Rust 1.31 and later][48].
+- [Updated the `autocfg` build dependency to 1.0][63].
+
+**Contributors**: @cuviper, @dingelish, @jimbo1qaz, @maxbla
+
+[42]: https://github.com/rust-num/num-rational/pull/42
+[48]: https://github.com/rust-num/num-rational/pull/48
+[63]: https://github.com/rust-num/num-rational/pull/63
+
 # Release 0.2.2 (2019-06-10)
 
 - [`Ratio` now implements `Zero::set_zero` and `One::set_one`][47].
