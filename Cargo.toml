@@ -8,10 +8,11 @@ categories = ["algorithms", "data-structures", "science", "no-std"]
 license = "MIT/Apache-2.0"
 name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
-version = "0.2.3"
+version = "0.3.0-pre"
 readme = "README.md"
 build = "build.rs"
 exclude = ["/ci/*", "/.travis.yml", "/bors.toml"]
+publish = false
 
 [package.metadata.docs.rs]
 features = ["std", "bigint-std", "serde"]
@@ -20,7 +21,8 @@ features = ["std", "bigint-std", "serde"]
 
 [dependencies.num-bigint]
 optional = true
-version = "0.2.5"
+version = "0.3.0-pre"
+git = "https://github.com/rust-num/num-bigint"
 default-features = false
 
 [dependencies.num-integer]
