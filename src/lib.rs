@@ -817,17 +817,6 @@ arith_impl!(impl Add, add);
 arith_impl!(impl Sub, sub);
 arith_impl!(impl Rem, rem);
 
-// Like `std::try!` for Option<T>, unwrap the value or early-return None.
-// Since Rust 1.22 this can be replaced by the `?` operator.
-macro_rules! otry {
-    ($expr:expr) => {
-        match $expr {
-            Some(val) => val,
-            None => return None,
-        }
-    };
-}
-
 // a/b * c/d = (a*c)/(b*d)
 impl<T> CheckedMul for Ratio<T>
 where
@@ -838,9 +827,9 @@ where
         let gcd_ad = self.numer.gcd(&rhs.denom);
         let gcd_bc = self.denom.gcd(&rhs.numer);
         Some(Ratio::new(
-            otry!((self.numer.clone() / gcd_ad.clone())
-                .checked_mul(&(rhs.numer.clone() / gcd_bc.clone()))),
-            otry!((self.denom.clone() / gcd_bc).checked_mul(&(rhs.denom.clone() / gcd_ad))),
+            (self.numer.clone() / gcd_ad.clone())
+                .checked_mul(&(rhs.numer.clone() / gcd_bc.clone()))?,
+            (self.denom.clone() / gcd_bc).checked_mul(&(rhs.denom.clone() / gcd_ad))?,
         ))
     }
 }
@@ -854,13 +843,13 @@ where
     fn checked_div(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
         let gcd_ac = self.numer.gcd(&rhs.numer);
         let gcd_bd = self.denom.gcd(&rhs.denom);
-        let denom = otry!((self.denom.clone() / gcd_bd.clone())
-            .checked_mul(&(rhs.numer.clone() / gcd_ac.clone())));
+        let denom = (self.denom.clone() / gcd_bd.clone())
+            .checked_mul(&(rhs.numer.clone() / gcd_ac.clone()))?;
         if denom.is_zero() {
             return None;
         }
         Some(Ratio::new(
-            otry!((self.numer.clone() / gcd_ac).checked_mul(&(rhs.denom.clone() / gcd_bd))),
+            (self.numer.clone() / gcd_ac).checked_mul(&(rhs.denom.clone() / gcd_bd))?,
             denom,
         ))
     }
@@ -873,10 +862,10 @@ macro_rules! checked_arith_impl {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
                 let gcd = self.denom.clone().gcd(&rhs.denom);
-                let lcm = otry!((self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom));
-                let lhs_numer = otry!((lcm.clone() / self.denom.clone()).checked_mul(&self.numer));
-                let rhs_numer = otry!((lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer));
-                Some(Ratio::new(otry!(lhs_numer.$method(&rhs_numer)), lcm))
+                let lcm = (self.denom.clone() / gcd.clone()).checked_mul(&rhs.denom)?;
+                let lhs_numer = (lcm.clone() / self.denom.clone()).checked_mul(&self.numer)?;
+                let rhs_numer = (lcm.clone() / rhs.denom.clone()).checked_mul(&rhs.numer)?;
+                Some(Ratio::new(lhs_numer.$method(&rhs_numer)?, lcm))
             }
         }
     };
@@ -1066,17 +1055,17 @@ impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     fn from_str(s: &str) -> Result<Ratio<T>, ParseRatioError> {
         let mut split = s.splitn(2, '/');
 
-        let n = r#try!(split.next().ok_or(ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
-        let num = r#try!(FromStr::from_str(n).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
+        let n = split.next().ok_or(ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
+        let num = FromStr::from_str(n).map_err(|_| ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
 
         let d = split.next().unwrap_or("1");
-        let den = r#try!(FromStr::from_str(d).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
+        let den = FromStr::from_str(d).map_err(|_| ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
 
         if Zero::is_zero(&den) {
             Err(ParseRatioError {
@@ -1118,7 +1107,7 @@ where
     {
         use serde::de::Error;
         use serde::de::Unexpected;
-        let (numer, denom): (T, T) = r#try!(serde::Deserialize::deserialize(deserializer));
+        let (numer, denom): (T, T) = serde::Deserialize::deserialize(deserializer)?;
         if denom.is_zero() {
             Err(Error::invalid_value(
                 Unexpected::Signed(0),
@@ -1253,14 +1242,10 @@ where
     let negative = val.is_sign_negative();
     let abs_val = val.abs();
 
-    let r = approximate_float_unsigned(abs_val, max_error, max_iterations);
+    let r = approximate_float_unsigned(abs_val, max_error, max_iterations)?;
 
     // Make negative again if needed
-    if negative {
-        r.map(|r| r.neg())
-    } else {
-        r
-    }
+    Some(if negative { r.neg() } else { r })
 }
 
 // No Unsigned constraint because this also works on positive integers and is called
@@ -1284,10 +1269,7 @@ where
     let mut d1 = T::zero();
 
     let t_max = T::max_value();
-    let t_max_f = match <F as NumCast>::from(t_max.clone()) {
-        None => return None,
-        Some(t_max_f) => t_max_f,
-    };
+    let t_max_f = <F as NumCast>::from(t_max.clone())?;
 
     // 1/epsilon > T::MAX
     let epsilon = t_max_f.recip();
