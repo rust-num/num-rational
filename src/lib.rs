@@ -2315,7 +2315,7 @@ mod test {
 
         let mut r = Rational64::new(123, 456);
         assert!(!r.is_zero());
-        assert_eq!(&r + &zero, r);
+        assert_eq!(r + zero, r);
 
         r.set_zero();
         assert!(r.is_zero());
@@ -2328,7 +2328,7 @@ mod test {
 
         let mut r = Rational64::new(123, 456);
         assert!(!r.is_one());
-        assert_eq!(&r * &one, r);
+        assert_eq!(r * one, r);
 
         r.set_one();
         assert!(r.is_one());
