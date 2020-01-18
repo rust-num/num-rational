@@ -1190,7 +1190,6 @@ impl FromPrimitive for Ratio<BigInt> {
         Some(Ratio::from_integer(n.into()))
     }
 
-    #[cfg(has_i128)]
     fn from_i128(n: i128) -> Option<Self> {
         Some(Ratio::from_integer(n.into()))
     }
@@ -1199,7 +1198,6 @@ impl FromPrimitive for Ratio<BigInt> {
         Some(Ratio::from_integer(n.into()))
     }
 
-    #[cfg(has_i128)]
     fn from_u128(n: u128) -> Option<Self> {
         Some(Ratio::from_integer(n.into()))
     }
@@ -1220,7 +1218,6 @@ macro_rules! from_primitive_integer {
                 <$typ as FromPrimitive>::from_i64(n).map(Ratio::from_integer)
             }
 
-            #[cfg(has_i128)]
             fn from_i128(n: i128) -> Option<Self> {
                 <$typ as FromPrimitive>::from_i128(n).map(Ratio::from_integer)
             }
@@ -1229,7 +1226,6 @@ macro_rules! from_primitive_integer {
                 <$typ as FromPrimitive>::from_u64(n).map(Ratio::from_integer)
             }
 
-            #[cfg(has_i128)]
             fn from_u128(n: u128) -> Option<Self> {
                 <$typ as FromPrimitive>::from_u128(n).map(Ratio::from_integer)
             }
@@ -1249,7 +1245,6 @@ from_primitive_integer!(i8, approximate_float);
 from_primitive_integer!(i16, approximate_float);
 from_primitive_integer!(i32, approximate_float);
 from_primitive_integer!(i64, approximate_float);
-#[cfg(has_i128)]
 from_primitive_integer!(i128, approximate_float);
 from_primitive_integer!(isize, approximate_float);
 
@@ -1257,7 +1252,6 @@ from_primitive_integer!(u8, approximate_float_unsigned);
 from_primitive_integer!(u16, approximate_float_unsigned);
 from_primitive_integer!(u32, approximate_float_unsigned);
 from_primitive_integer!(u64, approximate_float_unsigned);
-#[cfg(has_i128)]
 from_primitive_integer!(u128, approximate_float_unsigned);
 from_primitive_integer!(usize, approximate_float_unsigned);
 
@@ -1694,7 +1688,6 @@ mod test {
             test_add_typed_overflow::<u32>();
             test_add_typed_overflow::<u64>();
             test_add_typed_overflow::<usize>();
-            #[cfg(has_u128)]
             test_add_typed_overflow::<u128>();
 
             test_add_typed_overflow::<i8>();
@@ -1702,7 +1695,6 @@ mod test {
             test_add_typed_overflow::<i32>();
             test_add_typed_overflow::<i64>();
             test_add_typed_overflow::<isize>();
-            #[cfg(has_i128)]
             test_add_typed_overflow::<i128>();
         }
 
@@ -1761,7 +1753,6 @@ mod test {
             test_sub_typed_overflow::<u32>();
             test_sub_typed_overflow::<u64>();
             test_sub_typed_overflow::<usize>();
-            #[cfg(has_u128)]
             test_sub_typed_overflow::<u128>();
 
             test_sub_typed_overflow::<i8>();
@@ -1769,7 +1760,6 @@ mod test {
             test_sub_typed_overflow::<i32>();
             test_sub_typed_overflow::<i64>();
             test_sub_typed_overflow::<isize>();
-            #[cfg(has_i128)]
             test_sub_typed_overflow::<i128>();
         }
 
@@ -1852,7 +1842,6 @@ mod test {
             test_mul_typed_overflow::<u32>();
             test_mul_typed_overflow::<u64>();
             test_mul_typed_overflow::<usize>();
-            #[cfg(has_u128)]
             test_mul_typed_overflow::<u128>();
 
             test_mul_typed_overflow::<i8>();
@@ -1860,7 +1849,6 @@ mod test {
             test_mul_typed_overflow::<i32>();
             test_mul_typed_overflow::<i64>();
             test_mul_typed_overflow::<isize>();
-            #[cfg(has_i128)]
             test_mul_typed_overflow::<i128>();
         }
 
@@ -1943,7 +1931,6 @@ mod test {
             test_div_typed_overflow::<u32>();
             test_div_typed_overflow::<u64>();
             test_div_typed_overflow::<usize>();
-            #[cfg(has_u128)]
             test_div_typed_overflow::<u128>();
 
             test_div_typed_overflow::<i8>();
@@ -1951,7 +1938,6 @@ mod test {
             test_div_typed_overflow::<i32>();
             test_div_typed_overflow::<i64>();
             test_div_typed_overflow::<isize>();
-            #[cfg(has_i128)]
             test_div_typed_overflow::<i128>();
         }
 
@@ -2014,7 +2000,6 @@ mod test {
             test_rem_typed_overflow::<u32>();
             test_rem_typed_overflow::<u64>();
             test_rem_typed_overflow::<usize>();
-            #[cfg(has_u128)]
             test_rem_typed_overflow::<u128>();
 
             test_rem_typed_overflow::<i8>();
@@ -2022,7 +2007,6 @@ mod test {
             test_rem_typed_overflow::<i32>();
             test_rem_typed_overflow::<i64>();
             test_rem_typed_overflow::<isize>();
-            #[cfg(has_i128)]
             test_rem_typed_overflow::<i128>();
         }
 
