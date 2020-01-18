@@ -201,10 +201,10 @@ impl<T: Clone + Integer> Ratio<T> {
         // The algorithm compares the unsigned fractional part with 1/2, that
         // is, a/b >= 1/2, or a >= b/2. For odd denominators, we use
         // a >= (b/2)+1. This avoids overflow issues.
-        let half_or_larger = if fractional.denom().is_even() {
-            *fractional.numer() >= fractional.denom().clone() / two.clone()
+        let half_or_larger = if fractional.denom.is_even() {
+            fractional.numer >= fractional.denom / two
         } else {
-            *fractional.numer() >= (fractional.denom().clone() / two.clone()) + one.clone()
+            fractional.numer >= (fractional.denom / two) + one
         };
 
         if half_or_larger {
@@ -1641,10 +1641,10 @@ mod test {
                 assert_eq!(
                     {
                         let mut tmp = _1_max.clone();
-                        tmp += _1_max.clone();
+                        tmp += _1_max;
                         tmp
                     },
-                    _2_max.clone()
+                    _2_max
                 );
             }
             test_add_typed_overflow::<u8>();
@@ -1708,7 +1708,7 @@ mod test {
                 assert!(T::is_zero(&(_1_max.clone() - _1_max.clone()).numer));
                 {
                     let mut tmp: Ratio<T> = _1_max.clone();
-                    tmp -= _1_max.clone();
+                    tmp -= _1_max;
                     assert!(T::is_zero(&tmp.numer));
                 }
             }
@@ -1783,21 +1783,21 @@ mod test {
                     _1_big.clone().checked_mul(&_2_3.clone())
                 );
                 assert_eq!(expected, {
-                    let mut tmp = _1_big.clone();
+                    let mut tmp = _1_big;
                     tmp *= _2_3;
                     tmp
                 });
 
                 // big/3 * 3 = big/1
                 // make big = max/2, but make it indivisible by 3
-                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
+                let big = T::max_value() / two / _3.clone() * _3.clone() + T::one();
                 assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let big_3 = Ratio::new(big.clone(), _3.clone());
-                let expected = Ratio::new(big.clone(), T::one());
+                let expected = Ratio::new(big, T::one());
                 assert_eq!(expected, big_3.clone() * _3.clone());
                 assert_eq!(expected, {
-                    let mut tmp = big_3.clone();
-                    tmp *= _3.clone();
+                    let mut tmp = big_3;
+                    tmp *= _3;
                     tmp
                 });
             }
@@ -1865,28 +1865,28 @@ mod test {
                 assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let _1_big: Ratio<T> = Ratio::new(T::one(), big.clone());
                 let _3_two: Ratio<T> = Ratio::new(_3.clone(), two.clone());
-                let expected = Ratio::new(T::one(), big.clone() / two.clone() * _3.clone());
+                let expected = Ratio::new(T::one(), big / two.clone() * _3.clone());
                 assert_eq!(expected.clone(), _1_big.clone() / _3_two.clone());
                 assert_eq!(
                     Some(expected.clone()),
                     _1_big.clone().checked_div(&_3_two.clone())
                 );
                 assert_eq!(expected, {
-                    let mut tmp = _1_big.clone();
+                    let mut tmp = _1_big;
                     tmp /= _3_two;
                     tmp
                 });
 
                 // 3/big / 3 = 1/big where big is max/2
                 // big ~ max/2, and big is not divisible by 3
-                let big = T::max_value() / two.clone() / _3.clone() * _3.clone() + T::one();
+                let big = T::max_value() / two / _3.clone() * _3.clone() + T::one();
                 assert_eq!(None, big.clone().checked_mul(&_3.clone()));
                 let _3_big = Ratio::new(_3.clone(), big.clone());
-                let expected = Ratio::new(T::one(), big.clone());
+                let expected = Ratio::new(T::one(), big);
                 assert_eq!(expected, _3_big.clone() / _3.clone());
                 assert_eq!(expected, {
-                    let mut tmp = _3_big.clone();
-                    tmp /= _3.clone();
+                    let mut tmp = _3_big;
+                    tmp /= _3;
                     tmp
                 });
             }
@@ -1950,12 +1950,12 @@ mod test {
                 let two = T::one() + T::one();
                 //value near to maximum, but divisible by two
                 let max_div2 = T::max_value() / two.clone() * two.clone();
-                let _1_max: Ratio<T> = Ratio::new(T::one(), max_div2.clone());
+                let _1_max: Ratio<T> = Ratio::new(T::one(), max_div2);
                 let _1_two: Ratio<T> = Ratio::new(T::one(), two);
                 assert!(T::is_zero(&(_1_two.clone() % _1_max.clone()).numer));
                 {
-                    let mut tmp: Ratio<T> = _1_two.clone();
-                    tmp %= _1_max.clone();
+                    let mut tmp: Ratio<T> = _1_two;
+                    tmp %= _1_max;
                     assert!(T::is_zero(&tmp.numer));
                 }
             }
