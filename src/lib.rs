@@ -68,39 +68,27 @@ pub type Rational64 = Ratio<i64>;
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
-macro_rules! maybe_const {
-    ($( $(#[$attr:meta])* pub fn $name:ident $args:tt -> $ret:ty $body:block )*) => {$(
-        #[cfg(has_const_fn)]
-        $(#[$attr])* pub const fn $name $args -> $ret $body
-
-        #[cfg(not(has_const_fn))]
-        $(#[$attr])* pub fn $name $args -> $ret $body
-    )*}
-}
-
 /// These method are `const` for Rust 1.31 and later.
 impl<T> Ratio<T> {
-    maybe_const! {
-        /// Creates a `Ratio` without checking for `denom == 0` or reducing.
-        #[inline]
-        pub fn new_raw(numer: T, denom: T) -> Ratio<T> {
-            Ratio {
-                numer: numer,
-                denom: denom,
-            }
+    /// Creates a `Ratio` without checking for `denom == 0` or reducing.
+    #[inline]
+    pub const fn new_raw(numer: T, denom: T) -> Ratio<T> {
+        Ratio {
+            numer: numer,
+            denom: denom,
         }
+    }
 
-        /// Gets an immutable reference to the numerator.
-        #[inline]
-        pub fn numer(&self) -> &T {
-            &self.numer
-        }
+    /// Gets an immutable reference to the numerator.
+    #[inline]
+    pub const fn numer(&self) -> &T {
+        &self.numer
+    }
 
-        /// Gets an immutable reference to the denominator.
-        #[inline]
-        pub fn denom(&self) -> &T {
-            &self.denom
-        }
+    /// Gets an immutable reference to the denominator.
+    #[inline]
+    pub const fn denom(&self) -> &T {
+        &self.denom
     }
 }
 
@@ -2360,7 +2348,6 @@ mod test {
         assert!(r.is_one());
     }
 
-    #[cfg(has_const_fn)]
     #[test]
     fn test_const() {
         const N: Ratio<i32> = Ratio::new_raw(123, 456);
