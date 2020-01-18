@@ -10,9 +10,9 @@ name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
 version = "0.3.0-pre"
 readme = "README.md"
-build = "build.rs"
 exclude = ["/ci/*", "/.travis.yml", "/bors.toml"]
 publish = false
+edition = "2018"
 
 [package.metadata.docs.rs]
 features = ["std", "bigint-std", "serde"]
@@ -28,10 +28,12 @@ default-features = false
 [dependencies.num-integer]
 version = "0.1.42"
 default-features = false
+features = ["i128"]
 
 [dependencies.num-traits]
 version = "0.2.11"
 default-features = false
+features = ["i128"]
 
 [dependencies.serde]
 optional = true
@@ -40,10 +42,6 @@ default-features = false
 
 [features]
 default = ["bigint-std", "std"]
-i128 = ["num-integer/i128", "num-traits/i128"]
 std = ["num-integer/std", "num-traits/std"]
 bigint = ["num-bigint"]
 bigint-std = ["bigint", "num-bigint/std"]
-
-[build-dependencies]
-autocfg = "1"
