@@ -17,6 +17,10 @@
 #![doc(html_root_url = "https://docs.rs/num-rational/0.3")]
 #![no_std]
 
+// Ratio ops often use other "suspicious" ops
+#![allow(clippy::suspicious_arithmetic_impl)]
+#![allow(clippy::suspicious_op_assign_impl)]
+
 #[cfg(feature = "std")]
 #[cfg_attr(test, macro_use)]
 extern crate std;
