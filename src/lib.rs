@@ -1483,6 +1483,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::eq_op)]
     fn test_cmp() {
         assert!(_0 == _0 && _1 == _1);
         assert!(_0 != _1 && _1 != _0);
@@ -1989,6 +1990,7 @@ mod test {
             test(-_1, _1);
         }
         #[test]
+        #[allow(clippy::eq_op)]
         fn test_zero() {
             assert_eq!(_0 + _0, _0);
             assert_eq!(_0 * _0, _0);
