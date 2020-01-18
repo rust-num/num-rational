@@ -19,9 +19,6 @@
 
 #[cfg(feature = "bigint")]
 extern crate num_bigint as bigint;
-#[cfg(feature = "serde")]
-extern crate serde;
-
 extern crate num_integer as integer;
 extern crate num_traits as traits;
 
@@ -38,11 +35,11 @@ use core::str::FromStr;
 use std::error::Error;
 
 #[cfg(feature = "bigint")]
-use bigint::{BigInt, BigUint, Sign};
+use crate::bigint::{BigInt, BigUint, Sign};
 
-use integer::Integer;
-use traits::float::FloatCore;
-use traits::{
+use crate::integer::Integer;
+use crate::traits::float::FloatCore;
+use crate::traits::{
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
     Pow, Signed, Zero,
 };
@@ -461,10 +458,10 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
 }
 
 mod iter_sum_product {
+    use crate::integer::Integer;
+    use crate::traits::{One, Zero};
+    use crate::Ratio;
     use core::iter::{Product, Sum};
-    use integer::Integer;
-    use traits::{One, Zero};
-    use Ratio;
 
     impl<T: Integer + Clone> Sum for Ratio<T> {
         fn sum<I>(iter: I) -> Self
@@ -506,9 +503,9 @@ mod iter_sum_product {
 mod opassign {
     use core::ops::{AddAssign, DivAssign, MulAssign, RemAssign, SubAssign};
 
-    use integer::Integer;
-    use traits::NumAssign;
-    use Ratio;
+    use crate::integer::Integer;
+    use crate::traits::NumAssign;
+    use crate::Ratio;
 
     impl<T: Clone + Integer + NumAssign> AddAssign for Ratio<T> {
         fn add_assign(&mut self, other: Ratio<T>) {
@@ -1058,7 +1055,7 @@ where
     T: fmt::Display + Eq + One,
 {
     /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.denom.is_one() {
             write!(f, "{}", self.numer)
         } else {
@@ -1074,15 +1071,15 @@ impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     fn from_str(s: &str) -> Result<Ratio<T>, ParseRatioError> {
         let mut split = s.splitn(2, '/');
 
-        let n = try!(split.next().ok_or(ParseRatioError {
+        let n = r#try!(split.next().ok_or(ParseRatioError {
             kind: RatioErrorKind::ParseError
         }));
-        let num = try!(FromStr::from_str(n).map_err(|_| ParseRatioError {
+        let num = r#try!(FromStr::from_str(n).map_err(|_| ParseRatioError {
             kind: RatioErrorKind::ParseError
         }));
 
         let d = split.next().unwrap_or("1");
-        let den = try!(FromStr::from_str(d).map_err(|_| ParseRatioError {
+        let den = r#try!(FromStr::from_str(d).map_err(|_| ParseRatioError {
             kind: RatioErrorKind::ParseError
         }));
 
@@ -1126,7 +1123,7 @@ where
     {
         use serde::de::Error;
         use serde::de::Unexpected;
-        let (numer, denom): (T, T) = try!(serde::Deserialize::deserialize(deserializer));
+        let (numer, denom): (T, T) = r#try!(serde::Deserialize::deserialize(deserializer));
         if denom.is_zero() {
             Err(Error::invalid_value(
                 Unexpected::Signed(0),
@@ -1151,7 +1148,7 @@ enum RatioErrorKind {
 }
 
 impl fmt::Display for ParseRatioError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind.description().fmt(f)
     }
 }
@@ -1383,11 +1380,11 @@ mod test {
     use super::BigRational;
     use super::{Ratio, Rational, Rational64};
 
+    use crate::integer::Integer;
+    use crate::traits::{FromPrimitive, One, Pow, Signed, Zero};
     use core::f64;
     use core::i32;
     use core::str::FromStr;
-    use integer::Integer;
-    use traits::{FromPrimitive, One, Pow, Signed, Zero};
 
     pub const _0: Rational = Ratio { numer: 0, denom: 1 };
     pub const _1: Rational = Ratio { numer: 1, denom: 1 };
@@ -1611,9 +1608,9 @@ mod test {
     mod arith {
         use super::super::{Ratio, Rational};
         use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _NEG1_2};
+        use crate::integer::Integer;
+        use crate::traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
         use core::fmt::Debug;
-        use integer::Integer;
-        use traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
 
         #[test]
         fn test_add() {
@@ -2174,7 +2171,7 @@ mod test {
     #[cfg(feature = "bigint")]
     #[test]
     fn test_from_float() {
-        use traits::float::FloatCore;
+        use crate::traits::float::FloatCore;
         fn test<T: FloatCore>(given: T, (numer, denom): (&str, &str)) {
             let ratio: BigRational = Ratio::from_float(given).unwrap();
             assert_eq!(
@@ -2245,19 +2242,19 @@ mod test {
     #[test]
     #[cfg(feature = "std")]
     fn test_hash() {
-        assert!(::hash(&_0) != ::hash(&_1));
-        assert!(::hash(&_0) != ::hash(&_3_2));
+        assert!(crate::hash(&_0) != crate::hash(&_1));
+        assert!(crate::hash(&_0) != crate::hash(&_3_2));
 
         // a == b -> hash(a) == hash(b)
         let a = Rational::new_raw(4, 2);
         let b = Rational::new_raw(6, 3);
         assert_eq!(a, b);
-        assert_eq!(::hash(&a), ::hash(&b));
+        assert_eq!(crate::hash(&a), crate::hash(&b));
 
         let a = Rational::new_raw(123456789, 1000);
         let b = Rational::new_raw(123456789 * 5, 5000);
         assert_eq!(a, b);
-        assert_eq!(::hash(&a), ::hash(&b));
+        assert_eq!(crate::hash(&a), crate::hash(&b));
     }
 
     #[test]
