@@ -1139,6 +1139,7 @@ impl fmt::Display for ParseRatioError {
 
 #[cfg(feature = "std")]
 impl Error for ParseRatioError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         self.kind.description()
     }
