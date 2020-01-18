@@ -68,10 +68,7 @@ impl<T> Ratio<T> {
     /// Creates a `Ratio` without checking for `denom == 0` or reducing.
     #[inline]
     pub const fn new_raw(numer: T, denom: T) -> Ratio<T> {
-        Ratio {
-            numer: numer,
-            denom: denom,
-        }
+        Ratio { numer, denom }
     }
 
     /// Gets an immutable reference to the numerator.
