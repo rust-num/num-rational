@@ -331,7 +331,7 @@ impl Ratio<BigInt> {
             Some(Ratio::new(BigInt::from_biguint(bigint_sign, numer), denom))
         } else {
             let mut numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
-            numer = numer << (exponent as usize);
+            numer <<= exponent as usize;
             Some(Ratio::from_integer(BigInt::from_biguint(
                 bigint_sign,
                 numer,
