@@ -26,6 +26,7 @@ extern crate std;
 
 use core::cmp;
 use core::fmt;
+use core::fmt::{Binary, Display, Formatter, LowerExp, LowerHex, Octal, UpperExp, UpperHex};
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use core::str::FromStr;
@@ -43,7 +44,6 @@ use num_traits::{
 };
 
 mod pow;
-use fmt::{Binary, Display, Formatter, LowerHex, Octal, UpperHex};
 
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
