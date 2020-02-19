@@ -20,7 +20,6 @@
 #![allow(clippy::suspicious_arithmetic_impl)]
 #![allow(clippy::suspicious_op_assign_impl)]
 
-
 #[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
@@ -1002,20 +1001,6 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 }
 
 // String conversions
-impl<T> Display for Ratio<T>
-where
-    T: Display + Eq + One,
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        if self.denom.is_one() {
-            write!(f, "{}", self.numer)
-        } else {
-            write!(f, "{}/{}", self.numer, self.denom)
-        }
-    }
-}
-
 macro_rules! impl_formatting {
     ($fmt_trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
         impl<T: $fmt_trait + PartialEq + One> $fmt_trait for Ratio<T> {
@@ -1048,6 +1033,7 @@ macro_rules! impl_formatting {
     };
 }
 
+impl_formatting!(Display, "", "{}", "{:#}");
 impl_formatting!(Octal, "0o", "{:o}", "{:#o}");
 impl_formatting!(Binary, "0b", "{:b}", "{:#b}");
 impl_formatting!(LowerHex, "0x", "{:x}", "{:#x}");
