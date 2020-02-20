@@ -1604,9 +1604,7 @@ mod test {
     }
 
     #[cfg(not(feature = "std"))]
-    use core::fmt;
-    #[cfg(not(feature = "std"))]
-    use fmt::Write;
+    use core::fmt::{self, Write};
     #[cfg(not(feature = "std"))]
     const TESTER_BUF_SIZE: usize = 32;
     #[cfg(not(feature = "std"))]
@@ -1734,15 +1732,15 @@ mod test {
             numer: 1.0_f32,
             denom: 3.14159e38,
         };
-        assert_eq!(&format!("{:e}", _one_tehth_1_f), "1e-1");
-        assert_eq!(&format!("{:#e}", _one_tehth_1_f), "1e-1");
+        assert_eq!(&format!("{:e}", _one_tenth_1_f), "1e-1");
+        assert_eq!(&format!("{:#e}", _one_tenth_1_f), "1e-1");
         assert_eq!(&format!("{:e}", _1000_f), "1e3");
         assert_eq!(&format!("{:#e}", _1000_f), "1e3");
         assert_eq!(&format!("{:e}", _1_big_f), "1e0/3.14159e38");
         assert_eq!(&format!("{:#e}", _1_big_f), "1e0/3.14159e38");
 
-        assert_eq!(&format!("{:E}", _one_tehth_1_f), "1E-1");
-        assert_eq!(&format!("{:#E}", _one_tehth_1_f), "1E-1");
+        assert_eq!(&format!("{:E}", _one_tenth_1_f), "1E-1");
+        assert_eq!(&format!("{:#E}", _one_tenth_1_f), "1E-1");
         assert_eq!(&format!("{:E}", _1000_f), "1E3");
         assert_eq!(&format!("{:#E}", _1000_f), "1E3");
         assert_eq!(&format!("{:E}", _1_big_f), "1E0/3.14159E38");
