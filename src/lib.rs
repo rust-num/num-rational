@@ -1722,7 +1722,7 @@ mod test {
         assert_eq!(&format!("{:X}", -half_i8), "FF/2");
         assert_eq!(&format!("{:#X}", -half_i8), "0xFF/0x2");
 
-        let _one_tehth_1_f = Ratio {
+        let _one_tenth_1_f = Ratio {
             numer: 0.1_f32,
             denom: 1.0_f32,
         };
