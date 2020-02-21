@@ -1020,10 +1020,14 @@ macro_rules! impl_formatting {
             #[cfg(not(feature = "std"))]
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
                 if self.denom.is_one() {
-                    write!(f, $fmt_str, self.numer)
+                    if f.alternate() {
+                        write!(f, $fmt_alt, self.numer)
+                    } else {
+                        write!(f, $fmt_str, self.numer)
+                    }
                 } else {
                     if f.alternate() {
-                        write!(f, concat!($fmt_str, "/", $fmt_alt), self.numer, self.denom)
+                        write!(f, concat!($fmt_alt, "/", $fmt_alt), self.numer, self.denom)
                     } else {
                         write!(f, concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
                     }
@@ -1606,26 +1610,28 @@ mod test {
     #[cfg(not(feature = "std"))]
     use core::fmt::{self, Write};
     #[cfg(not(feature = "std"))]
-    const TESTER_BUF_SIZE: usize = 32;
-    #[cfg(not(feature = "std"))]
     #[derive(Debug)]
     struct NoStdTester {
         cursor: usize,
-        buf: [u8; TESTER_BUF_SIZE],
+        buf: [u8; NoStdTester::BUF_SIZE],
     }
 
     #[cfg(not(feature = "std"))]
     impl NoStdTester {
         fn new() -> NoStdTester {
             NoStdTester {
-                buf: [0; TESTER_BUF_SIZE],
+                buf: [0; Self::BUF_SIZE],
                 cursor: 0,
             }
         }
 
         fn clear(&mut self) {
+            self.buf = [0; Self::BUF_SIZE];
             self.cursor = 0;
         }
+
+        const WRITE_ERR: &'static str = "Formatted output too long";
+        const BUF_SIZE: usize = 32;
     }
 
     #[cfg(not(feature = "std"))]
@@ -1655,18 +1661,23 @@ mod test {
         }
     }
 
-    #[test]
-    #[cfg(not(feature = "std"))]
-    fn test_show() {
-        let err_msg = "Formatted output too long";
-        let mut tester = NoStdTester::new();
-        write!(tester, "{:o}", _8).expect(err_msg);
-        assert_eq!(tester, *"10");
-        tester.clear();
+    macro_rules! assert_fmt_eq {
+        ($fmt_args:expr, $string:expr) => {
+            #[cfg(not(feature = "std"))]
+            {
+                let mut tester = NoStdTester::new();
+                write!(tester, "{}", $fmt_args).expect(NoStdTester::WRITE_ERR);
+                assert_eq!(tester, *$string);
+                tester.clear();
+            }
+            #[cfg(feature = "std")]
+            {
+                assert_eq!(std::fmt::format($fmt_args), $string);
+            }
+        };
     }
 
     #[test]
-    #[cfg(feature = "std")]
     fn test_show() {
         // Test:
         // :b :o :x, :X, :?
@@ -1674,51 +1685,61 @@ mod test {
         // positive and negative
         // padding
         // does not test precision (i.e. truncation)
-        assert_eq!(&format!("{}", _2), "2");
-        assert_eq!(&format!("{}", _1_2), "1/2");
-        assert_eq!(&format!("{}", -_1_2), "-1/2"); // test negatives
-        assert_eq!(&format!("{}", _0), "0");
-        assert_eq!(&format!("{}", -_2), "-2");
-        assert_eq!(&format!("{:b}", _2), "10");
-        assert_eq!(&format!("{:b}", _1_2), "1/10");
-        assert_eq!(&format!("{:b}", _0), "0");
-        assert_eq!(&format!("{:#b}", _1_2), "0b1/0b10");
+        assert_fmt_eq!(format_args!("{}", _2), "2");
+        assert_fmt_eq!(format_args!("{}", _1_2), "1/2");
+        assert_fmt_eq!(format_args!("{}", -_1_2), "-1/2"); // test negatives
+        assert_fmt_eq!(format_args!("{}", _0), "0");
+        assert_fmt_eq!(format_args!("{}", -_2), "-2");
+        assert_fmt_eq!(format_args!("{:b}", _2), "10");
+        assert_fmt_eq!(format_args!("{:#b}", _2), "0b10");
+        assert_fmt_eq!(format_args!("{:b}", _1_2), "1/10");
+        assert_fmt_eq!(format_args!("{:b}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#b}", _1_2), "0b1/0b10");
+        //no std does not support padding
+        #[cfg(feature = "std")]
         assert_eq!(&format!("{:010b}", _1_2), "0000001/10");
+        #[cfg(feature = "std")]
         assert_eq!(&format!("{:#010b}", _1_2), "0b001/0b10");
         let half_i8: Ratio<i8> = Ratio::new(1_i8, 2_i8);
-        assert_eq!(&format!("{:b}", -half_i8), "11111111/10");
-        assert_eq!(&format!("{:#b}", -half_i8), "0b11111111/0b10");
+        assert_fmt_eq!(format_args!("{:b}", -half_i8), "11111111/10");
+        assert_fmt_eq!(format_args!("{:#b}", -half_i8), "0b11111111/0b10");
 
-        assert_eq!(&format!("{:o}", _8), "10");
-        assert_eq!(&format!("{:o}", _1_8), "1/10");
-        assert_eq!(&format!("{:o}", _0), "0");
-        assert_eq!(&format!("{:#o}", _1_8), "0o1/0o10");
+        assert_fmt_eq!(format_args!("{:o}", _8), "10");
+        assert_fmt_eq!(format_args!("{:o}", _1_8), "1/10");
+        assert_fmt_eq!(format_args!("{:o}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#o}", _1_8), "0o1/0o10");
+        #[cfg(feature = "std")]
         assert_eq!(&format!("{:010o}", _1_8), "0000001/10");
+        #[cfg(feature = "std")]
         assert_eq!(&format!("{:#010o}", _1_8), "0o001/0o10");
-        assert_eq!(&format!("{:o}", -half_i8), "377/2");
-        assert_eq!(&format!("{:#o}", -half_i8), "0o377/0o2");
+        assert_fmt_eq!(format_args!("{:o}", -half_i8), "377/2");
+        assert_fmt_eq!(format_args!("{:#o}", -half_i8), "0o377/0o2");
 
-        assert_eq!(&format!("{:x}", _16), "10");
-        assert_eq!(&format!("{:x}", _15), "f");
-        assert_eq!(&format!("{:x}", _1_16), "1/10");
-        assert_eq!(&format!("{:x}", _1_15), "1/f");
-        assert_eq!(&format!("{:x}", _0), "0");
-        assert_eq!(&format!("{:#x}", _1_16), "0x1/0x10");
+        assert_fmt_eq!(format_args!("{:x}", _16), "10");
+        assert_fmt_eq!(format_args!("{:x}", _15), "f");
+        assert_fmt_eq!(format_args!("{:x}", _1_16), "1/10");
+        assert_fmt_eq!(format_args!("{:x}", _1_15), "1/f");
+        assert_fmt_eq!(format_args!("{:x}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#x}", _1_16), "0x1/0x10");
+        #[cfg(feature = "std")]
         assert_eq!(&format!("{:010x}", _1_16), "0000001/10");
+        #[cfg(feature = "std")]
         assert_eq!(&format!("{:#010x}", _1_16), "0x001/0x10");
-        assert_eq!(&format!("{:x}", -half_i8), "ff/2");
-        assert_eq!(&format!("{:#x}", -half_i8), "0xff/0x2");
+        assert_fmt_eq!(format_args!("{:x}", -half_i8), "ff/2");
+        assert_fmt_eq!(format_args!("{:#x}", -half_i8), "0xff/0x2");
 
-        assert_eq!(&format!("{:X}", _16), "10");
-        assert_eq!(&format!("{:X}", _15), "F");
-        assert_eq!(&format!("{:X}", _1_16), "1/10");
-        assert_eq!(&format!("{:X}", _1_15), "1/F");
-        assert_eq!(&format!("{:X}", _0), "0");
-        assert_eq!(&format!("{:#X}", _1_16), "0x1/0x10");
-        assert_eq!(&format!("{:010X}", _1_16), "0000001/10");
-        assert_eq!(&format!("{:#010X}", _1_16), "0x001/0x10");
-        assert_eq!(&format!("{:X}", -half_i8), "FF/2");
-        assert_eq!(&format!("{:#X}", -half_i8), "0xFF/0x2");
+        assert_fmt_eq!(format_args!("{:X}", _16), "10");
+        assert_fmt_eq!(format_args!("{:X}", _15), "F");
+        assert_fmt_eq!(format_args!("{:X}", _1_16), "1/10");
+        assert_fmt_eq!(format_args!("{:X}", _1_15), "1/F");
+        assert_fmt_eq!(format_args!("{:X}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#X}", _1_16), "0x1/0x10");
+        #[cfg(feature = "std")]
+        assert_eq!(format!("{:010X}", _1_16), "0000001/10");
+        #[cfg(feature = "std")]
+        assert_eq!(format!("{:#010X}", _1_16), "0x001/0x10");
+        assert_fmt_eq!(format_args!("{:X}", -half_i8), "FF/2");
+        assert_fmt_eq!(format_args!("{:#X}", -half_i8), "0xFF/0x2");
 
         let _one_tenth_1_f = Ratio {
             numer: 0.1_f32,
@@ -1732,19 +1753,19 @@ mod test {
             numer: 1.0_f32,
             denom: 3.14159e38,
         };
-        assert_eq!(&format!("{:e}", _one_tenth_1_f), "1e-1");
-        assert_eq!(&format!("{:#e}", _one_tenth_1_f), "1e-1");
-        assert_eq!(&format!("{:e}", _1000_f), "1e3");
-        assert_eq!(&format!("{:#e}", _1000_f), "1e3");
-        assert_eq!(&format!("{:e}", _1_big_f), "1e0/3.14159e38");
-        assert_eq!(&format!("{:#e}", _1_big_f), "1e0/3.14159e38");
+        assert_fmt_eq!(format_args!("{:e}", _one_tenth_1_f), "1e-1");
+        assert_fmt_eq!(format_args!("{:#e}", _one_tenth_1_f), "1e-1");
+        assert_fmt_eq!(format_args!("{:e}", _1000_f), "1e3");
+        assert_fmt_eq!(format_args!("{:#e}", _1000_f), "1e3");
+        assert_fmt_eq!(format_args!("{:e}", _1_big_f), "1e0/3.14159e38");
+        assert_fmt_eq!(format_args!("{:#e}", _1_big_f), "1e0/3.14159e38");
 
-        assert_eq!(&format!("{:E}", _one_tenth_1_f), "1E-1");
-        assert_eq!(&format!("{:#E}", _one_tenth_1_f), "1E-1");
-        assert_eq!(&format!("{:E}", _1000_f), "1E3");
-        assert_eq!(&format!("{:#E}", _1000_f), "1E3");
-        assert_eq!(&format!("{:E}", _1_big_f), "1E0/3.14159E38");
-        assert_eq!(&format!("{:#E}", _1_big_f), "1E0/3.14159E38");
+        assert_fmt_eq!(format_args!("{:E}", _one_tenth_1_f), "1E-1");
+        assert_fmt_eq!(format_args!("{:#E}", _one_tenth_1_f), "1E-1");
+        assert_fmt_eq!(format_args!("{:E}", _1000_f), "1E3");
+        assert_fmt_eq!(format_args!("{:#E}", _1000_f), "1E3");
+        assert_fmt_eq!(format_args!("{:E}", _1_big_f), "1E0/3.14159E38");
+        assert_fmt_eq!(format_args!("{:#E}", _1_big_f), "1E0/3.14159E38");
     }
 
     mod arith {
