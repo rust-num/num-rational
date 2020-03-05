@@ -42,6 +42,8 @@ use num_traits::{
     Pow, Signed, Zero,
 };
 
+mod pow;
+
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
 #[allow(missing_docs)]
@@ -149,13 +151,15 @@ impl<T: Clone + Integer> Ratio<T> {
     /// Fails if the `Ratio` is zero.
     #[inline]
     pub fn recip(&self) -> Ratio<T> {
+        self.clone().into_recip()
+    }
+
+    #[inline]
+    fn into_recip(self) -> Ratio<T> {
         match self.numer.cmp(&T::zero()) {
-            cmp::Ordering::Equal => panic!("numerator == 0"),
-            cmp::Ordering::Greater => Ratio::new_raw(self.denom.clone(), self.numer.clone()),
-            cmp::Ordering::Less => Ratio::new_raw(
-                T::zero() - self.denom.clone(),
-                T::zero() - self.numer.clone(),
-            ),
+            cmp::Ordering::Equal => panic!("division by zero"),
+            cmp::Ordering::Greater => Ratio::new_raw(self.denom, self.numer),
+            cmp::Ordering::Less => Ratio::new_raw(T::zero() - self.denom, T::zero() - self.numer),
         }
     }
 
@@ -232,88 +236,16 @@ impl<T: Clone + Integer> Ratio<T> {
     pub fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer.clone() % self.denom.clone(), self.denom.clone())
     }
-}
 
-impl<T: Clone + Integer + Pow<u32, Output = T>> Ratio<T> {
     /// Raises the `Ratio` to the power of an exponent.
     #[inline]
-    pub fn pow(&self, expon: i32) -> Ratio<T> {
+    pub fn pow(&self, expon: i32) -> Ratio<T>
+    where
+        for<'a> &'a T: Pow<u32, Output = T>,
+    {
         Pow::pow(self, expon)
     }
 }
-
-macro_rules! pow_impl {
-    ($exp:ty) => {
-        pow_impl!($exp, $exp);
-    };
-    ($exp:ty, $unsigned:ty) => {
-        impl<T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<$exp> for Ratio<T> {
-            type Output = Ratio<T>;
-            #[inline]
-            fn pow(self, expon: $exp) -> Ratio<T> {
-                match expon.cmp(&0) {
-                    cmp::Ordering::Equal => One::one(),
-                    cmp::Ordering::Less => {
-                        let expon = expon.wrapping_abs() as $unsigned;
-                        Ratio::new_raw(Pow::pow(self.denom, expon), Pow::pow(self.numer, expon))
-                    }
-                    cmp::Ordering::Greater => Ratio::new_raw(
-                        Pow::pow(self.numer, expon as $unsigned),
-                        Pow::pow(self.denom, expon as $unsigned),
-                    ),
-                }
-            }
-        }
-        impl<'a, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<$exp> for &'a Ratio<T> {
-            type Output = Ratio<T>;
-            #[inline]
-            fn pow(self, expon: $exp) -> Ratio<T> {
-                Pow::pow(self.clone(), expon)
-            }
-        }
-        impl<'a, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<&'a $exp> for Ratio<T> {
-            type Output = Ratio<T>;
-            #[inline]
-            fn pow(self, expon: &'a $exp) -> Ratio<T> {
-                Pow::pow(self, *expon)
-            }
-        }
-        impl<'a, 'b, T: Clone + Integer + Pow<$unsigned, Output = T>> Pow<&'a $exp>
-            for &'b Ratio<T>
-        {
-            type Output = Ratio<T>;
-            #[inline]
-            fn pow(self, expon: &'a $exp) -> Ratio<T> {
-                Pow::pow(self.clone(), *expon)
-            }
-        }
-    };
-}
-
-// this is solely to make `pow_impl!` work
-trait WrappingAbs: Sized {
-    fn wrapping_abs(self) -> Self {
-        self
-    }
-}
-impl WrappingAbs for u8 {}
-impl WrappingAbs for u16 {}
-impl WrappingAbs for u32 {}
-impl WrappingAbs for u64 {}
-impl WrappingAbs for usize {}
-
-pow_impl!(i8, u8);
-pow_impl!(i16, u16);
-pow_impl!(i32, u32);
-pow_impl!(i64, u64);
-pow_impl!(isize, usize);
-pow_impl!(u8);
-pow_impl!(u16);
-pow_impl!(u32);
-pow_impl!(u64);
-pow_impl!(usize);
-
-// TODO: pow_impl!(BigUint) and pow_impl!(BigInt, BigUint)
 
 #[cfg(feature = "bigint")]
 impl Ratio<BigInt> {
@@ -2093,7 +2025,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "== 0")]
+    #[should_panic(expected = "division by zero")]
     fn test_recip_fail() {
         let _a = Ratio::new(0, 1).recip();
     }
@@ -2104,6 +2036,19 @@ mod test {
             assert_eq!(r.pow(e), expected);
             assert_eq!(Pow::pow(r, e), expected);
             assert_eq!(Pow::pow(r, &e), expected);
+            assert_eq!(Pow::pow(&r, e), expected);
+            assert_eq!(Pow::pow(&r, &e), expected);
+            #[cfg(feature = "bigint")]
+            test_big(r, e, expected);
+        }
+
+        #[cfg(feature = "bigint")]
+        fn test_big(r: Rational, e: i32, expected: Rational) {
+            let r = BigRational::new_raw(r.numer.into(), r.denom.into());
+            let expected = BigRational::new_raw(expected.numer.into(), expected.denom.into());
+            assert_eq!((&r).pow(e), expected);
+            assert_eq!(Pow::pow(r.clone(), e), expected);
+            assert_eq!(Pow::pow(r.clone(), &e), expected);
             assert_eq!(Pow::pow(&r, e), expected);
             assert_eq!(Pow::pow(&r, &e), expected);
         }
