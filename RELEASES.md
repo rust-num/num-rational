@@ -1,3 +1,11 @@
+# Release 0.2.4 (2020-03-17)
+
+- [Fixed `CheckedDiv` when both dividend and divisor are 0][74].
+- [Fixed `CheckedDiv` with `min_value()` numerators][76].
+
+[74]: https://github.com/rust-num/num-rational/pull/74
+[76]: https://github.com/rust-num/num-rational/pull/76
+
 # Release 0.2.3 (2020-01-09)
 
 - [`Ratio` now performs earlier reductions to avoid overflow with `+-*/%` operators][42].
