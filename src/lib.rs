@@ -872,6 +872,9 @@ where
 {
     #[inline]
     fn checked_div(&self, rhs: &Ratio<T>) -> Option<Ratio<T>> {
+        if rhs.is_zero() {
+            return None;
+        }
         let gcd_ac = self.numer.gcd(&rhs.numer);
         let gcd_bd = self.denom.gcd(&rhs.denom);
         let denom = otry!((self.denom.clone() / gcd_bd.clone())
@@ -1086,17 +1089,17 @@ impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     fn from_str(s: &str) -> Result<Ratio<T>, ParseRatioError> {
         let mut split = s.splitn(2, '/');
 
-        let n = try!(split.next().ok_or(ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
-        let num = try!(FromStr::from_str(n).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
+        let n = split.next().ok_or(ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
+        let num = FromStr::from_str(n).map_err(|_| ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
 
         let d = split.next().unwrap_or("1");
-        let den = try!(FromStr::from_str(d).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError
-        }));
+        let den = FromStr::from_str(d).map_err(|_| ParseRatioError {
+            kind: RatioErrorKind::ParseError,
+        })?;
 
         if Zero::is_zero(&den) {
             Err(ParseRatioError {
@@ -2060,6 +2063,14 @@ mod test {
             assert_eq!(big.checked_mul(&big), None);
             assert_eq!(small.checked_div(&big), None);
             assert_eq!(_1.checked_div(&_0), None);
+        }
+
+        #[test]
+        fn test_checked_zeros() {
+            assert_eq!(_0.checked_add(&_0), Some(_0));
+            assert_eq!(_0.checked_sub(&_0), Some(_0));
+            assert_eq!(_0.checked_mul(&_0), Some(_0));
+            assert_eq!(_0.checked_div(&_0), None);
         }
     }
 
