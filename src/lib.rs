@@ -90,9 +90,6 @@ impl<T: Clone + Integer> Ratio<T> {
     /// Creates a new `Ratio`. Fails if `denom` is zero.
     #[inline]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
-        if denom.is_zero() {
-            panic!("denominator == 0");
-        }
         let mut ret = Ratio::new_raw(numer, denom);
         ret.reduce();
         ret
@@ -118,6 +115,17 @@ impl<T: Clone + Integer> Ratio<T> {
 
     /// Puts self into lowest terms, with denom > 0.
     fn reduce(&mut self) {
+        if self.denom.is_zero() {
+            panic!("denominator == 0");
+        }
+        if self.numer.is_zero() {
+            self.denom.set_one();
+            return;
+        }
+        if self.numer == self.denom {
+            self.set_one();
+            return;
+        }
         let g: T = self.numer.gcd(&self.denom);
 
         // FIXME(#5992): assignment operator overloads
@@ -776,17 +784,40 @@ where
         if rhs.is_zero() {
             return None;
         }
-        let gcd_ac = self.numer.gcd(&rhs.numer);
-        let gcd_bd = self.denom.gcd(&rhs.denom);
-        let denom = (self.denom.clone() / gcd_bd.clone())
-            .checked_mul(&(rhs.numer.clone() / gcd_ac.clone()))?;
+        let (numer, denom) = if self.denom == rhs.denom {
+            (self.numer.clone(), rhs.numer.clone())
+        } else if self.numer == rhs.numer {
+            (rhs.denom.clone(), self.denom.clone())
+        } else {
+            let gcd_ac = self.numer.gcd(&rhs.numer);
+            let gcd_bd = self.denom.gcd(&rhs.denom);
+            (
+                (self.numer.clone() / gcd_ac.clone())
+                    .checked_mul(&(rhs.denom.clone() / gcd_bd.clone()))?,
+                (self.denom.clone() / gcd_bd).checked_mul(&(rhs.numer.clone() / gcd_ac))?,
+            )
+        };
+        // Manual `reduce()`, avoiding sharp edges
         if denom.is_zero() {
-            return None;
+            None
+        } else if numer.is_zero() {
+            Some(Self::zero())
+        } else if numer == denom {
+            Some(Self::one())
+        } else {
+            let g = numer.gcd(&denom);
+            let numer = numer / g.clone();
+            let denom = denom / g;
+            let raw = if denom < T::zero() {
+                // We need to keep denom positive, but 2's-complement MIN may
+                // overflow negation -- instead we can check multiplying -1.
+                let n1 = T::zero() - T::one();
+                Ratio::new_raw(numer.checked_mul(&n1)?, denom.checked_mul(&n1)?)
+            } else {
+                Ratio::new_raw(numer, denom)
+            };
+            Some(raw)
         }
-        Some(Ratio::new(
-            (self.numer.clone() / gcd_ac).checked_mul(&(rhs.denom.clone() / gcd_bd))?,
-            denom,
-        ))
     }
 }
 
@@ -1295,6 +1326,7 @@ mod test {
 
     use core::f64;
     use core::i32;
+    use core::isize;
     use core::str::FromStr;
     use num_integer::Integer;
     use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
@@ -1331,6 +1363,22 @@ mod test {
         numer: -2,
         denom: 3,
     };
+    pub const _MIN: Rational = Ratio {
+        numer: isize::MIN,
+        denom: 1,
+    };
+    pub const _MIN_P1: Rational = Ratio {
+        numer: isize::MIN + 1,
+        denom: 1,
+    };
+    pub const _MAX: Rational = Ratio {
+        numer: isize::MAX,
+        denom: 1,
+    };
+    pub const _MAX_M1: Rational = Ratio {
+        numer: isize::MAX - 1,
+        denom: 1,
+    };
 
     #[cfg(feature = "bigint")]
     pub fn to_big(n: Rational) -> BigRational {
@@ -1361,9 +1409,9 @@ mod test {
 
     #[test]
     fn test_new_reduce() {
-        let one22 = Ratio::new(2, 2);
-
-        assert_eq!(one22, One::one());
+        assert_eq!(Ratio::new(2, 2), One::one());
+        assert_eq!(Ratio::new(0, i32::MIN), Zero::zero());
+        assert_eq!(Ratio::new(i32::MIN, i32::MIN), One::one());
     }
     #[test]
     #[should_panic]
@@ -1521,7 +1569,7 @@ mod test {
 
     mod arith {
         use super::super::{Ratio, Rational};
-        use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _NEG1_2};
+        use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _MAX, _MAX_M1, _MIN, _MIN_P1, _NEG1_2};
         use core::fmt::Debug;
         use num_integer::Integer;
         use num_traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
@@ -1952,6 +2000,69 @@ mod test {
             assert_eq!(_0.checked_sub(&_0), Some(_0));
             assert_eq!(_0.checked_mul(&_0), Some(_0));
             assert_eq!(_0.checked_div(&_0), None);
+        }
+
+        #[test]
+        fn test_checked_min() {
+            assert_eq!(_MIN.checked_add(&_MIN), None);
+            assert_eq!(_MIN.checked_sub(&_MIN), Some(_0));
+            assert_eq!(_MIN.checked_mul(&_MIN), None);
+            assert_eq!(_MIN.checked_div(&_MIN), Some(_1));
+            assert_eq!(_0.checked_add(&_MIN), Some(_MIN));
+            assert_eq!(_0.checked_sub(&_MIN), None);
+            assert_eq!(_0.checked_mul(&_MIN), Some(_0));
+            assert_eq!(_0.checked_div(&_MIN), Some(_0));
+            assert_eq!(_1.checked_add(&_MIN), Some(_MIN_P1));
+            assert_eq!(_1.checked_sub(&_MIN), None);
+            assert_eq!(_1.checked_mul(&_MIN), Some(_MIN));
+            assert_eq!(_1.checked_div(&_MIN), None);
+            assert_eq!(_MIN.checked_add(&_0), Some(_MIN));
+            assert_eq!(_MIN.checked_sub(&_0), Some(_MIN));
+            assert_eq!(_MIN.checked_mul(&_0), Some(_0));
+            assert_eq!(_MIN.checked_div(&_0), None);
+            assert_eq!(_MIN.checked_add(&_1), Some(_MIN_P1));
+            assert_eq!(_MIN.checked_sub(&_1), None);
+            assert_eq!(_MIN.checked_mul(&_1), Some(_MIN));
+            assert_eq!(_MIN.checked_div(&_1), Some(_MIN));
+        }
+
+        #[test]
+        fn test_checked_max() {
+            assert_eq!(_MAX.checked_add(&_MAX), None);
+            assert_eq!(_MAX.checked_sub(&_MAX), Some(_0));
+            assert_eq!(_MAX.checked_mul(&_MAX), None);
+            assert_eq!(_MAX.checked_div(&_MAX), Some(_1));
+            assert_eq!(_0.checked_add(&_MAX), Some(_MAX));
+            assert_eq!(_0.checked_sub(&_MAX), Some(_MIN_P1));
+            assert_eq!(_0.checked_mul(&_MAX), Some(_0));
+            assert_eq!(_0.checked_div(&_MAX), Some(_0));
+            assert_eq!(_1.checked_add(&_MAX), None);
+            assert_eq!(_1.checked_sub(&_MAX), Some(-_MAX_M1));
+            assert_eq!(_1.checked_mul(&_MAX), Some(_MAX));
+            assert_eq!(_1.checked_div(&_MAX), Some(_MAX.recip()));
+            assert_eq!(_MAX.checked_add(&_0), Some(_MAX));
+            assert_eq!(_MAX.checked_sub(&_0), Some(_MAX));
+            assert_eq!(_MAX.checked_mul(&_0), Some(_0));
+            assert_eq!(_MAX.checked_div(&_0), None);
+            assert_eq!(_MAX.checked_add(&_1), None);
+            assert_eq!(_MAX.checked_sub(&_1), Some(_MAX_M1));
+            assert_eq!(_MAX.checked_mul(&_1), Some(_MAX));
+            assert_eq!(_MAX.checked_div(&_1), Some(_MAX));
+        }
+
+        #[test]
+        fn test_checked_min_max() {
+            assert_eq!(_MIN.checked_add(&_MAX), Some(-_1));
+            assert_eq!(_MIN.checked_sub(&_MAX), None);
+            assert_eq!(_MIN.checked_mul(&_MAX), None);
+            assert_eq!(
+                _MIN.checked_div(&_MAX),
+                Some(Ratio::new(_MIN.numer, _MAX.numer))
+            );
+            assert_eq!(_MAX.checked_add(&_MIN), Some(-_1));
+            assert_eq!(_MAX.checked_sub(&_MIN), None);
+            assert_eq!(_MAX.checked_mul(&_MIN), None);
+            assert_eq!(_MAX.checked_div(&_MIN), None);
         }
     }
 
