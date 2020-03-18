@@ -1027,7 +1027,7 @@ macro_rules! impl_formatting {
             }
             #[cfg(not(feature = "std"))]
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-                plus = if f.sign_plus() && self.numer >= T::zero() {
+                let plus = if f.sign_plus() && self.numer >= T::zero() {
                     "+"
                 } else {
                     ""
@@ -1450,6 +1450,10 @@ mod test {
         numer: isize::MAX - 1,
         denom: 1,
     };
+    pub const _BILLION: Rational = Ratio {
+        numer: 1_000_000_000,
+        denom: 1,
+    };
 
     #[cfg(feature = "bigint")]
     pub fn to_big(n: Rational) -> BigRational {
@@ -1769,31 +1773,24 @@ mod test {
         assert_fmt_eq!(format_args!("{:X}", -half_i8), "FF/2");
         assert_fmt_eq!(format_args!("{:#X}", -half_i8), "0xFF/0x2");
 
-        let _one_tenth_1_f = Ratio {
-            numer: 0.1_f32,
-            denom: 1.0_f32,
-        };
-        let _1000_f = Ratio {
-            numer: 1000.0_f32,
-            denom: 1.0_f32,
-        };
-        let _1_big_f = Ratio {
-            numer: 1.0_f32,
-            denom: 3.14159e38,
-        };
-        // assert_fmt_eq!(format_args!("{:e}", _one_tenth_1_f), "1e-1");
-        // assert_fmt_eq!(format_args!("{:#e}", _one_tenth_1_f), "1e-1");
-        // assert_fmt_eq!(format_args!("{:e}", _1000_f), "1e3");
-        // assert_fmt_eq!(format_args!("{:#e}", _1000_f), "1e3");
-        // assert_fmt_eq!(format_args!("{:e}", _1_big_f), "1e0/3.14159e38");
-        // assert_fmt_eq!(format_args!("{:#e}", _1_big_f), "1e0/3.14159e38");
+        #[cfg(has_int_exp_fmt)]
+        {
+            assert_fmt_eq!(format_args!("{:e}", -_2), "-2e0");
+            assert_fmt_eq!(format_args!("{:#e}", -_2), "-2e0");
+            assert_fmt_eq!(format_args!("{:+e}", -_2), "-2e0");
+            assert_fmt_eq!(format_args!("{:e}", _BILLION), "1e9");
+            assert_fmt_eq!(format_args!("{:+e}", _BILLION), "+1e9");
+            assert_fmt_eq!(format_args!("{:e}", _BILLION.recip()), "1e0/1e9");
+            assert_fmt_eq!(format_args!("{:+e}", _BILLION.recip()), "+1e0/1e9");
 
-        // assert_fmt_eq!(format_args!("{:E}", _one_tenth_1_f), "1E-1");
-        // assert_fmt_eq!(format_args!("{:#E}", _one_tenth_1_f), "1E-1");
-        // assert_fmt_eq!(format_args!("{:E}", _1000_f), "1E3");
-        // assert_fmt_eq!(format_args!("{:#E}", _1000_f), "1E3");
-        // assert_fmt_eq!(format_args!("{:E}", _1_big_f), "1E0/3.14159E38");
-        // assert_fmt_eq!(format_args!("{:#E}", _1_big_f), "1E0/3.14159E38");
+            assert_fmt_eq!(format_args!("{:E}", -_2), "-2E0");
+            assert_fmt_eq!(format_args!("{:#E}", -_2), "-2E0");
+            assert_fmt_eq!(format_args!("{:+E}", -_2), "-2E0");
+            assert_fmt_eq!(format_args!("{:E}", _BILLION), "1E9");
+            assert_fmt_eq!(format_args!("{:+E}", _BILLION), "+1E9");
+            assert_fmt_eq!(format_args!("{:E}", _BILLION.recip()), "1E0/1E9");
+            assert_fmt_eq!(format_args!("{:+E}", _BILLION.recip()), "+1E0/1E9");
+        }
     }
 
     mod arith {

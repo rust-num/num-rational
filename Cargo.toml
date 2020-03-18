@@ -45,3 +45,6 @@ default = ["bigint-std", "std"]
 std = ["num-integer/std", "num-traits/std"]
 bigint = ["num-bigint"]
 bigint-std = ["bigint", "num-bigint/std"]
+
+[build-dependencies]
+autocfg = "1.0.0"
