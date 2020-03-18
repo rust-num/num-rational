@@ -1015,13 +1015,15 @@ macro_rules! impl_formatting {
                         format!(concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
                     }
                 };
-                if f.sign_plus() {
-                    let pre_pad = pre_pad.trim_start_matches('-');
-                    let non_negative = self.numer >= T::zero();
-                    f.pad_integral(non_negative, $prefix, pre_pad)
-                } else {
-                    f.pad_integral(true, $prefix, &pre_pad)
-                }
+                //TODO: replace with strip_prefix, when stabalized
+                let (pre_pad, non_negative) = {
+                    if pre_pad.starts_with("-") {
+                        (&pre_pad[1..], false)
+                    } else {
+                        (&pre_pad[..], true)
+                    }
+                };
+                f.pad_integral(non_negative, $prefix, pre_pad)
             }
             #[cfg(not(feature = "std"))]
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
@@ -1727,6 +1729,8 @@ mod test {
         let half_i8: Ratio<i8> = Ratio::new(1_i8, 2_i8);
         assert_fmt_eq!(format_args!("{:b}", -half_i8), "11111111/10");
         assert_fmt_eq!(format_args!("{:#b}", -half_i8), "0b11111111/0b10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:05}", Ratio::new(-1_i8, 1_i8)), "-0001");
 
         assert_fmt_eq!(format_args!("{:o}", _8), "10");
         assert_fmt_eq!(format_args!("{:o}", _1_8), "1/10");
