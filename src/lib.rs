@@ -1025,41 +1025,30 @@ macro_rules! impl_formatting {
             }
             #[cfg(not(feature = "std"))]
             fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-                if f.sign_plus() && self.numer >= T::zero() {
-                    if self.denom.is_one() {
-                        if f.alternate() {
-                            write!(f, concat!("+", $fmt_alt), self.numer)
-                        } else {
-                            write!(f, concat!("+", $fmt_str), self.numer)
-                        }
+                plus = if f.sign_plus() && self.numer >= T::zero() {
+                    "+"
+                } else {
+                    ""
+                };
+                if self.denom.is_one() {
+                    if f.alternate() {
+                        write!(f, concat!("{}", $fmt_alt), plus, self.numer)
                     } else {
-                        if f.alternate() {
-                            write!(
-                                f,
-                                concat!("+", $fmt_alt, "/", $fmt_alt),
-                                self.numer, self.denom
-                            )
-                        } else {
-                            write!(
-                                f,
-                                concat!("+", $fmt_str, "/", $fmt_str),
-                                self.numer, self.denom
-                            )
-                        }
+                        write!(f, concat!("{}", $fmt_str), plus, self.numer)
                     }
                 } else {
-                    if self.denom.is_one() {
-                        if f.alternate() {
-                            write!(f, $fmt_alt, self.numer)
-                        } else {
-                            write!(f, $fmt_str, self.numer)
-                        }
+                    if f.alternate() {
+                        write!(
+                            f,
+                            concat!("{}", $fmt_alt, "/", $fmt_alt),
+                            plus, self.numer, self.denom
+                        )
                     } else {
-                        if f.alternate() {
-                            write!(f, concat!($fmt_alt, "/", $fmt_alt), self.numer, self.denom)
-                        } else {
-                            write!(f, concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
-                        }
+                        write!(
+                            f,
+                            concat!("{}", $fmt_str, "/", $fmt_str),
+                            plus, self.numer, self.denom
+                        )
                     }
                 }
             }
