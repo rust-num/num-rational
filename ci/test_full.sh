@@ -1,12 +1,28 @@
 #!/bin/bash
 
-set -ex
+set -e
 
-echo Testing num-rational on rustc ${TRAVIS_RUST_VERSION}
+get_rust_version() {
+  local array=($(rustc --version));
+  echo "${array[1]}";
+  return 0;
+}
+
+if [ -z ${TRAVIS+x} ]
+then RUST_VERSION=$(get_rust_version)  # we're not in travis
+else RUST_VERSION=$TRAVIS_RUST_VERSION  # we're in travis
+fi
+
+if [ -z "${RUST_VERSION}" ]
+then  echo "WARNING: RUST_VERSION is undefined or empty string" 1>&2
+else  echo Testing num-rational on rustc "${RUST_VERSION}"
+fi
+
+set -x
 
 STD_FEATURES="bigint-std serde"
 
-case "$TRAVIS_RUST_VERSION" in
+case "$RUST_VERSION" in
   1.3[1-5].*) NO_STD_FEATURES="serde" ;;
   *) NO_STD_FEATURES="bigint serde" ;;
 esac

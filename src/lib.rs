@@ -21,11 +21,12 @@
 #![allow(clippy::suspicious_op_assign_impl)]
 
 #[cfg(feature = "std")]
-#[cfg_attr(test, macro_use)]
+#[macro_use]
 extern crate std;
 
 use core::cmp;
 use core::fmt;
+use core::fmt::{Binary, Display, Formatter, LowerExp, LowerHex, Octal, UpperExp, UpperHex};
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 use core::str::FromStr;
@@ -1000,19 +1001,70 @@ impl<T: Clone + Integer + Signed> Signed for Ratio<T> {
 }
 
 // String conversions
-impl<T> fmt::Display for Ratio<T>
-where
-    T: fmt::Display + Eq + One,
-{
-    /// Renders as `numer/denom`. If denom=1, renders as numer.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.denom.is_one() {
-            write!(f, "{}", self.numer)
-        } else {
-            write!(f, "{}/{}", self.numer, self.denom)
+macro_rules! impl_formatting {
+    ($fmt_trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
+        impl<T: $fmt_trait + Clone + Integer> $fmt_trait for Ratio<T> {
+            #[cfg(feature = "std")]
+            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+                let pre_pad = if self.denom.is_one() {
+                    format!($fmt_str, self.numer)
+                } else {
+                    if f.alternate() {
+                        format!(concat!($fmt_str, "/", $fmt_alt), self.numer, self.denom)
+                    } else {
+                        format!(concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
+                    }
+                };
+                //TODO: replace with strip_prefix, when stabalized
+                let (pre_pad, non_negative) = {
+                    if pre_pad.starts_with("-") {
+                        (&pre_pad[1..], false)
+                    } else {
+                        (&pre_pad[..], true)
+                    }
+                };
+                f.pad_integral(non_negative, $prefix, pre_pad)
+            }
+            #[cfg(not(feature = "std"))]
+            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+                let plus = if f.sign_plus() && self.numer >= T::zero() {
+                    "+"
+                } else {
+                    ""
+                };
+                if self.denom.is_one() {
+                    if f.alternate() {
+                        write!(f, concat!("{}", $fmt_alt), plus, self.numer)
+                    } else {
+                        write!(f, concat!("{}", $fmt_str), plus, self.numer)
+                    }
+                } else {
+                    if f.alternate() {
+                        write!(
+                            f,
+                            concat!("{}", $fmt_alt, "/", $fmt_alt),
+                            plus, self.numer, self.denom
+                        )
+                    } else {
+                        write!(
+                            f,
+                            concat!("{}", $fmt_str, "/", $fmt_str),
+                            plus, self.numer, self.denom
+                        )
+                    }
+                }
+            }
         }
-    }
+    };
 }
+
+impl_formatting!(Display, "", "{}", "{:#}");
+impl_formatting!(Octal, "0o", "{:o}", "{:#o}");
+impl_formatting!(Binary, "0b", "{:b}", "{:#b}");
+impl_formatting!(LowerHex, "0x", "{:x}", "{:#x}");
+impl_formatting!(UpperHex, "0x", "{:X}", "{:#X}");
+impl_formatting!(LowerExp, "", "{:e}", "{:#e}");
+impl_formatting!(UpperExp, "", "{:E}", "{:#E}");
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     type Err = ParseRatioError;
@@ -1338,7 +1390,26 @@ mod test {
         numer: -2,
         denom: 1,
     };
+    pub const _8: Rational = Ratio { numer: 8, denom: 1 };
+    pub const _15: Rational = Ratio {
+        numer: 15,
+        denom: 1,
+    };
+    pub const _16: Rational = Ratio {
+        numer: 16,
+        denom: 1,
+    };
+
     pub const _1_2: Rational = Ratio { numer: 1, denom: 2 };
+    pub const _1_8: Rational = Ratio { numer: 1, denom: 8 };
+    pub const _1_15: Rational = Ratio {
+        numer: 1,
+        denom: 15,
+    };
+    pub const _1_16: Rational = Ratio {
+        numer: 1,
+        denom: 16,
+    };
     pub const _3_2: Rational = Ratio { numer: 3, denom: 2 };
     pub const _5_2: Rational = Ratio { numer: 5, denom: 2 };
     pub const _NEG1_2: Rational = Ratio {
@@ -1377,6 +1448,10 @@ mod test {
     };
     pub const _MAX_M1: Rational = Ratio {
         numer: isize::MAX - 1,
+        denom: 1,
+    };
+    pub const _BILLION: Rational = Ratio {
+        numer: 1_000_000_000,
         denom: 1,
     };
 
@@ -1557,14 +1632,165 @@ mod test {
         assert!(!_NEG1_2.is_integer());
     }
 
+    #[cfg(not(feature = "std"))]
+    use core::fmt::{self, Write};
+    #[cfg(not(feature = "std"))]
+    #[derive(Debug)]
+    struct NoStdTester {
+        cursor: usize,
+        buf: [u8; NoStdTester::BUF_SIZE],
+    }
+
+    #[cfg(not(feature = "std"))]
+    impl NoStdTester {
+        fn new() -> NoStdTester {
+            NoStdTester {
+                buf: [0; Self::BUF_SIZE],
+                cursor: 0,
+            }
+        }
+
+        fn clear(&mut self) {
+            self.buf = [0; Self::BUF_SIZE];
+            self.cursor = 0;
+        }
+
+        const WRITE_ERR: &'static str = "Formatted output too long";
+        const BUF_SIZE: usize = 32;
+    }
+
+    #[cfg(not(feature = "std"))]
+    impl Write for NoStdTester {
+        fn write_str(&mut self, s: &str) -> fmt::Result {
+            for byte in s.bytes() {
+                self.buf[self.cursor] = byte;
+                self.cursor += 1;
+                if self.cursor >= self.buf.len() {
+                    return Err(fmt::Error {});
+                }
+            }
+            Ok(())
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
+    impl PartialEq<str> for NoStdTester {
+        fn eq(&self, other: &str) -> bool {
+            let other = other.as_bytes();
+            for index in 0..self.cursor {
+                if self.buf.get(index) != other.get(index) {
+                    return false;
+                }
+            }
+            true
+        }
+    }
+
+    macro_rules! assert_fmt_eq {
+        ($fmt_args:expr, $string:expr) => {
+            #[cfg(not(feature = "std"))]
+            {
+                let mut tester = NoStdTester::new();
+                write!(tester, "{}", $fmt_args).expect(NoStdTester::WRITE_ERR);
+                assert_eq!(tester, *$string);
+                tester.clear();
+            }
+            #[cfg(feature = "std")]
+            {
+                assert_eq!(std::fmt::format($fmt_args), $string);
+            }
+        };
+    }
+
     #[test]
-    #[cfg(feature = "std")]
     fn test_show() {
-        use std::string::ToString;
-        assert_eq!(format!("{}", _2), "2".to_string());
-        assert_eq!(format!("{}", _1_2), "1/2".to_string());
-        assert_eq!(format!("{}", _0), "0".to_string());
-        assert_eq!(format!("{}", Ratio::from_integer(-2)), "-2".to_string());
+        // Test:
+        // :b :o :x, :X, :?
+        // alternate or not (#)
+        // positive and negative
+        // padding
+        // does not test precision (i.e. truncation)
+        assert_fmt_eq!(format_args!("{}", _2), "2");
+        assert_fmt_eq!(format_args!("{:+}", _2), "+2");
+        assert_fmt_eq!(format_args!("{:-}", _2), "2");
+        assert_fmt_eq!(format_args!("{}", _1_2), "1/2");
+        assert_fmt_eq!(format_args!("{}", -_1_2), "-1/2"); // test negatives
+        assert_fmt_eq!(format_args!("{}", _0), "0");
+        assert_fmt_eq!(format_args!("{}", -_2), "-2");
+        assert_fmt_eq!(format_args!("{:+}", -_2), "-2");
+        assert_fmt_eq!(format_args!("{:b}", _2), "10");
+        assert_fmt_eq!(format_args!("{:#b}", _2), "0b10");
+        assert_fmt_eq!(format_args!("{:b}", _1_2), "1/10");
+        assert_fmt_eq!(format_args!("{:+b}", _1_2), "+1/10");
+        assert_fmt_eq!(format_args!("{:-b}", _1_2), "1/10");
+        assert_fmt_eq!(format_args!("{:b}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#b}", _1_2), "0b1/0b10");
+        //no std does not support padding
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:010b}", _1_2), "0000001/10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:#010b}", _1_2), "0b001/0b10");
+        let half_i8: Ratio<i8> = Ratio::new(1_i8, 2_i8);
+        assert_fmt_eq!(format_args!("{:b}", -half_i8), "11111111/10");
+        assert_fmt_eq!(format_args!("{:#b}", -half_i8), "0b11111111/0b10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:05}", Ratio::new(-1_i8, 1_i8)), "-0001");
+
+        assert_fmt_eq!(format_args!("{:o}", _8), "10");
+        assert_fmt_eq!(format_args!("{:o}", _1_8), "1/10");
+        assert_fmt_eq!(format_args!("{:o}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#o}", _1_8), "0o1/0o10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:010o}", _1_8), "0000001/10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:#010o}", _1_8), "0o001/0o10");
+        assert_fmt_eq!(format_args!("{:o}", -half_i8), "377/2");
+        assert_fmt_eq!(format_args!("{:#o}", -half_i8), "0o377/0o2");
+
+        assert_fmt_eq!(format_args!("{:x}", _16), "10");
+        assert_fmt_eq!(format_args!("{:x}", _15), "f");
+        assert_fmt_eq!(format_args!("{:x}", _1_16), "1/10");
+        assert_fmt_eq!(format_args!("{:x}", _1_15), "1/f");
+        assert_fmt_eq!(format_args!("{:x}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#x}", _1_16), "0x1/0x10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:010x}", _1_16), "0000001/10");
+        #[cfg(feature = "std")]
+        assert_eq!(&format!("{:#010x}", _1_16), "0x001/0x10");
+        assert_fmt_eq!(format_args!("{:x}", -half_i8), "ff/2");
+        assert_fmt_eq!(format_args!("{:#x}", -half_i8), "0xff/0x2");
+
+        assert_fmt_eq!(format_args!("{:X}", _16), "10");
+        assert_fmt_eq!(format_args!("{:X}", _15), "F");
+        assert_fmt_eq!(format_args!("{:X}", _1_16), "1/10");
+        assert_fmt_eq!(format_args!("{:X}", _1_15), "1/F");
+        assert_fmt_eq!(format_args!("{:X}", _0), "0");
+        assert_fmt_eq!(format_args!("{:#X}", _1_16), "0x1/0x10");
+        #[cfg(feature = "std")]
+        assert_eq!(format!("{:010X}", _1_16), "0000001/10");
+        #[cfg(feature = "std")]
+        assert_eq!(format!("{:#010X}", _1_16), "0x001/0x10");
+        assert_fmt_eq!(format_args!("{:X}", -half_i8), "FF/2");
+        assert_fmt_eq!(format_args!("{:#X}", -half_i8), "0xFF/0x2");
+
+        #[cfg(has_int_exp_fmt)]
+        {
+            assert_fmt_eq!(format_args!("{:e}", -_2), "-2e0");
+            assert_fmt_eq!(format_args!("{:#e}", -_2), "-2e0");
+            assert_fmt_eq!(format_args!("{:+e}", -_2), "-2e0");
+            assert_fmt_eq!(format_args!("{:e}", _BILLION), "1e9");
+            assert_fmt_eq!(format_args!("{:+e}", _BILLION), "+1e9");
+            assert_fmt_eq!(format_args!("{:e}", _BILLION.recip()), "1e0/1e9");
+            assert_fmt_eq!(format_args!("{:+e}", _BILLION.recip()), "+1e0/1e9");
+
+            assert_fmt_eq!(format_args!("{:E}", -_2), "-2E0");
+            assert_fmt_eq!(format_args!("{:#E}", -_2), "-2E0");
+            assert_fmt_eq!(format_args!("{:+E}", -_2), "-2E0");
+            assert_fmt_eq!(format_args!("{:E}", _BILLION), "1E9");
+            assert_fmt_eq!(format_args!("{:+E}", _BILLION), "+1E9");
+            assert_fmt_eq!(format_args!("{:E}", _BILLION.recip()), "1E0/1E9");
+            assert_fmt_eq!(format_args!("{:+E}", _BILLION.recip()), "+1E0/1E9");
+        }
     }
 
     mod arith {
