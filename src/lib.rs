@@ -25,8 +25,6 @@
 extern crate std;
 
 use core::cmp;
-#[cfg(all(feature = "bigint", feature = "std"))]
-use core::convert::From;
 use core::fmt;
 use core::fmt::{Binary, Display, Formatter, LowerExp, LowerHex, Octal, UpperExp, UpperHex};
 use core::hash::{Hash, Hasher};
@@ -1369,21 +1367,21 @@ where
 #[cfg(all(feature = "bigint", feature = "std"))]
 impl<T: Clone + Integer + Signed + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     fn to_i64(&self) -> Option<i64> {
-        (self.numer.clone() / self.denom.clone()).to_i64()
+        self.to_integer().to_i64()
     }
 
     #[cfg(has_i128)]
     fn to_i128(&self) -> Option<i128> {
-        (self.numer.clone() / self.denom.clone()).to_i128()
+        self.to_integer().to_i128()
     }
 
     fn to_u64(&self) -> Option<u64> {
-        (self.numer.clone() / self.denom.clone()).to_u64()
+        self.to_integer().to_u64()
     }
 
     #[cfg(has_i128)]
     fn to_u128(&self) -> Option<u128> {
-        (self.numer.clone() / self.denom.clone()).to_u128()
+        self.to_integer().to_u128()
     }
 
     fn to_f64(&self) -> Option<f64> {
