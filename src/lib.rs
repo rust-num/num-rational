@@ -1365,7 +1365,7 @@ where
 }
 
 #[cfg(all(feature = "bigint", feature = "std"))]
-impl<T: Clone + Integer + Signed + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
+impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     fn to_i64(&self) -> Option<i64> {
         self.to_integer().to_i64()
     }
@@ -1391,24 +1391,25 @@ impl<T: Clone + Integer + Signed + ToPrimitive + ToBigInt> ToPrimitive for Ratio
             "only floating point implementations with radix 2 are supported"
         );
 
-        // Inclusive upper bound to the range of exactly-representable ints in an f64.
-        const MAX_EXACT_INT: u64 = 1u64 << std::f64::MANTISSA_DIGITS;
+        // Inclusive upper and lower bounds to the range of exactly-representable ints in an f64.
+        const MAX_EXACT_INT: i64 = 1i64 << std::f64::MANTISSA_DIGITS;
+        const MIN_EXACT_INT: i64 = -MAX_EXACT_INT;
 
-        let numer: T = self.numer().abs();
-        let denom: T = self.denom().abs();
-        let sign: T = self.numer().signum() * self.denom().signum();
-        let flo_sign = if sign.is_negative() { -1.0 } else { 1.0 };
+        let numer: BigInt = self.numer.to_bigint()?;
+        let denom: BigInt = self.denom.to_bigint()?;
+        let flo_sign = numer.signum().to_f64().unwrap() * denom.signum().to_f64().unwrap();
 
-        if numer.is_zero() {
+        if self.numer.is_zero() {
             return Some(0.0 * flo_sign);
         }
 
         // Fast track: both sides can losslessly be converted to f64s. In this case, letting the
         // FPU do the job is faster and easier. In any other case, converting to f64s may lead
         // to an inexact result: https://stackoverflow.com/questions/56641441/.
-        if let (Some(n), Some(d)) = (numer.to_u64(), denom.to_u64()) {
-            if n <= MAX_EXACT_INT && d <= MAX_EXACT_INT {
-                return Some(flo_sign * n.to_f64().unwrap() / d.to_f64().unwrap());
+        if let (Some(n), Some(d)) = (self.numer.to_i64(), self.denom.to_i64()) {
+            if MIN_EXACT_INT <= n && n <= MAX_EXACT_INT && MIN_EXACT_INT <= d && d <= MAX_EXACT_INT
+            {
+                return Some(n.to_f64().unwrap() / d.to_f64().unwrap());
             }
         }
 
@@ -1416,8 +1417,8 @@ impl<T: Clone + Integer + Signed + ToPrimitive + ToBigInt> ToPrimitive for Ratio
         // be used as the mantissa of the resulting float, and the remaining two are for rounding.
         // There's an error of up to 1 on the number of resulting bits, so we may get either 55 or
         // 56 bits.
-        let mut numer = numer.to_bigint()?;
-        let mut denom = denom.to_bigint()?;
+        let mut numer = numer.abs();
+        let mut denom = denom.abs();
         let (is_diff_positive, absolute_diff) = match numer.bits().checked_sub(denom.bits()) {
             Some(diff) => (true, diff),
             None => (false, denom.bits() - numer.bits()),
