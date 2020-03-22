@@ -40,7 +40,6 @@ use num_bigint::{BigInt, BigUint, Sign};
 
 use num_integer::Integer;
 use num_traits::float::FloatCore;
-#[cfg(all(feature = "bigint", feature = "std"))]
 use num_traits::ToPrimitive;
 use num_traits::{
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
@@ -1363,6 +1362,38 @@ where
 
     Some(Ratio::new(n1, d1))
 }
+
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+macro_rules! to_primitive_small {
+    ($type_name:ident) => {
+        impl ToPrimitive for Ratio<$type_name> {
+            fn to_i64(&self) -> Option<i64> {
+                self.to_integer().to_i64()
+            }
+
+            fn to_u64(&self) -> Option<u64> {
+                self.to_integer().to_u64()
+            }
+
+            fn to_f64(&self) -> Option<f64> {
+                Some(self.numer.to_f64().unwrap() / self.denom.to_f64().unwrap())
+            }
+        }
+    }
+}
+
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+to_primitive_small!(u8);
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+to_primitive_small!(i8);
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+to_primitive_small!(u16);
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+to_primitive_small!(i16);
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+to_primitive_small!(u32);
+#[cfg(not(all(feature = "bigint", feature = "std")))]
+to_primitive_small!(i32);
 
 #[cfg(all(feature = "bigint", feature = "std"))]
 impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
