@@ -1373,8 +1373,16 @@ macro_rules! to_primitive_small {
                 self.to_integer().to_i64()
             }
 
+            fn to_i128(&self) -> Option<i128> {
+                self.to_integer().to_i128()
+            }
+
             fn to_u64(&self) -> Option<u64> {
                 self.to_integer().to_u64()
+            }
+
+            fn to_u128(&self) -> Option<u128> {
+                self.to_integer().to_u128()
             }
 
             fn to_f64(&self) -> Option<f64> {
@@ -1387,6 +1395,9 @@ macro_rules! to_primitive_small {
 #[cfg(not(all(feature = "bigint", feature = "std")))]
 to_primitive_small!(u8 i8 u16 i16 u32 i32);
 
+#[cfg(all(target_pointer_width = "32", not(all(feature = "bigint", feature = "std"))))]
+to_primitive_small!(usize isize);
+
 #[cfg(all(feature = "std", not(feature = "bigint")))]
 macro_rules! to_primitive_64 {
     ($($type_name:ty)*) => ($(
@@ -1395,14 +1406,22 @@ macro_rules! to_primitive_64 {
                 self.to_integer().to_i64()
             }
 
+            fn to_i128(&self) -> Option<i128> {
+                self.to_integer().to_i128()
+            }
+
             fn to_u64(&self) -> Option<u64> {
                 self.to_integer().to_u64()
             }
 
+            fn to_u128(&self) -> Option<u128> {
+                self.to_integer().to_u128()
+            }
+
             fn to_f64(&self) -> Option<f64> {
                 Some(ratio_to_f64(
-                    <i128 as From<$type_name>>::from(self.numer),
-                    <i128 as From<$type_name>>::from(self.denom)
+                    self.numer as i128,
+                    self.denom as i128
                 ))
             }
         }
@@ -1410,7 +1429,10 @@ macro_rules! to_primitive_64 {
 }
 
 #[cfg(all(feature = "std", not(feature = "bigint")))]
-to_primitive_64!(i64 u64);
+to_primitive_64!(u64 i64);
+
+#[cfg(all(target_pointer_width = "64", feature = "std", not(feature = "bigint")))]
+to_primitive_64!(usize isize);
 
 #[cfg(all(feature = "bigint", feature = "std"))]
 impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
@@ -1431,10 +1453,15 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     }
 
     fn to_f64(&self) -> Option<f64> {
-        let numer: BigInt = self.numer.to_bigint()?;
-        let denom: BigInt = self.denom.to_bigint()?;
-
-        Some(ratio_to_f64(numer, denom))
+        match (self.numer.to_i64(), self.denom.to_i64()) {
+            (Some(numer), Some(denom)) =>
+                Some(ratio_to_f64(<i128 as From<_>>::from(numer), <i128 as From<_>>::from(denom))),
+            _ => {
+                let numer: BigInt = self.numer.to_bigint()?;
+                let denom: BigInt = self.denom.to_bigint()?;
+                Some(ratio_to_f64(numer, denom))
+            }
+        }
     }
 }
 
@@ -1450,16 +1477,10 @@ impl Bits for BigInt {
     }
 }
 
-#[cfg(all(feature = "std", not(feature = "bigint")))]
+#[cfg(feature = "std")]
 impl Bits for i128 {
     fn bits(&self) -> usize {
-        let mut bit_count = 0;
-        let mut remainder = *self;
-        while remainder > 0 {
-            remainder >>= 1;
-            bit_count += 1;
-        }
-        bit_count
+        (128 - self.wrapping_abs().leading_zeros()) as usize
     }
 }
 
