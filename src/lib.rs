@@ -28,17 +28,13 @@ use core::cmp;
 use core::fmt;
 use core::fmt::{Binary, Display, Formatter, LowerExp, LowerHex, Octal, UpperExp, UpperHex};
 use core::hash::{Hash, Hasher};
-#[cfg(feature = "std")]
-use core::ops::ShlAssign;
-use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use core::ops::{Add, Div, Mul, Neg, Rem, ShlAssign, Sub};
 use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
-#[cfg(all(feature = "bigint", feature = "std"))]
-use num_bigint::ToBigInt;
 #[cfg(feature = "bigint")]
-use num_bigint::{BigInt, BigUint, Sign};
+use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 
 use num_integer::Integer;
 use num_traits::float::FloatCore;
@@ -1365,7 +1361,7 @@ where
     Some(Ratio::new(n1, d1))
 }
 
-#[cfg(not(all(feature = "bigint", feature = "std")))]
+#[cfg(not(feature = "bigint"))]
 macro_rules! to_primitive_small {
     ($($type_name:ty)*) => ($(
         impl ToPrimitive for Ratio<$type_name> {
@@ -1392,13 +1388,13 @@ macro_rules! to_primitive_small {
     )*)
 }
 
-#[cfg(not(all(feature = "bigint", feature = "std")))]
+#[cfg(not(feature = "bigint"))]
 to_primitive_small!(u8 i8 u16 i16 u32 i32);
 
-#[cfg(all(target_pointer_width = "32", not(all(feature = "bigint", feature = "std"))))]
+#[cfg(all(target_pointer_width = "32", not(feature = "bigint")))]
 to_primitive_small!(usize isize);
 
-#[cfg(all(feature = "std", not(feature = "bigint")))]
+#[cfg(not(feature = "bigint"))]
 macro_rules! to_primitive_64 {
     ($($type_name:ty)*) => ($(
         impl ToPrimitive for Ratio<$type_name> {
@@ -1428,13 +1424,13 @@ macro_rules! to_primitive_64 {
     )*)
 }
 
-#[cfg(all(feature = "std", not(feature = "bigint")))]
+#[cfg(not(feature = "bigint"))]
 to_primitive_64!(u64 i64);
 
-#[cfg(all(target_pointer_width = "64", feature = "std", not(feature = "bigint")))]
+#[cfg(all(target_pointer_width = "64", not(feature = "bigint")))]
 to_primitive_64!(usize isize);
 
-#[cfg(all(feature = "bigint", feature = "std"))]
+#[cfg(feature = "bigint")]
 impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     fn to_i64(&self) -> Option<i64> {
         self.to_integer().to_i64()
@@ -1454,8 +1450,10 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
 
     fn to_f64(&self) -> Option<f64> {
         match (self.numer.to_i64(), self.denom.to_i64()) {
-            (Some(numer), Some(denom)) =>
-                Some(ratio_to_f64(<i128 as From<_>>::from(numer), <i128 as From<_>>::from(denom))),
+            (Some(numer), Some(denom)) => Some(ratio_to_f64(
+                <i128 as From<_>>::from(numer),
+                <i128 as From<_>>::from(denom),
+            )),
             _ => {
                 let numer: BigInt = self.numer.to_bigint()?;
                 let denom: BigInt = self.denom.to_bigint()?;
@@ -1465,19 +1463,17 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     }
 }
 
-#[cfg(feature = "std")]
 trait Bits {
     fn bits(&self) -> usize;
 }
 
-#[cfg(all(feature = "bigint", feature = "std"))]
+#[cfg(feature = "bigint")]
 impl Bits for BigInt {
     fn bits(&self) -> usize {
         self.bits()
     }
 }
 
-#[cfg(feature = "std")]
 impl Bits for i128 {
     fn bits(&self) -> usize {
         (128 - self.wrapping_abs().leading_zeros()) as usize
@@ -1488,19 +1484,18 @@ impl Bits for i128 {
 ///
 /// In addition to stated trait bounds, `T` must be able to hold numbers 56 bits larger than
 /// the largest of `numer` and `denom`. This is automatically true if `T` is `BigInt`.
-#[cfg(feature = "std")]
 fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimitive>(
     numer: T,
     denom: T,
 ) -> f64 {
     assert_eq!(
-        std::f64::RADIX,
+        core::f64::RADIX,
         2,
         "only floating point implementations with radix 2 are supported"
     );
 
     // Inclusive upper and lower bounds to the range of exactly-representable ints in an f64.
-    const MAX_EXACT_INT: i64 = 1i64 << std::f64::MANTISSA_DIGITS;
+    const MAX_EXACT_INT: i64 = 1i64 << core::f64::MANTISSA_DIGITS;
     const MIN_EXACT_INT: i64 = -MAX_EXACT_INT;
 
     let flo_sign = numer.signum().to_f64().unwrap() * denom.signum().to_f64().unwrap();
@@ -1531,11 +1526,11 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // Filter out overflows and underflows. After this step, the signed difference fits in an
     // isize.
-    if is_diff_positive && absolute_diff > std::f64::MAX_EXP as usize {
-        return std::f64::INFINITY * flo_sign;
+    if is_diff_positive && absolute_diff > core::f64::MAX_EXP as usize {
+        return core::f64::INFINITY * flo_sign;
     }
     if !is_diff_positive
-        && absolute_diff > -std::f64::MIN_EXP as usize + std::f64::MANTISSA_DIGITS as usize + 1
+        && absolute_diff > -core::f64::MIN_EXP as usize + core::f64::MANTISSA_DIGITS as usize + 1
     {
         return 0.0 * flo_sign;
     }
@@ -1548,7 +1543,7 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     // Shift is chosen so that the quotient will have 55 or 56 bits. The exception is if the
     // quotient is going to be subnormal, in which case it may have fewer bits.
     let shift: isize =
-        std::cmp::max(diff, std::f64::MIN_EXP as isize) - std::f64::MANTISSA_DIGITS as isize - 2;
+        diff.max(core::f64::MIN_EXP as isize) - core::f64::MANTISSA_DIGITS as isize - 2;
     if shift >= 0 {
         denom <<= shift as usize
     } else {
@@ -1561,8 +1556,8 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     let mut quotient = quotient.to_u64().unwrap();
     let n_rounding_bits = {
         let quotient_bits = 64 - quotient.leading_zeros() as isize;
-        let subnormal_bits = std::f64::MIN_EXP as isize - shift;
-        std::cmp::max(quotient_bits, subnormal_bits) - std::f64::MANTISSA_DIGITS as isize
+        let subnormal_bits = core::f64::MIN_EXP as isize - shift;
+        quotient_bits.max(subnormal_bits) - core::f64::MANTISSA_DIGITS as isize
     } as usize;
     debug_assert!(n_rounding_bits == 2 || n_rounding_bits == 3);
     let rounding_bit_mask = (1u64 << n_rounding_bits) - 1;
@@ -1580,7 +1575,7 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     // The quotient is guaranteed to be exactly representable as it's now 53 bits + 2 or 3
     // trailing zeros, so there is no risk of a rounding error here.
     let q_float = quotient as f64;
-    q_float * f64::exp2(shift as f64) * flo_sign
+    q_float * 2f64.powi(shift as i32) * flo_sign
 }
 
 #[cfg(test)]
@@ -1595,7 +1590,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
 
 #[cfg(test)]
 mod test {
-    #[cfg(all(feature = "bigint", feature = "std"))]
+    #[cfg(all(feature = "bigint"))]
     use super::BigInt;
     #[cfg(feature = "bigint")]
     use super::BigRational;
@@ -1606,7 +1601,6 @@ mod test {
     use core::isize;
     use core::str::FromStr;
     use num_integer::Integer;
-    #[cfg(feature = "std")]
     use num_traits::ToPrimitive;
     use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
 
@@ -2869,7 +2863,6 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "std")]
     fn test_ratio_to_i64() {
         assert_eq!(5, Rational64::new(70, 14).to_u64().unwrap());
         assert_eq!(-3, Rational64::new(-31, 8).to_i64().unwrap());
@@ -2877,7 +2870,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(all(feature = "bigint", feature = "std"))]
+    #[cfg(feature = "bigint")]
     fn test_ratio_to_i128() {
         assert_eq!(
             1i128 << 70,
@@ -2888,7 +2881,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(all(feature = "bigint", feature = "std"))]
+    #[cfg(feature = "bigint")]
     fn test_big_ratio_to_f64() {
         assert_eq!(
             BigRational::new(
@@ -2919,7 +2912,6 @@ mod test {
     }
 
     #[test]
-    #[cfg(all(feature = "std"))]
     fn test_ratio_to_f64() {
         assert_eq!(0.5f64, Ratio::<u8>::new(1, 2).to_f64().unwrap());
         assert_eq!(0.5f64, Rational64::new(1, 2).to_f64().unwrap());
