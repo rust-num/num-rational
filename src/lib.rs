@@ -1464,19 +1464,19 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
 }
 
 trait Bits {
-    fn bits(&self) -> usize;
+    fn bits(&self) -> u64;
 }
 
 #[cfg(feature = "bigint")]
 impl Bits for BigInt {
-    fn bits(&self) -> usize {
+    fn bits(&self) -> u64 {
         self.bits()
     }
 }
 
 impl Bits for i128 {
-    fn bits(&self) -> usize {
-        (128 - self.wrapping_abs().leading_zeros()) as usize
+    fn bits(&self) -> u64 {
+        (128 - self.wrapping_abs().leading_zeros()).into()
     }
 }
 
@@ -1526,11 +1526,11 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // Filter out overflows and underflows. After this step, the signed difference fits in an
     // isize.
-    if is_diff_positive && absolute_diff > core::f64::MAX_EXP as usize {
+    if is_diff_positive && absolute_diff > core::f64::MAX_EXP as u64 {
         return core::f64::INFINITY * flo_sign;
     }
     if !is_diff_positive
-        && absolute_diff > -core::f64::MIN_EXP as usize + core::f64::MANTISSA_DIGITS as usize + 1
+        && absolute_diff > -core::f64::MIN_EXP as u64 + core::f64::MANTISSA_DIGITS as u64 + 1
     {
         return 0.0 * flo_sign;
     }
