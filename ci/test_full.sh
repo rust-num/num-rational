@@ -27,9 +27,9 @@ if ! check_version $MSRV ; then
   exit 1
 fi
 
-STD_FEATURES=(bigint-std serde)
+STD_FEATURES=(num-bigint-std serde)
 NO_STD_FEATURES=(serde)
-check_version 1.36 && NO_STD_FEATURES+=(bigint)
+check_version 1.36 && NO_STD_FEATURES+=(num-bigint)
 echo "Testing supported features: ${STD_FEATURES[*]}"
 echo " no_std supported features: ${NO_STD_FEATURES[*]}"
 

@@ -53,7 +53,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --target thumbv6m-none-eabi --no-default-features --features "bigint serde"
+          args: --target thumbv6m-none-eabi --no-default-features --features "num-bigint serde"
 
   # try a target that doesn't have std at all, nor alloc
   no_std_131:

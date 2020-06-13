@@ -112,7 +112,7 @@ pow_signed_impl!(i64, u64);
 pow_signed_impl!(i128, u128);
 pow_signed_impl!(isize, usize);
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 mod bigint {
     use super::*;
     use num_bigint::{BigInt, BigUint, Sign};
