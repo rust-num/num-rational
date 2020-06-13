@@ -1,3 +1,30 @@
+# Release 0.3.0 (2020-06-13)
+
+### Enhancements
+
+- [`Ratio` now implements `ToPrimitive`][52].
+- [`Ratio` now implements additional formatting traits][56]:
+  - `Binary`, `Octal`, `LowerHex`, `UpperHex`, `LowerExp`, `UpperExp`
+- [The `Pow` implementations have been expanded][70].
+  - `Pow<BigInt>` and `Pow<BigUint>` are now implemented.
+  - `Pow<_> for &Ratio<T>` now uses `&T: Pow`.
+  - The inherent `pow` method now uses `&T: Pow`.
+
+### Breaking Changes
+
+- [`num-rational` now requires Rust 1.31 or greater][66].
+  - The "i128" opt-in feature was removed, now always available.
+- [The "num-bigint-std" feature replaces "bigint" with `std` enabled][80].
+  - The "num-bigint" feature without `std` uses `alloc` on Rust 1.36+.
+
+**Contributors**: @cuviper, @MattX, @maxbla
+
+[52]: https://github.com/rust-num/num-rational/pull/52
+[56]: https://github.com/rust-num/num-rational/pull/56
+[66]: https://github.com/rust-num/num-rational/pull/66
+[70]: https://github.com/rust-num/num-rational/pull/70
+[80]: https://github.com/rust-num/num-rational/pull/80
+
 # Release 0.2.4 (2020-03-17)
 
 - [Fixed `CheckedDiv` when both dividend and divisor are 0][74].
