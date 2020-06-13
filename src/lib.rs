@@ -33,7 +33,7 @@ use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::error::Error;
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 
 use num_integer::Integer;
@@ -63,7 +63,7 @@ pub type Rational32 = Ratio<i32>;
 /// Alias for a `Ratio` of 64-bit-sized integers.
 pub type Rational64 = Ratio<i64>;
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
@@ -257,7 +257,7 @@ impl<T: Clone + Integer> Ratio<T> {
     }
 }
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 impl Ratio<BigInt> {
     /// Converts a float into a rational number.
     pub fn from_float<T: FloatCore>(f: T) -> Option<BigRational> {
@@ -1173,7 +1173,7 @@ impl RatioErrorKind {
     }
 }
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 impl FromPrimitive for Ratio<BigInt> {
     fn from_i64(n: i64) -> Option<Self> {
         Some(Ratio::from_integer(n.into()))
@@ -1361,7 +1361,7 @@ where
     Some(Ratio::new(n1, d1))
 }
 
-#[cfg(not(feature = "bigint"))]
+#[cfg(not(feature = "num-bigint"))]
 macro_rules! to_primitive_small {
     ($($type_name:ty)*) => ($(
         impl ToPrimitive for Ratio<$type_name> {
@@ -1388,13 +1388,13 @@ macro_rules! to_primitive_small {
     )*)
 }
 
-#[cfg(not(feature = "bigint"))]
+#[cfg(not(feature = "num-bigint"))]
 to_primitive_small!(u8 i8 u16 i16 u32 i32);
 
-#[cfg(all(target_pointer_width = "32", not(feature = "bigint")))]
+#[cfg(all(target_pointer_width = "32", not(feature = "num-bigint")))]
 to_primitive_small!(usize isize);
 
-#[cfg(not(feature = "bigint"))]
+#[cfg(not(feature = "num-bigint"))]
 macro_rules! to_primitive_64 {
     ($($type_name:ty)*) => ($(
         impl ToPrimitive for Ratio<$type_name> {
@@ -1424,13 +1424,13 @@ macro_rules! to_primitive_64 {
     )*)
 }
 
-#[cfg(not(feature = "bigint"))]
+#[cfg(not(feature = "num-bigint"))]
 to_primitive_64!(u64 i64);
 
-#[cfg(all(target_pointer_width = "64", not(feature = "bigint")))]
+#[cfg(all(target_pointer_width = "64", not(feature = "num-bigint")))]
 to_primitive_64!(usize isize);
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     fn to_i64(&self) -> Option<i64> {
         self.to_integer().to_i64()
@@ -1467,7 +1467,7 @@ trait Bits {
     fn bits(&self) -> u64;
 }
 
-#[cfg(feature = "bigint")]
+#[cfg(feature = "num-bigint")]
 impl Bits for BigInt {
     fn bits(&self) -> u64 {
         self.bits()
@@ -1590,9 +1590,9 @@ fn hash<T: Hash>(x: &T) -> u64 {
 
 #[cfg(test)]
 mod test {
-    #[cfg(all(feature = "bigint"))]
+    #[cfg(all(feature = "num-bigint"))]
     use super::BigInt;
-    #[cfg(feature = "bigint")]
+    #[cfg(feature = "num-bigint")]
     use super::BigRational;
     use super::{Ratio, Rational, Rational64};
 
@@ -1676,14 +1676,14 @@ mod test {
         denom: 1,
     };
 
-    #[cfg(feature = "bigint")]
+    #[cfg(feature = "num-bigint")]
     pub fn to_big(n: Rational) -> BigRational {
         Ratio::new(
             FromPrimitive::from_isize(n.numer).unwrap(),
             FromPrimitive::from_isize(n.denom).unwrap(),
         )
     }
-    #[cfg(not(feature = "bigint"))]
+    #[cfg(not(feature = "num-bigint"))]
     pub fn to_big(n: Rational) -> Rational {
         Ratio::new(
             FromPrimitive::from_isize(n.numer).unwrap(),
@@ -2607,11 +2607,11 @@ mod test {
             assert_eq!(Pow::pow(r, &e), expected);
             assert_eq!(Pow::pow(&r, e), expected);
             assert_eq!(Pow::pow(&r, &e), expected);
-            #[cfg(feature = "bigint")]
+            #[cfg(feature = "num-bigint")]
             test_big(r, e, expected);
         }
 
-        #[cfg(feature = "bigint")]
+        #[cfg(feature = "num-bigint")]
         fn test_big(r: Rational, e: i32, expected: Rational) {
             let r = BigRational::new_raw(r.numer.into(), r.denom.into());
             let expected = BigRational::new_raw(expected.numer.into(), expected.denom.into());
@@ -2662,7 +2662,7 @@ mod test {
         }
     }
 
-    #[cfg(feature = "bigint")]
+    #[cfg(feature = "num-bigint")]
     #[test]
     fn test_from_float() {
         use num_traits::float::FloatCore;
@@ -2709,7 +2709,7 @@ mod test {
         );
     }
 
-    #[cfg(feature = "bigint")]
+    #[cfg(feature = "num-bigint")]
     #[test]
     fn test_from_float_fail() {
         use core::{f32, f64};
@@ -2870,7 +2870,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "bigint")]
+    #[cfg(feature = "num-bigint")]
     fn test_ratio_to_i128() {
         assert_eq!(
             1i128 << 70,
@@ -2881,7 +2881,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "bigint")]
+    #[cfg(feature = "num-bigint")]
     fn test_big_ratio_to_f64() {
         assert_eq!(
             BigRational::new(
