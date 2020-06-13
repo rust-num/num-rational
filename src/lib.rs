@@ -1006,7 +1006,7 @@ macro_rules! impl_formatting {
     ($fmt_trait:ident, $prefix:expr, $fmt_str:expr, $fmt_alt:expr) => {
         impl<T: $fmt_trait + Clone + Integer> $fmt_trait for Ratio<T> {
             #[cfg(feature = "std")]
-            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
                 let pre_pad = if self.denom.is_one() {
                     format!($fmt_str, self.numer)
                 } else {
@@ -1027,7 +1027,7 @@ macro_rules! impl_formatting {
                 f.pad_integral(non_negative, $prefix, pre_pad)
             }
             #[cfg(not(feature = "std"))]
-            fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
                 let plus = if f.sign_plus() && self.numer >= T::zero() {
                     "+"
                 } else {
