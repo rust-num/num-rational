@@ -69,7 +69,12 @@ pub type BigRational = Ratio<BigInt>;
 
 /// These method are `const` for Rust 1.31 and later.
 impl<T> Ratio<T> {
-    /// Creates a `Ratio` without checking for `denom == 0` or reducing.
+    /**
+    Creates a `Ratio` without checking for `denom == 0` or reducing.
+
+    **There are several methods that will panic if used on a `Ratio` with
+    `denom == 0`.**
+    */
     #[inline]
     pub const fn new_raw(numer: T, denom: T) -> Ratio<T> {
         Ratio { numer, denom }
@@ -89,7 +94,11 @@ impl<T> Ratio<T> {
 }
 
 impl<T: Clone + Integer> Ratio<T> {
-    /// Creates a new `Ratio`. Fails if `denom` is zero.
+    /**
+    Creates a new `Ratio`.
+
+    **Panics if `denom` is zero.**
+    */
     #[inline]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
         let mut ret = Ratio::new_raw(numer, denom);
@@ -115,7 +124,11 @@ impl<T: Clone + Integer> Ratio<T> {
         self.denom.is_one()
     }
 
-    /// Puts self into lowest terms, with denom > 0.
+    /**
+    Puts self into lowest terms, with `denom` > 0.
+
+    **Panics if `denom` is zero.**
+    */
     fn reduce(&mut self) {
         if self.denom.is_zero() {
             panic!("denominator == 0");
@@ -146,19 +159,25 @@ impl<T: Clone + Integer> Ratio<T> {
         }
     }
 
-    /// Returns a reduced copy of self.
-    ///
-    /// In general, it is not necessary to use this method, as the only
-    /// method of procuring a non-reduced fraction is through `new_raw`.
+    /**
+    Returns a reduced copy of self.
+
+    In general, it is not necessary to use this method, as the only
+    method of procuring a non-reduced fraction is through `new_raw`.
+
+    **Panics if `denom` is zero.**
+    */
     pub fn reduced(&self) -> Ratio<T> {
         let mut ret = self.clone();
         ret.reduce();
         ret
     }
 
-    /// Returns the reciprocal.
-    ///
-    /// Fails if the `Ratio` is zero.
+    /**
+    Returns the reciprocal.
+
+    **Panics if the `Ratio` is zero.**
+    */
     #[inline]
     pub fn recip(&self) -> Ratio<T> {
         self.clone().into_recip()
