@@ -69,12 +69,10 @@ pub type BigRational = Ratio<BigInt>;
 
 /// These method are `const` for Rust 1.31 and later.
 impl<T> Ratio<T> {
-    /**
-    Creates a `Ratio` without checking for `denom == 0` or reducing.
-
-    **There are several methods that will panic if used on a `Ratio` with
-    `denom == 0`.**
-    */
+    /// Creates a `Ratio` without checking for `denom == 0` or reducing.
+    ///
+    /// **There are several methods that will panic if used on a `Ratio` with
+    /// `denom == 0`.**
     #[inline]
     pub const fn new_raw(numer: T, denom: T) -> Ratio<T> {
         Ratio { numer, denom }
@@ -94,11 +92,9 @@ impl<T> Ratio<T> {
 }
 
 impl<T: Clone + Integer> Ratio<T> {
-    /**
-    Creates a new `Ratio`.
-
-    **Panics if `denom` is zero.**
-    */
+    /// Creates a new `Ratio`.
+    ///
+    /// **Panics if `denom` is zero.**
     #[inline]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
         let mut ret = Ratio::new_raw(numer, denom);
@@ -124,11 +120,9 @@ impl<T: Clone + Integer> Ratio<T> {
         self.denom.is_one()
     }
 
-    /**
-    Puts self into lowest terms, with `denom` > 0.
-
-    **Panics if `denom` is zero.**
-    */
+    /// Puts self into lowest terms, with `denom` > 0.
+    ///
+    /// **Panics if `denom` is zero.**
     fn reduce(&mut self) {
         if self.denom.is_zero() {
             panic!("denominator == 0");
@@ -159,25 +153,21 @@ impl<T: Clone + Integer> Ratio<T> {
         }
     }
 
-    /**
-    Returns a reduced copy of self.
-
-    In general, it is not necessary to use this method, as the only
-    method of procuring a non-reduced fraction is through `new_raw`.
-
-    **Panics if `denom` is zero.**
-    */
+    /// Returns a reduced copy of self.
+    ///
+    /// In general, it is not necessary to use this method, as the only
+    /// method of procuring a non-reduced fraction is through `new_raw`.
+    ///
+    /// **Panics if `denom` is zero.**
     pub fn reduced(&self) -> Ratio<T> {
         let mut ret = self.clone();
         ret.reduce();
         ret
     }
 
-    /**
-    Returns the reciprocal.
-
-    **Panics if the `Ratio` is zero.**
-    */
+    /// Returns the reciprocal.
+    ///
+    /// **Panics if the `Ratio` is zero.**
     #[inline]
     pub fn recip(&self) -> Ratio<T> {
         self.clone().into_recip()
@@ -487,7 +477,7 @@ mod opassign {
             self.numer *= other.denom / gcd_bd.clone();
             self.denom /= gcd_bd;
             self.denom *= other.numer / gcd_ac;
-            self.reduce(); //TODO: remove this line. see #8.
+            self.reduce(); // TODO: remove this line. see #8.
         }
     }
 
@@ -500,7 +490,7 @@ mod opassign {
             self.numer *= other.numer / gcd_bc.clone();
             self.denom /= gcd_bc;
             self.denom *= other.denom / gcd_ad;
-            self.reduce(); //TODO: remove this line. see #8.
+            self.reduce(); // TODO: remove this line. see #8.
         }
     }
 
@@ -547,7 +537,7 @@ mod opassign {
             let gcd = self.numer.gcd(&other);
             self.numer /= gcd.clone();
             self.denom *= other / gcd;
-            self.reduce(); //TODO: remove this line. see #8.
+            self.reduce(); // TODO: remove this line. see #8.
         }
     }
 
@@ -556,7 +546,7 @@ mod opassign {
             let gcd = self.denom.gcd(&other);
             self.denom /= gcd.clone();
             self.numer *= other / gcd;
-            self.reduce(); //TODO: remove this line. see #8.
+            self.reduce(); // TODO: remove this line. see #8.
         }
     }
 
@@ -1035,7 +1025,7 @@ macro_rules! impl_formatting {
                         format!(concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
                     }
                 };
-                //TODO: replace with strip_prefix, when stabalized
+                // TODO: replace with strip_prefix, when stabalized
                 let (pre_pad, non_negative) = {
                     if pre_pad.starts_with("-") {
                         (&pre_pad[1..], false)
@@ -1965,7 +1955,7 @@ mod test {
         assert_fmt_eq!(format_args!("{:-b}", _1_2), "1/10");
         assert_fmt_eq!(format_args!("{:b}", _0), "0");
         assert_fmt_eq!(format_args!("{:#b}", _1_2), "0b1/0b10");
-        //no std does not support padding
+        // no std does not support padding
         #[cfg(feature = "std")]
         assert_eq!(&format!("{:010b}", _1_2), "0000001/10");
         #[cfg(feature = "std")]
@@ -2397,7 +2387,7 @@ mod test {
                 T: Integer + Bounded + Clone + Debug + NumAssign,
             {
                 let two = T::one() + T::one();
-                //value near to maximum, but divisible by two
+                // value near to maximum, but divisible by two
                 let max_div2 = T::max_value() / two.clone() * two.clone();
                 let _1_max: Ratio<T> = Ratio::new(T::one(), max_div2);
                 let _1_two: Ratio<T> = Ratio::new(T::one(), two);
