@@ -1391,7 +1391,12 @@ macro_rules! to_primitive_small {
             }
 
             fn to_f64(&self) -> Option<f64> {
-                Some(self.numer.to_f64().unwrap() / self.denom.to_f64().unwrap())
+                let float = self.numer.to_f64().unwrap() / self.denom.to_f64().unwrap();
+                if float.is_nan() {
+                    None
+                } else {
+                    Some(float)
+                }
             }
         }
     )*)
@@ -1424,10 +1429,15 @@ macro_rules! to_primitive_64 {
             }
 
             fn to_f64(&self) -> Option<f64> {
-                Some(ratio_to_f64(
+                let float = ratio_to_f64(
                     self.numer as i128,
                     self.denom as i128
-                ))
+                );
+                if float.is_nan() {
+                    None
+                } else {
+                    Some(float)
+                }
             }
         }
     )*)
@@ -1458,16 +1468,21 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     }
 
     fn to_f64(&self) -> Option<f64> {
-        match (self.numer.to_i64(), self.denom.to_i64()) {
-            (Some(numer), Some(denom)) => Some(ratio_to_f64(
+        let float = match (self.numer.to_i64(), self.denom.to_i64()) {
+            (Some(numer), Some(denom)) => ratio_to_f64(
                 <i128 as From<_>>::from(numer),
                 <i128 as From<_>>::from(denom),
-            )),
+            ),
             _ => {
                 let numer: BigInt = self.numer.to_bigint()?;
                 let denom: BigInt = self.denom.to_bigint()?;
-                Some(ratio_to_f64(numer, denom))
+                ratio_to_f64(numer, denom)
             }
+        };
+        if float.is_nan() {
+            None
+        } else {
+            Some(float)
         }
     }
 }
@@ -1507,10 +1522,9 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     const MAX_EXACT_INT: i64 = 1i64 << core::f64::MANTISSA_DIGITS;
     const MIN_EXACT_INT: i64 = -MAX_EXACT_INT;
 
-    let flo_sign = numer.signum().to_f64().unwrap() * denom.signum().to_f64().unwrap();
-
-    if numer.is_zero() {
-        return 0.0 * flo_sign;
+    let flo_sign = numer.signum().to_f64().unwrap() / denom.signum().to_f64().unwrap();
+    if !flo_sign.is_normal() {
+        return flo_sign;
     }
 
     // Fast track: both sides can losslessly be converted to f64s. In this case, letting the
@@ -2899,47 +2913,67 @@ mod test {
                     .unwrap(),
                 "3".parse().unwrap()
             )
-            .to_f64()
-            .unwrap(),
-            411522630329218100000000000000000000000000000f64
+            .to_f64(),
+            Some(411522630329218100000000000000000000000000000f64)
         );
         assert_eq!(
-            BigRational::new(1.into(), BigInt::one() << 1050,)
-                .to_f64()
-                .unwrap(),
-            0f64
+            BigRational::new(BigInt::one(), BigInt::one() << 1050).to_f64(),
+            Some(0f64)
+        );
+        assert_eq!(
+            BigRational::from(BigInt::one() << 1050).to_f64(),
+            Some(core::f64::INFINITY)
+        );
+        assert_eq!(
+            BigRational::from((-BigInt::one()) << 1050).to_f64(),
+            Some(core::f64::NEG_INFINITY)
         );
         assert_eq!(
             BigRational::new(
                 "1234567890987654321234567890".parse().unwrap(),
                 "987654321234567890987654321".parse().unwrap()
             )
-            .to_f64()
-            .unwrap(),
-            1.2499999893125f64
+            .to_f64(),
+            Some(1.2499999893125f64)
+        );
+        assert_eq!(
+            BigRational::new_raw(BigInt::one(), BigInt::zero()).to_f64(),
+            Some(core::f64::INFINITY)
+        );
+        assert_eq!(
+            BigRational::new_raw(-BigInt::one(), BigInt::zero()).to_f64(),
+            Some(core::f64::NEG_INFINITY)
+        );
+        assert_eq!(
+            BigRational::new_raw(BigInt::zero(), BigInt::zero()).to_f64(),
+            None
         );
     }
 
     #[test]
     fn test_ratio_to_f64() {
-        assert_eq!(0.5f64, Ratio::<u8>::new(1, 2).to_f64().unwrap());
-        assert_eq!(0.5f64, Rational64::new(1, 2).to_f64().unwrap());
-        assert_eq!(-0.5f64, Rational64::new(1, -2).to_f64().unwrap());
-        assert_eq!(0.0f64, Rational64::new(0, 2).to_f64().unwrap());
-        assert_eq!(-0.0f64, Rational64::new(0, -2).to_f64().unwrap());
+        assert_eq!(Ratio::<u8>::new(1, 2).to_f64(), Some(0.5f64));
+        assert_eq!(Rational64::new(1, 2).to_f64(), Some(0.5f64));
+        assert_eq!(Rational64::new(1, -2).to_f64(), Some(-0.5f64));
+        assert_eq!(Rational64::new(0, 2).to_f64(), Some(0.0f64));
+        assert_eq!(Rational64::new(0, -2).to_f64(), Some(-0.0f64));
+        assert_eq!(Rational64::new((1 << 57) + 1, 1 << 54).to_f64(), Some(8f64));
         assert_eq!(
-            8f64,
-            Rational64::new((1 << 57) + 1, 1 << 54).to_f64().unwrap()
+            Rational64::new((1 << 52) + 1, 1 << 52).to_f64(),
+            Some(1.0000000000000002f64),
         );
         assert_eq!(
-            1.0000000000000002f64,
-            Rational64::new((1 << 52) + 1, 1 << 52).to_f64().unwrap()
+            Rational64::new((1 << 60) + (1 << 8), 1 << 60).to_f64(),
+            Some(1.0000000000000002f64),
         );
         assert_eq!(
-            1.0000000000000002f64,
-            Rational64::new((1 << 60) + (1 << 8), 1 << 60)
-                .to_f64()
-                .unwrap()
+            Ratio::<i32>::new_raw(1, 0).to_f64(),
+            Some(core::f64::INFINITY)
         );
+        assert_eq!(
+            Ratio::<i32>::new_raw(-1, 0).to_f64(),
+            Some(core::f64::NEG_INFINITY)
+        );
+        assert_eq!(Ratio::<i32>::new_raw(0, 0).to_f64(), None);
     }
 }
