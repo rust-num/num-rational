@@ -1,3 +1,14 @@
+# Release 0.3.1 (2020-10-29)
+
+- [Handle to_f64() with raw division by zero][83].
+- [Better document panic behaviour][84].
+- Clarify the license specification as "MIT OR Apache-2.0".
+
+**Contributors**: @cuviper, @zetok
+
+[83]: https://github.com/rust-num/num-rational/pull/83
+[84]: https://github.com/rust-num/num-rational/pull/84
+
 # Release 0.3.0 (2020-06-13)
 
 ### Enhancements
