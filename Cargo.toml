@@ -16,7 +16,8 @@ edition = "2018"
 [package.metadata.docs.rs]
 features = ["std", "num-bigint-std", "serde"]
 
-[dependencies]
+[dependencies.paste]
+version = "1.0"
 
 [dependencies.num-bigint]
 optional = true
