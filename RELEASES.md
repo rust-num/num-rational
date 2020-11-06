@@ -1,3 +1,11 @@
+# Release 0.3.2 (2020-11-06)
+
+- [Fix always rebuilding with --remap-path-prefix][88]
+
+**Contributors**: @Nemo157
+
+[88]: https://github.com/rust-num/num-rational/pull/88
+
 # Release 0.3.1 (2020-10-29)
 
 - [Handle to_f64() with raw division by zero][83].
