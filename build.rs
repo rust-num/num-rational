@@ -4,5 +4,5 @@ fn main() {
         println!("cargo:rustc-cfg=has_int_exp_fmt");
     }
 
-    autocfg::rerun_path(file!());
+    autocfg::rerun_path("build.rs");
 }
