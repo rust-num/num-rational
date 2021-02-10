@@ -1622,6 +1622,7 @@ mod test {
 
     use core::f64;
     use core::i32;
+    use core::i64;
     use core::str::FromStr;
     use num_integer::Integer;
     use num_traits::ToPrimitive;
