@@ -57,6 +57,10 @@ pub struct Ratio<T> {
 }
 
 /// Alias for a `Ratio` of machine-sized integers.
+#[deprecated(
+    since = "0.4.0",
+    note = "it's better to use a specific size, like `Rational32` or `Rational64`"
+)]
 pub type Rational = Ratio<isize>;
 /// Alias for a `Ratio` of 32-bit-sized integers.
 pub type Rational32 = Ratio<i32>;
@@ -1617,100 +1621,100 @@ mod test {
     use super::BigInt;
     #[cfg(feature = "num-bigint")]
     use super::BigRational;
-    use super::{Ratio, Rational, Rational64};
+    use super::{Ratio, Rational64};
 
     use core::f64;
     use core::i32;
-    use core::isize;
+    use core::i64;
     use core::str::FromStr;
     use num_integer::Integer;
     use num_traits::ToPrimitive;
     use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
 
-    pub const _0: Rational = Ratio { numer: 0, denom: 1 };
-    pub const _1: Rational = Ratio { numer: 1, denom: 1 };
-    pub const _2: Rational = Ratio { numer: 2, denom: 1 };
-    pub const _NEG2: Rational = Ratio {
+    pub const _0: Rational64 = Ratio { numer: 0, denom: 1 };
+    pub const _1: Rational64 = Ratio { numer: 1, denom: 1 };
+    pub const _2: Rational64 = Ratio { numer: 2, denom: 1 };
+    pub const _NEG2: Rational64 = Ratio {
         numer: -2,
         denom: 1,
     };
-    pub const _8: Rational = Ratio { numer: 8, denom: 1 };
-    pub const _15: Rational = Ratio {
+    pub const _8: Rational64 = Ratio { numer: 8, denom: 1 };
+    pub const _15: Rational64 = Ratio {
         numer: 15,
         denom: 1,
     };
-    pub const _16: Rational = Ratio {
+    pub const _16: Rational64 = Ratio {
         numer: 16,
         denom: 1,
     };
 
-    pub const _1_2: Rational = Ratio { numer: 1, denom: 2 };
-    pub const _1_8: Rational = Ratio { numer: 1, denom: 8 };
-    pub const _1_15: Rational = Ratio {
+    pub const _1_2: Rational64 = Ratio { numer: 1, denom: 2 };
+    pub const _1_8: Rational64 = Ratio { numer: 1, denom: 8 };
+    pub const _1_15: Rational64 = Ratio {
         numer: 1,
         denom: 15,
     };
-    pub const _1_16: Rational = Ratio {
+    pub const _1_16: Rational64 = Ratio {
         numer: 1,
         denom: 16,
     };
-    pub const _3_2: Rational = Ratio { numer: 3, denom: 2 };
-    pub const _5_2: Rational = Ratio { numer: 5, denom: 2 };
-    pub const _NEG1_2: Rational = Ratio {
+    pub const _3_2: Rational64 = Ratio { numer: 3, denom: 2 };
+    pub const _5_2: Rational64 = Ratio { numer: 5, denom: 2 };
+    pub const _NEG1_2: Rational64 = Ratio {
         numer: -1,
         denom: 2,
     };
-    pub const _1_NEG2: Rational = Ratio {
+    pub const _1_NEG2: Rational64 = Ratio {
         numer: 1,
         denom: -2,
     };
-    pub const _NEG1_NEG2: Rational = Ratio {
+    pub const _NEG1_NEG2: Rational64 = Ratio {
         numer: -1,
         denom: -2,
     };
-    pub const _1_3: Rational = Ratio { numer: 1, denom: 3 };
-    pub const _NEG1_3: Rational = Ratio {
+    pub const _1_3: Rational64 = Ratio { numer: 1, denom: 3 };
+    pub const _NEG1_3: Rational64 = Ratio {
         numer: -1,
         denom: 3,
     };
-    pub const _2_3: Rational = Ratio { numer: 2, denom: 3 };
-    pub const _NEG2_3: Rational = Ratio {
+    pub const _2_3: Rational64 = Ratio { numer: 2, denom: 3 };
+    pub const _NEG2_3: Rational64 = Ratio {
         numer: -2,
         denom: 3,
     };
-    pub const _MIN: Rational = Ratio {
-        numer: isize::MIN,
+    pub const _MIN: Rational64 = Ratio {
+        numer: i64::MIN,
         denom: 1,
     };
-    pub const _MIN_P1: Rational = Ratio {
-        numer: isize::MIN + 1,
+    pub const _MIN_P1: Rational64 = Ratio {
+        numer: i64::MIN + 1,
         denom: 1,
     };
-    pub const _MAX: Rational = Ratio {
-        numer: isize::MAX,
+    pub const _MAX: Rational64 = Ratio {
+        numer: i64::MAX,
         denom: 1,
     };
-    pub const _MAX_M1: Rational = Ratio {
-        numer: isize::MAX - 1,
+    pub const _MAX_M1: Rational64 = Ratio {
+        numer: i64::MAX - 1,
         denom: 1,
     };
-    pub const _BILLION: Rational = Ratio {
+    pub const _BILLION: Rational64 = Ratio {
         numer: 1_000_000_000,
         denom: 1,
     };
 
     #[cfg(feature = "num-bigint")]
-    pub fn to_big(n: Rational) -> BigRational {
+    pub fn to_big(n: Rational64) -> BigRational {
         Ratio::new(
-            FromPrimitive::from_isize(n.numer).unwrap(),
-            FromPrimitive::from_isize(n.denom).unwrap(),
+            FromPrimitive::from_i64(n.numer).unwrap(),
+            FromPrimitive::from_i64(n.denom).unwrap(),
         )
     }
     #[cfg(not(feature = "num-bigint"))]
-    pub fn to_big(n: Rational) -> Rational {
+    pub fn to_big(n: Rational64) -> Rational64 {
         Ratio::new(
-            FromPrimitive::from_isize(n.numer).unwrap(),
-            FromPrimitive::from_isize(n.denom).unwrap(),
+            FromPrimitive::from_i64(n.numer).unwrap(),
+            FromPrimitive::from_i64(n.denom).unwrap(),
         )
     }
 
@@ -1794,7 +1798,7 @@ mod test {
         assert!(_0 >= _0 && _1 >= _1);
         assert!(_1 >= _0 && !(_0 >= _1));
 
-        let _0_2: Rational = Ratio::new_raw(0, 2);
+        let _0_2: Rational64 = Ratio::new_raw(0, 2);
         assert_eq!(_0, _0_2);
     }
 
@@ -2038,7 +2042,7 @@ mod test {
     }
 
     mod arith {
-        use super::super::{Ratio, Rational};
+        use super::super::{Ratio, Rational64};
         use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _MAX, _MAX_M1, _MIN, _MIN_P1, _NEG1_2};
         use core::fmt::Debug;
         use num_integer::Integer;
@@ -2046,7 +2050,7 @@ mod test {
 
         #[test]
         fn test_add() {
-            fn test(a: Rational, b: Rational, c: Rational) {
+            fn test(a: Rational64, b: Rational64, c: Rational64) {
                 assert_eq!(a + b, c);
                 assert_eq!(
                     {
@@ -2060,7 +2064,7 @@ mod test {
                 assert_eq!(a.checked_add(&b), Some(c));
                 assert_eq!(to_big(a).checked_add(&to_big(b)), Some(to_big(c)));
             }
-            fn test_assign(a: Rational, b: isize, c: Rational) {
+            fn test_assign(a: Rational64, b: i64, c: Rational64) {
                 assert_eq!(a + b, c);
                 assert_eq!(
                     {
@@ -2117,7 +2121,7 @@ mod test {
 
         #[test]
         fn test_sub() {
-            fn test(a: Rational, b: Rational, c: Rational) {
+            fn test(a: Rational64, b: Rational64, c: Rational64) {
                 assert_eq!(a - b, c);
                 assert_eq!(
                     {
@@ -2131,7 +2135,7 @@ mod test {
                 assert_eq!(a.checked_sub(&b), Some(c));
                 assert_eq!(to_big(a).checked_sub(&to_big(b)), Some(to_big(c)));
             }
-            fn test_assign(a: Rational, b: isize, c: Rational) {
+            fn test_assign(a: Rational64, b: i64, c: Rational64) {
                 assert_eq!(a - b, c);
                 assert_eq!(
                     {
@@ -2182,7 +2186,7 @@ mod test {
 
         #[test]
         fn test_mul() {
-            fn test(a: Rational, b: Rational, c: Rational) {
+            fn test(a: Rational64, b: Rational64, c: Rational64) {
                 assert_eq!(a * b, c);
                 assert_eq!(
                     {
@@ -2196,7 +2200,7 @@ mod test {
                 assert_eq!(a.checked_mul(&b), Some(c));
                 assert_eq!(to_big(a).checked_mul(&to_big(b)), Some(to_big(c)));
             }
-            fn test_assign(a: Rational, b: isize, c: Rational) {
+            fn test_assign(a: Rational64, b: i64, c: Rational64) {
                 assert_eq!(a * b, c);
                 assert_eq!(
                     {
@@ -2271,7 +2275,7 @@ mod test {
 
         #[test]
         fn test_div() {
-            fn test(a: Rational, b: Rational, c: Rational) {
+            fn test(a: Rational64, b: Rational64, c: Rational64) {
                 assert_eq!(a / b, c);
                 assert_eq!(
                     {
@@ -2285,7 +2289,7 @@ mod test {
                 assert_eq!(a.checked_div(&b), Some(c));
                 assert_eq!(to_big(a).checked_div(&to_big(b)), Some(to_big(c)));
             }
-            fn test_assign(a: Rational, b: isize, c: Rational) {
+            fn test_assign(a: Rational64, b: i64, c: Rational64) {
                 assert_eq!(a / b, c);
                 assert_eq!(
                     {
@@ -2360,7 +2364,7 @@ mod test {
 
         #[test]
         fn test_rem() {
-            fn test(a: Rational, b: Rational, c: Rational) {
+            fn test(a: Rational64, b: Rational64, c: Rational64) {
                 assert_eq!(a % b, c);
                 assert_eq!(
                     {
@@ -2372,7 +2376,7 @@ mod test {
                 );
                 assert_eq!(to_big(a) % to_big(b), to_big(c))
             }
-            fn test_assign(a: Rational, b: isize, c: Rational) {
+            fn test_assign(a: Rational64, b: i64, c: Rational64) {
                 assert_eq!(a % b, c);
                 assert_eq!(
                     {
@@ -2429,7 +2433,7 @@ mod test {
 
         #[test]
         fn test_neg() {
-            fn test(a: Rational, b: Rational) {
+            fn test(a: Rational64, b: Rational64) {
                 assert_eq!(-a, b);
                 assert_eq!(-to_big(a), to_big(b))
             }
@@ -2624,7 +2628,7 @@ mod test {
 
     #[test]
     fn test_pow() {
-        fn test(r: Rational, e: i32, expected: Rational) {
+        fn test(r: Rational64, e: i32, expected: Rational64) {
             assert_eq!(r.pow(e), expected);
             assert_eq!(Pow::pow(r, e), expected);
             assert_eq!(Pow::pow(r, &e), expected);
@@ -2635,7 +2639,7 @@ mod test {
         }
 
         #[cfg(feature = "num-bigint")]
-        fn test_big(r: Rational, e: i32, expected: Rational) {
+        fn test_big(r: Rational64, e: i32, expected: Rational64) {
             let r = BigRational::new_raw(r.numer.into(), r.denom.into());
             let expected = BigRational::new_raw(expected.numer.into(), expected.denom.into());
             assert_eq!((&r).pow(e), expected);
@@ -2661,7 +2665,7 @@ mod test {
     #[cfg(feature = "std")]
     fn test_to_from_str() {
         use std::string::{String, ToString};
-        fn test(r: Rational, s: String) {
+        fn test(r: Rational64, s: String) {
             assert_eq!(FromStr::from_str(&s), Ok(r));
             assert_eq!(r.to_string(), s);
         }
@@ -2675,7 +2679,7 @@ mod test {
     #[test]
     fn test_from_str_fail() {
         fn test(s: &str) {
-            let rational: Result<Rational, _> = FromStr::from_str(s);
+            let rational: Result<Rational64, _> = FromStr::from_str(s);
             assert!(rational.is_err());
         }
 
@@ -2751,7 +2755,7 @@ mod test {
         assert_eq!(_3_2.abs_sub(&_1_2), _1);
         assert_eq!(_1_2.abs_sub(&_3_2), Zero::zero());
         assert_eq!(_1_2.signum(), One::one());
-        assert_eq!(_NEG1_2.signum(), -<Ratio<isize>>::one());
+        assert_eq!(_NEG1_2.signum(), -<Ratio<i64>>::one());
         assert_eq!(_0.signum(), Zero::zero());
         assert!(_NEG1_2.is_negative());
         assert!(_1_NEG2.is_negative());
@@ -2772,13 +2776,13 @@ mod test {
         assert!(crate::hash(&_0) != crate::hash(&_3_2));
 
         // a == b -> hash(a) == hash(b)
-        let a = Rational::new_raw(4, 2);
-        let b = Rational::new_raw(6, 3);
+        let a = Rational64::new_raw(4, 2);
+        let b = Rational64::new_raw(6, 3);
         assert_eq!(a, b);
         assert_eq!(crate::hash(&a), crate::hash(&b));
 
-        let a = Rational::new_raw(123456789, 1000);
-        let b = Rational::new_raw(123456789 * 5, 5000);
+        let a = Rational64::new_raw(123456789, 1000);
+        let b = Rational64::new_raw(123456789 * 5, 5000);
         assert_eq!(a, b);
         assert_eq!(crate::hash(&a), crate::hash(&b));
     }
