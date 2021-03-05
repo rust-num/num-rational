@@ -57,7 +57,10 @@ pub struct Ratio<T> {
 }
 
 /// Alias for a `Ratio` of machine-sized integers.
-#[deprecated]
+#[deprecated(
+    since = "0.4.0",
+    note = "it's better to use a specific size, like `Rational32` or `Rational64`"
+)]
 pub type Rational = Ratio<isize>;
 /// Alias for a `Ratio` of 32-bit-sized integers.
 pub type Rational32 = Ratio<i32>;
