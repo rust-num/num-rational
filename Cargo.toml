@@ -8,7 +8,7 @@ categories = ["algorithms", "data-structures", "science", "no-std"]
 license = "MIT OR Apache-2.0"
 name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
-version = "0.3.2"
+version = "0.4.0"
 readme = "README.md"
 exclude = ["/bors.toml", "/ci/*", "/.github/*"]
 edition = "2018"
@@ -20,7 +20,7 @@ features = ["std", "num-bigint-std", "serde"]
 
 [dependencies.num-bigint]
 optional = true
-version = "0.3.0"
+version = "0.4.0"
 default-features = false
 
 [dependencies.num-integer]

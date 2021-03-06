@@ -14,7 +14,7 @@
 //!
 //! The `num-rational` crate is tested for rustc 1.31 and greater.
 
-#![doc(html_root_url = "https://docs.rs/num-rational/0.3")]
+#![doc(html_root_url = "https://docs.rs/num-rational/0.4")]
 #![no_std]
 // Ratio ops often use other "suspicious" ops
 #![allow(clippy::suspicious_arithmetic_impl)]

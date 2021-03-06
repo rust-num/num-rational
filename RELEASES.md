@@ -1,3 +1,14 @@
+# Release 0.4.0 (2021-03-05)
+
+- The optional `num-bigint` dependency is now 0.4.
+- [The `Rational` alias for `Ratio<usize>` is now deprecated][92]. It is
+  recommended to use specific type sizes for numeric computation, like
+  `Rational32` and `Rational64`.
+
+**Contributors**: @cuviper, @vks
+
+[92]: https://github.com/rust-num/num-rational/pull/92
+
 # Release 0.3.2 (2020-11-06)
 
 - [Fix always rebuilding with --remap-path-prefix][88]
