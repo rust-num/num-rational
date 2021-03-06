@@ -44,6 +44,7 @@ use num_traits::{
     Pow, Signed, Zero,
 };
 
+mod from;
 mod pow;
 
 /// Represents the ratio between two numbers.
