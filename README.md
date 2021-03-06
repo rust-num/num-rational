@@ -13,7 +13,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-num-rational = "0.3"
+num-rational = "0.4"
 ```
 
 ## Features
@@ -23,7 +23,7 @@ the default `std` feature.  Use this in `Cargo.toml`:
 
 ```toml
 [dependencies.num-rational]
-version = "0.3"
+version = "0.4"
 default-features = false
 ```
 
