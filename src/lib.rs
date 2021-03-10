@@ -1516,14 +1516,15 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     numer: T,
     denom: T,
 ) -> f64 {
+    use core::f64::{INFINITY, MANTISSA_DIGITS, MAX_EXP, MIN_EXP, RADIX};
+
     assert_eq!(
-        core::f64::RADIX,
-        2,
+        RADIX, 2,
         "only floating point implementations with radix 2 are supported"
     );
 
     // Inclusive upper and lower bounds to the range of exactly-representable ints in an f64.
-    const MAX_EXACT_INT: i64 = 1i64 << core::f64::MANTISSA_DIGITS;
+    const MAX_EXACT_INT: i64 = 1i64 << MANTISSA_DIGITS;
     const MIN_EXACT_INT: i64 = -MAX_EXACT_INT;
 
     let flo_sign = numer.signum().to_f64().unwrap() / denom.signum().to_f64().unwrap();
@@ -1553,12 +1554,10 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // Filter out overflows and underflows. After this step, the signed difference fits in an
     // isize.
-    if is_diff_positive && absolute_diff > core::f64::MAX_EXP as u64 {
-        return core::f64::INFINITY * flo_sign;
+    if is_diff_positive && absolute_diff > MAX_EXP as u64 {
+        return INFINITY * flo_sign;
     }
-    if !is_diff_positive
-        && absolute_diff > -core::f64::MIN_EXP as u64 + core::f64::MANTISSA_DIGITS as u64 + 1
-    {
+    if !is_diff_positive && absolute_diff > -MIN_EXP as u64 + MANTISSA_DIGITS as u64 + 1 {
         return 0.0 * flo_sign;
     }
     let diff = if is_diff_positive {
@@ -1569,8 +1568,7 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // Shift is chosen so that the quotient will have 55 or 56 bits. The exception is if the
     // quotient is going to be subnormal, in which case it may have fewer bits.
-    let shift: isize =
-        diff.max(core::f64::MIN_EXP as isize) - core::f64::MANTISSA_DIGITS as isize - 2;
+    let shift: isize = diff.max(MIN_EXP as isize) - MANTISSA_DIGITS as isize - 2;
     if shift >= 0 {
         denom <<= shift as usize
     } else {
@@ -1583,8 +1581,8 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     let mut quotient = quotient.to_u64().unwrap();
     let n_rounding_bits = {
         let quotient_bits = 64 - quotient.leading_zeros() as isize;
-        let subnormal_bits = core::f64::MIN_EXP as isize - shift;
-        quotient_bits.max(subnormal_bits) - core::f64::MANTISSA_DIGITS as isize
+        let subnormal_bits = MIN_EXP as isize - shift;
+        quotient_bits.max(subnormal_bits) - MANTISSA_DIGITS as isize
     } as usize;
     debug_assert!(n_rounding_bits == 2 || n_rounding_bits == 3);
     let rounding_bit_mask = (1u64 << n_rounding_bits) - 1;
@@ -1601,8 +1599,14 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // The quotient is guaranteed to be exactly representable as it's now 53 bits + 2 or 3
     // trailing zeros, so there is no risk of a rounding error here.
-    let q_float = quotient as f64;
-    q_float * 2f64.powi(shift as i32) * flo_sign
+    let q_float = quotient as f64 * flo_sign;
+    if shift >= MIN_EXP as isize {
+        q_float * 2f64.powi(shift as i32)
+    } else {
+        // We don't want `2f64.powi(shift)` to underflow on its own,
+        // so we'll multiply it with the quotient in two parts.
+        q_float * 2f64.powi(MIN_EXP) * 2f64.powi(shift as i32 - MIN_EXP)
+    }
 }
 
 #[cfg(test)]
@@ -2920,9 +2924,16 @@ mod test {
             .to_f64(),
             Some(411522630329218100000000000000000000000000000f64)
         );
+        assert_eq!(Ratio::from_float(5e-324).unwrap().to_f64(), Some(5e-324));
         assert_eq!(
+            // subnormal
             BigRational::new(BigInt::one(), BigInt::one() << 1050).to_f64(),
-            Some(0f64)
+            Some(2.0f64.powi(-50).powi(21))
+        );
+        assert_eq!(
+            // definite underflow
+            BigRational::new(BigInt::one(), BigInt::one() << 1100).to_f64(),
+            Some(0.0)
         );
         assert_eq!(
             BigRational::from(BigInt::one() << 1050).to_f64(),
