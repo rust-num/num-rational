@@ -1080,31 +1080,51 @@ impl_formatting!(UpperHex, "0x", "{:X}", "{:#X}");
 impl_formatting!(LowerExp, "", "{:e}", "{:#e}");
 impl_formatting!(UpperExp, "", "{:E}", "{:#E}");
 
-impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
+fn parse_num<T: FromStr>(s: Option<&str>) -> Result<Option<T>, ParseRatioError> {
+    match s {
+        Some(s) => {
+            let parsed : T= FromStr::from_str(s).map_err(|_| ParseRatioError {
+                kind: RatioErrorKind::ParseError,
+            })?;
+            Ok(Some(parsed))
+        }
+        None => Ok(None)
+    }
+}
+
+fn validate_non_zero<T: Zero>(n: T) -> Result<T, ParseRatioError> {
+    if Zero::is_zero(&n) {
+        Err(ParseRatioError {
+            kind: RatioErrorKind::ZeroDenominator,
+        })
+    } else {
+        Ok(n)
+    }
+}
+
+impl<T: FromStr + Clone + Integer + CheckedMul + CheckedAdd> FromStr for Ratio<T> {
     type Err = ParseRatioError;
 
-    /// Parses `numer/denom` or just `numer`.
+    /// Parses `int/numer/denom`, `numer/denom` or just `int`.
     fn from_str(s: &str) -> Result<Ratio<T>, ParseRatioError> {
-        let mut split = s.splitn(2, '/');
-
-        let n = split.next().ok_or(ParseRatioError {
+        let mut split = s.splitn(3, '/');
+        let a : T = parse_num(split.next())?.ok_or(ParseRatioError {
             kind: RatioErrorKind::ParseError,
         })?;
-        let num = FromStr::from_str(n).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError,
-        })?;
-
-        let d = split.next().unwrap_or("1");
-        let den = FromStr::from_str(d).map_err(|_| ParseRatioError {
-            kind: RatioErrorKind::ParseError,
-        })?;
-
-        if Zero::is_zero(&den) {
-            Err(ParseRatioError {
-                kind: RatioErrorKind::ZeroDenominator,
-            })
+        if let Some(b) = parse_num::<T>(split.next())? {
+            if let Some(c) = parse_num::<T>(split.next())? {
+                // "a/b/c"
+                let numer = a.checked_mul(&c).and_then(|v| v.checked_add(&b)).ok_or(ParseRatioError {
+                    kind: RatioErrorKind::ParseError,
+                })?;
+                Ok(Ratio::new(numer, validate_non_zero(c)?))
+            } else {
+                // "a/b"
+                Ok(Ratio::new(a, validate_non_zero(b)?))
+            }
         } else {
-            Ok(Ratio::new(num, den))
+            // "a"
+            Ok(Ratio::new(a, T::one()))
         }
     }
 }
@@ -2673,6 +2693,7 @@ mod test {
         test(_0, "0".to_string());
         test(_1_2, "1/2".to_string());
         test(_3_2, "3/2".to_string());
+        assert_eq!(Ok(_3_2), FromStr::from_str("1/1/2"));
         test(_2, "2".to_string());
         test(_NEG1_2, "-1/2".to_string());
     }
@@ -2683,7 +2704,7 @@ mod test {
             assert!(rational.is_err());
         }
 
-        let xs = ["0 /1", "abc", "", "1/", "--1/2", "3/2/1", "1/0"];
+        let xs = ["0 /1", "abc", "", "1/", "--1/2", "4/3/2/1", "1/0", "1/2/0"];
         for &s in xs.iter() {
             test(s);
         }
