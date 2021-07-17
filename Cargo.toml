@@ -16,7 +16,15 @@ edition = "2018"
 [package.metadata.docs.rs]
 features = ["std", "num-bigint-std", "serde"]
 
+[[bench]]
+name = "bigrational"
+
 [dependencies]
+
+[dependencies.rand]
+optional = true
+version = "0.8"
+default-features = false
 
 [dependencies.num-bigint]
 optional = true
