@@ -144,11 +144,16 @@ impl<T: Clone + Integer> Ratio<T> {
         // FIXME(#5992): assignment operator overloads
         // self.numer /= g;
         // T: Clone + Integer != T: Clone + NumAssign
-        self.numer = self.numer.clone() / g.clone();
+        let numer = std::mem::replace(&mut self.numer, T::zero());
+        self.numer = numer / g.clone();
+        // self.numer = self.numer.clone() / g.clone();
+
         // FIXME(#5992): assignment operator overloads
         // self.denom /= g;
         // T: Clone + Integer != T: Clone + NumAssign
-        self.denom = self.denom.clone() / g;
+        let denom = std::mem::replace(&mut self.denom, T::zero());
+        self.denom = denom / g;
+        // self.denom = self.denom.clone() / g;
 
         // keep denom positive!
         if self.denom < T::zero() {
