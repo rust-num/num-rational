@@ -295,6 +295,73 @@ impl Ratio<BigInt> {
     }
 }
 
+impl<T: Clone + Integer + Signed> Ratio<T> {
+    /// Closest Fraction to self with denominator at most max_denominator.
+    ///
+    /// Taken from Python 3.10's fractions module.
+    /// **Panics if `max_denominator` < 1.**
+    ///
+    /// Algorithm notes: For any real number x, define a *best upper
+    /// approximation* to x to be a rational number p/q such that:
+    ///
+    ///   (1) p/q >= x, and
+    ///   (2) if p/q > r/s >= x then s > q, for any rational r/s.
+    ///
+    /// Define *best lower approximation* similarly.  Then it can be
+    /// proved that a rational number is a best upper or lower
+    /// approximation to x if, and only if, it is a convergent or
+    /// semiconvergent of the (unique shortest) continued fraction
+    /// associated to x.
+    ///
+    /// To find a best rational approximation with denominator <= M,
+    /// we find the best upper and lower approximations with
+    /// denominator <= M and take whichever of these is closer to x.
+    /// In the event of a tie, the bound with smaller denominator is
+    /// chosen.  If both denominators are equal (which can happen
+    /// only when max_denominator == 1 and self is midway between
+    /// two integers) the lower bound---i.e., the floor of self, is
+    /// taken.
+    pub fn limit_denominator(&self, max_denominator: T) -> Ratio<T> {
+        if max_denominator < T::one() {
+            panic!("`max_denominator` must be >= 1");
+        }
+
+        if self.denom < max_denominator {
+            return self.clone();
+        }
+
+        let (mut p0, mut q0, mut p1, mut q1) = (T::zero(), T::one(), T::one(), T::zero());
+        let (mut n, mut d) = (self.numer.clone(), self.denom.clone());
+        loop {
+            let a = n.clone() / d.clone();
+            let q2 = q0.clone() + a.clone() * q1.clone();
+            if q2 > max_denominator {
+                break;
+            }
+
+            // Sigh, the lack of destructuring assignment is painful here.
+            let (p0_, q0_, p1_, q1_) = (p1.clone(), q1, p0 + a.clone() * p1, q2);
+            p0 = p0_;
+            q0 = q0_;
+            p1 = p1_;
+            q1 = q1_;
+
+            let (n_, d_) = (d.clone(), n - a * d);
+            n = n_;
+            d = d_;
+        }
+
+        let k = (max_denominator - q0.clone()) / q1.clone();
+        let bound1 = Ratio::new(p0 + k.clone() * p1.clone(), q0 + k * q1.clone());
+        let bound2 = Ratio::new(p1, q1);
+        if (bound2.clone() - self).abs() <= (bound1.clone() - self).abs() {
+            bound2
+        } else {
+            bound1
+        }
+    }
+}
+
 // From integer
 impl<T> From<T> for Ratio<T>
 where
@@ -2979,5 +3046,34 @@ mod test {
             Some(core::f64::NEG_INFINITY)
         );
         assert_eq!(Ratio::<i32>::new_raw(0, 0).to_f64(), None);
+    }
+
+    #[cfg(feature = "num-bigint")]
+    #[test]
+    fn test_limit_denominator() {
+        let rpi: BigRational = Ratio::from_f64(3.1415926535897932).unwrap();
+        fn mk(n: i32, d: i32) -> BigRational {
+            BigRational::new(n.into(), d.into())
+        }
+        assert_eq!(rpi.limit_denominator(BigInt::from(10000i32)), mk(355, 113));
+        assert_eq!(
+            -rpi.limit_denominator(BigInt::from(10000i32)),
+            mk(-355, 113)
+        );
+
+        assert_eq!(rpi.limit_denominator(BigInt::from(113i32)), mk(355, 113));
+        assert_eq!(rpi.limit_denominator(BigInt::from(112i32)), mk(333, 106));
+
+        assert_eq!(
+            mk(201, 200).limit_denominator(BigInt::from(100i32)),
+            mk(1, 1)
+        );
+        assert_eq!(
+            mk(201, 200).limit_denominator(BigInt::from(101i32)),
+            mk(102, 101)
+        );
+
+        let zero = BigRational::from_i32(0).unwrap();
+        assert_eq!(zero.limit_denominator(BigInt::from(10000i32)), zero);
     }
 }
