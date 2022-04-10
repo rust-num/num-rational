@@ -1600,12 +1600,64 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     // The quotient is guaranteed to be exactly representable as it's now 53 bits + 2 or 3
     // trailing zeros, so there is no risk of a rounding error here.
     let q_float = quotient as f64 * flo_sign;
-    if shift >= MIN_EXP as isize {
-        q_float * 2f64.powi(shift as i32)
+    ldexp(q_float, shift as i32)
+}
+
+/// Multiply `x` by 2 to the power of `exp`. Returns an accurate result even if `2^exp` is not
+/// representable.
+fn ldexp(x: f64, exp: i32) -> f64 {
+    const EXPONENT_MASK: u64 = 0x7ff << 52;
+    const MAX_UNSIGNED_EXPONENT: i32 = 0x7fe;
+    const MIN_SUBNORMAL_POWER: i32 = f64::MANTISSA_DIGITS as i32;
+
+    if x.is_zero() || x.is_infinite() || x.is_nan() {
+        return x;
+    }
+
+    // Filter out obvious over / underflows to make sure the resulting exponent fits in an isize.
+    if exp > 3 * f64::MAX_EXP {
+        return f64::INFINITY * x.signum();
+    } else if exp < -3 * f64::MAX_EXP {
+        return 0.0 * x.signum();
+    }
+
+    // curr_exp is the x's *biased* exponent, and is in the [-54, MAX_UNSIGNED_EXPONENT] range.
+    let (bits, curr_exp) = if x.is_subnormal() {
+        // If x is subnormal, we make it normal by multiplying by 2^53. This causes no loss of
+        // precision or rounding.
+        let normal_x = x * 2f64.powi(MIN_SUBNORMAL_POWER);
+        let bits = normal_x.to_bits();
+        // This cast is safe because the exponent is at most 0x7fe, which fits in an i32.
+        (bits, ((bits & EXPONENT_MASK) >> 52) as i32 - MIN_SUBNORMAL_POWER)
     } else {
-        // We don't want `2f64.powi(shift)` to underflow on its own,
-        // so we'll multiply it with the quotient in two parts.
-        q_float * 2f64.powi(MIN_EXP) * 2f64.powi(shift as i32 - MIN_EXP)
+        let bits = x.to_bits();
+        let curr_exp = (bits & EXPONENT_MASK) >> 52;
+        // This cast is safe because the exponent is at most 0x7fe, which fits in an i32.
+        (bits, curr_exp as i32)
+    };
+
+    // The addition can't overflow because exponent is between 0 and 0x7fe, and exp is between
+    // -2*MAX_EXP and 2*MAX_EXP.
+    let new_exp = curr_exp + exp;
+
+    if new_exp > MAX_UNSIGNED_EXPONENT {
+        f64::INFINITY * x.signum()
+    } else if new_exp > 0 {
+        // Normal case: exponent is not too large nor subnormal.
+        let new_bits = (bits & !EXPONENT_MASK) | ((new_exp as u64) << 52);
+        f64::from_bits(new_bits)
+    } else if new_exp >= -(f64::MANTISSA_DIGITS as i32) {
+        // Result is subnormal but may not be zero.
+        // In this case, we increase the exponent by 54 to make it normal, then multiply the end
+        // result by 2^-53. This results in a single multiplication with no prior rounding error,
+        // so there is no risk of double rounding.
+        let new_exp = new_exp + MIN_SUBNORMAL_POWER;
+        debug_assert!(new_exp >= 0);
+        let new_bits = (bits & !EXPONENT_MASK) | ((new_exp as u64) << 52);
+        f64::from_bits(new_bits) * 2f64.powi(-MIN_SUBNORMAL_POWER)
+    } else {
+        // Result is zero.
+        return 0.0 * x.signum();
     }
 }
 
@@ -1626,6 +1678,7 @@ mod test {
     #[cfg(feature = "num-bigint")]
     use super::BigRational;
     use super::{Ratio, Rational64};
+    use super::ldexp;
 
     use core::f64;
     use core::i32;
@@ -2990,5 +3043,40 @@ mod test {
             Some(core::f64::NEG_INFINITY)
         );
         assert_eq!(Ratio::<i32>::new_raw(0, 0).to_f64(), None);
+    }
+
+    #[test]
+    fn test_ldexp() {
+        assert_eq!(ldexp(1.0, 0), 1.0);
+        assert_eq!(ldexp(1.0, 1), 2.0);
+        assert_eq!(ldexp(0.0, 1), 0.0);
+        assert_eq!(ldexp(-0.0, 1), -0.0);
+
+        // Cases where ldexp is equivalent to multiplying by 2^exp because there's no over- or
+        // underflow.
+        assert_eq!(ldexp(3.5, 5), 3.5 * 2f64.powi(5));
+        assert_eq!(ldexp(1.0, f64::MAX_EXP - 1), 2f64.powi(f64::MAX_EXP - 1));
+        assert_eq!(ldexp(2.77, f64::MIN_EXP + 3), 2.77 * 2f64.powi(f64::MIN_EXP + 3));
+
+        // Case where initial value is subnormal
+        assert_eq!(ldexp(5e-324, 4), 5e-324 * 2f64.powi(4));
+        assert_eq!(ldexp(5e-324, 200), 5e-324 * 2f64.powi(200));
+
+        // Near underflow (2^exp is too small to represent, but not x*2^exp)
+        assert_eq!(ldexp(4.0, f64::MIN_EXP - 3), 2f64.powi(f64::MIN_EXP - 1));
+
+        // Near overflow
+        assert_eq!(ldexp(0.125, f64::MAX_EXP + 3), 2f64.powi(f64::MAX_EXP));
+
+        // Overflow and underflow cases
+        assert_eq!(ldexp(1.0, f64::MIN_EXP-54), 0.0);
+        assert_eq!(ldexp(-1.0, f64::MIN_EXP-54), -0.0);
+        assert_eq!(ldexp(1.0, f64::MAX_EXP), f64::INFINITY);
+        assert_eq!(ldexp(-1.0, f64::MAX_EXP), f64::NEG_INFINITY);
+
+        // Special values
+        assert_eq!(ldexp(f64::INFINITY, 1), f64::INFINITY);
+        assert_eq!(ldexp(f64::NEG_INFINITY, 1), f64::NEG_INFINITY);
+        assert!(ldexp(f64::NAN, 1).is_nan());
     }
 }
