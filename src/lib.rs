@@ -295,6 +295,13 @@ impl Ratio<BigInt> {
     }
 }
 
+impl<T: Clone + Integer> Default for Ratio<T> {
+    /// Returns zero
+    fn default() -> Self {
+        Ratio::zero()
+    }
+}
+
 // From integer
 impl<T> From<T> for Ratio<T>
 where
