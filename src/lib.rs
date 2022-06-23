@@ -142,18 +142,24 @@ impl<T: Clone + Integer> Ratio<T> {
         let g: T = self.numer.gcd(&self.denom);
 
         // FIXME(#5992): assignment operator overloads
+        // T: Clone + Integer != T: Clone + NumAssign
+
+        #[inline]
+        fn replace_with<T: Zero>(x: &mut T, f: impl FnOnce(T) -> T) {
+            let y = core::mem::replace(x, T::zero());
+            *x = f(y);
+        }
+
         // self.numer /= g;
-        // T: Clone + Integer != T: Clone + NumAssign
-        self.numer = self.numer.clone() / g.clone();
-        // FIXME(#5992): assignment operator overloads
+        replace_with(&mut self.numer, |x| x / g.clone());
+
         // self.denom /= g;
-        // T: Clone + Integer != T: Clone + NumAssign
-        self.denom = self.denom.clone() / g;
+        replace_with(&mut self.denom, |x| x / g);
 
         // keep denom positive!
         if self.denom < T::zero() {
-            self.numer = T::zero() - self.numer.clone();
-            self.denom = T::zero() - self.denom.clone();
+            replace_with(&mut self.numer, |x| T::zero() - x);
+            replace_with(&mut self.denom, |x| T::zero() - x);
         }
     }
 

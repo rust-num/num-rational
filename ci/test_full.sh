@@ -63,3 +63,8 @@ done
 # test all supported features without std
 cargo build --no-default-features --features="${NO_STD_FEATURES[*]}"
 cargo test --no-default-features --features="${NO_STD_FEATURES[*]}"
+
+# make sure benchmarks can be built and sanity-tested
+if rustc --version | grep -q nightly; then
+    cargo test --manifest-path ci/benchmarks/Cargo.toml
+fi
