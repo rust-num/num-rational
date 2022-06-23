@@ -1523,14 +1523,15 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     numer: T,
     denom: T,
 ) -> f64 {
+    use core::f64::{INFINITY, MANTISSA_DIGITS, MAX_EXP, MIN_EXP, RADIX};
+
     assert_eq!(
-        core::f64::RADIX,
-        2,
+        RADIX, 2,
         "only floating point implementations with radix 2 are supported"
     );
 
     // Inclusive upper and lower bounds to the range of exactly-representable ints in an f64.
-    const MAX_EXACT_INT: i64 = 1i64 << core::f64::MANTISSA_DIGITS;
+    const MAX_EXACT_INT: i64 = 1i64 << MANTISSA_DIGITS;
     const MIN_EXACT_INT: i64 = -MAX_EXACT_INT;
 
     let flo_sign = numer.signum().to_f64().unwrap() / denom.signum().to_f64().unwrap();
@@ -1560,12 +1561,10 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // Filter out overflows and underflows. After this step, the signed difference fits in an
     // isize.
-    if is_diff_positive && absolute_diff > core::f64::MAX_EXP as u64 {
-        return core::f64::INFINITY * flo_sign;
+    if is_diff_positive && absolute_diff > MAX_EXP as u64 {
+        return INFINITY * flo_sign;
     }
-    if !is_diff_positive
-        && absolute_diff > -core::f64::MIN_EXP as u64 + core::f64::MANTISSA_DIGITS as u64 + 1
-    {
+    if !is_diff_positive && absolute_diff > -MIN_EXP as u64 + MANTISSA_DIGITS as u64 + 1 {
         return 0.0 * flo_sign;
     }
     let diff = if is_diff_positive {
@@ -1576,8 +1575,7 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // Shift is chosen so that the quotient will have 55 or 56 bits. The exception is if the
     // quotient is going to be subnormal, in which case it may have fewer bits.
-    let shift: isize =
-        diff.max(core::f64::MIN_EXP as isize) - core::f64::MANTISSA_DIGITS as isize - 2;
+    let shift: isize = diff.max(MIN_EXP as isize) - MANTISSA_DIGITS as isize - 2;
     if shift >= 0 {
         denom <<= shift as usize
     } else {
@@ -1590,8 +1588,8 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     let mut quotient = quotient.to_u64().unwrap();
     let n_rounding_bits = {
         let quotient_bits = 64 - quotient.leading_zeros() as isize;
-        let subnormal_bits = core::f64::MIN_EXP as isize - shift;
-        quotient_bits.max(subnormal_bits) - core::f64::MANTISSA_DIGITS as isize
+        let subnormal_bits = MIN_EXP as isize - shift;
+        quotient_bits.max(subnormal_bits) - MANTISSA_DIGITS as isize
     } as usize;
     debug_assert!(n_rounding_bits == 2 || n_rounding_bits == 3);
     let rounding_bit_mask = (1u64 << n_rounding_bits) - 1;
@@ -1608,8 +1606,76 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
     // The quotient is guaranteed to be exactly representable as it's now 53 bits + 2 or 3
     // trailing zeros, so there is no risk of a rounding error here.
-    let q_float = quotient as f64;
-    q_float * 2f64.powi(shift as i32) * flo_sign
+    let q_float = quotient as f64 * flo_sign;
+    ldexp(q_float, shift as i32)
+}
+
+/// Multiply `x` by 2 to the power of `exp`. Returns an accurate result even if `2^exp` is not
+/// representable.
+fn ldexp(x: f64, exp: i32) -> f64 {
+    use core::f64::{INFINITY, MANTISSA_DIGITS, MAX_EXP, RADIX};
+
+    assert_eq!(
+        RADIX, 2,
+        "only floating point implementations with radix 2 are supported"
+    );
+
+    const EXPONENT_MASK: u64 = 0x7ff << 52;
+    const MAX_UNSIGNED_EXPONENT: i32 = 0x7fe;
+    const MIN_SUBNORMAL_POWER: i32 = MANTISSA_DIGITS as i32;
+
+    if x.is_zero() || x.is_infinite() || x.is_nan() {
+        return x;
+    }
+
+    // Filter out obvious over / underflows to make sure the resulting exponent fits in an isize.
+    if exp > 3 * MAX_EXP {
+        return INFINITY * x.signum();
+    } else if exp < -3 * MAX_EXP {
+        return 0.0 * x.signum();
+    }
+
+    // curr_exp is the x's *biased* exponent, and is in the [-54, MAX_UNSIGNED_EXPONENT] range.
+    let (bits, curr_exp) = if !x.is_normal() {
+        // If x is subnormal, we make it normal by multiplying by 2^53. This causes no loss of
+        // precision or rounding.
+        let normal_x = x * 2f64.powi(MIN_SUBNORMAL_POWER);
+        let bits = normal_x.to_bits();
+        // This cast is safe because the exponent is at most 0x7fe, which fits in an i32.
+        (
+            bits,
+            ((bits & EXPONENT_MASK) >> 52) as i32 - MIN_SUBNORMAL_POWER,
+        )
+    } else {
+        let bits = x.to_bits();
+        let curr_exp = (bits & EXPONENT_MASK) >> 52;
+        // This cast is safe because the exponent is at most 0x7fe, which fits in an i32.
+        (bits, curr_exp as i32)
+    };
+
+    // The addition can't overflow because exponent is between 0 and 0x7fe, and exp is between
+    // -2*MAX_EXP and 2*MAX_EXP.
+    let new_exp = curr_exp + exp;
+
+    if new_exp > MAX_UNSIGNED_EXPONENT {
+        INFINITY * x.signum()
+    } else if new_exp > 0 {
+        // Normal case: exponent is not too large nor subnormal.
+        let new_bits = (bits & !EXPONENT_MASK) | ((new_exp as u64) << 52);
+        f64::from_bits(new_bits)
+    } else if new_exp >= -(MANTISSA_DIGITS as i32) {
+        // Result is subnormal but may not be zero.
+        // In this case, we increase the exponent by 54 to make it normal, then multiply the end
+        // result by 2^-53. This results in a single multiplication with no prior rounding error,
+        // so there is no risk of double rounding.
+        let new_exp = new_exp + MIN_SUBNORMAL_POWER;
+        debug_assert!(new_exp >= 0);
+        let new_bits = (bits & !EXPONENT_MASK) | ((new_exp as u64) << 52);
+        f64::from_bits(new_bits) * 2f64.powi(-MIN_SUBNORMAL_POWER)
+    } else {
+        // Result is zero.
+        return 0.0 * x.signum();
+    }
 }
 
 #[cfg(test)]
@@ -1624,6 +1690,7 @@ fn hash<T: Hash>(x: &T) -> u64 {
 
 #[cfg(test)]
 mod test {
+    use super::ldexp;
     #[cfg(all(feature = "num-bigint"))]
     use super::BigInt;
     #[cfg(feature = "num-bigint")]
@@ -2927,9 +2994,16 @@ mod test {
             .to_f64(),
             Some(411522630329218100000000000000000000000000000f64)
         );
+        assert_eq!(Ratio::from_float(5e-324).unwrap().to_f64(), Some(5e-324));
         assert_eq!(
+            // subnormal
             BigRational::new(BigInt::one(), BigInt::one() << 1050).to_f64(),
-            Some(0f64)
+            Some(2.0f64.powi(-50).powi(21))
+        );
+        assert_eq!(
+            // definite underflow
+            BigRational::new(BigInt::one(), BigInt::one() << 1100).to_f64(),
+            Some(0.0)
         );
         assert_eq!(
             BigRational::from(BigInt::one() << 1050).to_f64(),
@@ -2986,5 +3060,41 @@ mod test {
             Some(core::f64::NEG_INFINITY)
         );
         assert_eq!(Ratio::<i32>::new_raw(0, 0).to_f64(), None);
+    }
+
+    #[test]
+    fn test_ldexp() {
+        use core::f64::{INFINITY, MAX_EXP, MIN_EXP, NAN, NEG_INFINITY};
+        assert_eq!(ldexp(1.0, 0), 1.0);
+        assert_eq!(ldexp(1.0, 1), 2.0);
+        assert_eq!(ldexp(0.0, 1), 0.0);
+        assert_eq!(ldexp(-0.0, 1), -0.0);
+
+        // Cases where ldexp is equivalent to multiplying by 2^exp because there's no over- or
+        // underflow.
+        assert_eq!(ldexp(3.5, 5), 3.5 * 2f64.powi(5));
+        assert_eq!(ldexp(1.0, MAX_EXP - 1), 2f64.powi(MAX_EXP - 1));
+        assert_eq!(ldexp(2.77, MIN_EXP + 3), 2.77 * 2f64.powi(MIN_EXP + 3));
+
+        // Case where initial value is subnormal
+        assert_eq!(ldexp(5e-324, 4), 5e-324 * 2f64.powi(4));
+        assert_eq!(ldexp(5e-324, 200), 5e-324 * 2f64.powi(200));
+
+        // Near underflow (2^exp is too small to represent, but not x*2^exp)
+        assert_eq!(ldexp(4.0, MIN_EXP - 3), 2f64.powi(MIN_EXP - 1));
+
+        // Near overflow
+        assert_eq!(ldexp(0.125, MAX_EXP + 3), 2f64.powi(MAX_EXP));
+
+        // Overflow and underflow cases
+        assert_eq!(ldexp(1.0, MIN_EXP - 54), 0.0);
+        assert_eq!(ldexp(-1.0, MIN_EXP - 54), -0.0);
+        assert_eq!(ldexp(1.0, MAX_EXP), INFINITY);
+        assert_eq!(ldexp(-1.0, MAX_EXP), NEG_INFINITY);
+
+        // Special values
+        assert_eq!(ldexp(INFINITY, 1), INFINITY);
+        assert_eq!(ldexp(NEG_INFINITY, 1), NEG_INFINITY);
+        assert!(ldexp(NAN, 1).is_nan());
     }
 }
