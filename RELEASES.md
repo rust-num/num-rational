@@ -1,3 +1,15 @@
+# Release 0.4.1 (2022-06-23)
+
+- [Fewer `clone` calls are used when reducing a new `Ratio<T>`][98].
+- [Conversions to floating point are better at avoiding underflow][104].
+- [`Ratio<T>` now implements `Default`][105], returning a zero value.
+
+**Contributors**: @cuviper, @lemmih, @MattX
+
+[98]: https://github.com/rust-num/num-rational/pull/98
+[104]: https://github.com/rust-num/num-rational/pull/104
+[105]: https://github.com/rust-num/num-rational/pull/105
+
 # Release 0.4.0 (2021-03-05)
 
 - The optional `num-bigint` dependency is now 0.4.
