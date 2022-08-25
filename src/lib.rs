@@ -37,6 +37,7 @@ use std::error::Error;
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 
 use num_integer::Integer;
+use num_traits::Unsigned;
 use num_traits::float::FloatCore;
 use num_traits::ToPrimitive;
 use num_traits::{
@@ -1277,6 +1278,16 @@ impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
         // T::max().recip() and T::bits() or something similar.
         let epsilon = <F as NumCast>::from(10e-20).expect("Can't convert 10e-20");
         approximate_float(f, epsilon, 30)
+    }
+}
+
+impl<T: Integer + Unsigned + Bounded + NumCast + Clone> Ratio<T> {
+    pub fn approximate_float_unsigned<F: FloatCore + NumCast>(f: F) -> Option<Ratio<T>> {
+        // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
+        // to work well. Might want to choose something based on the types in the future, e.g.
+        // T::max().recip() and T::bits() or something similar.
+        let epsilon = <F as NumCast>::from(10e-20).expect("Can't convert 10e-20");
+        approximate_float_unsigned(f, epsilon, 30)
     }
 }
 
