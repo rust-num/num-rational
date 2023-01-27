@@ -1302,7 +1302,7 @@ where
     F: FloatCore + NumCast,
 {
     // Continued fractions algorithm
-    // http://mathforum.org/dr.math/faq/faq.fractions.html#decfrac
+    // https://web.archive.org/web/20200629111319/http://mathforum.org:80/dr.math/faq/faq.fractions.html#decfrac
 
     if val < F::zero() || val.is_nan() {
         return None;
