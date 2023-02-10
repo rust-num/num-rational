@@ -37,12 +37,10 @@ use std::error::Error;
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 
 use num_integer::Integer;
-use num_traits::Unsigned;
 use num_traits::float::FloatCore;
-use num_traits::ToPrimitive;
 use num_traits::{
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
-    Pow, Signed, Zero,
+    Pow, Signed, ToPrimitive, Unsigned, Zero,
 };
 
 mod pow;
