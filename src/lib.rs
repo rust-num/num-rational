@@ -19,6 +19,9 @@
 // Ratio ops often use other "suspicious" ops
 #![allow(clippy::suspicious_arithmetic_impl)]
 #![allow(clippy::suspicious_op_assign_impl)]
+// These use stdlib features higher than the MSRV
+#![allow(clippy::manual_strip)] // 1.45
+#![allow(clippy::manual_range_contains)] // 1.35
 
 #[cfg(feature = "std")]
 #[macro_use]
@@ -1041,7 +1044,7 @@ macro_rules! impl_formatting {
                         format!(concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
                     }
                 };
-                // TODO: replace with strip_prefix, when stabalized
+                // TODO: replace with strip_prefix, when stabilized
                 let (pre_pad, non_negative) = {
                     if pre_pad.starts_with("-") {
                         (&pre_pad[1..], false)
@@ -1706,10 +1709,8 @@ fn hash<T: Hash>(x: &T) -> u64 {
 #[cfg(test)]
 mod test {
     use super::ldexp;
-    #[cfg(all(feature = "num-bigint"))]
-    use super::BigInt;
     #[cfg(feature = "num-bigint")]
-    use super::BigRational;
+    use super::{BigInt, BigRational};
     use super::{Ratio, Rational64};
 
     use core::f64;
