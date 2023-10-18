@@ -1124,9 +1124,9 @@ impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     }
 }
 
-impl<T> Into<(T, T)> for Ratio<T> {
-    fn into(self) -> (T, T) {
-        (self.numer, self.denom)
+impl<T> From<Ratio<T>> for (T, T) {
+    fn from(val: Ratio<T>) -> Self {
+        (val.numer, val.denom)
     }
 }
 
