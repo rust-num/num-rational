@@ -10,7 +10,7 @@ name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
 version = "0.4.1"
 readme = "README.md"
-exclude = ["/bors.toml", "/ci/*", "/.github/*"]
+exclude = ["/ci/*", "/.github/*"]
 edition = "2018"
 
 [package.metadata.docs.rs]
