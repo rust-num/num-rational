@@ -2111,24 +2111,21 @@ mod test {
         assert_fmt_eq!(format_args!("{:X}", -half_i8), "FF/2");
         assert_fmt_eq!(format_args!("{:#X}", -half_i8), "0xFF/0x2");
 
-        #[cfg(has_int_exp_fmt)]
-        {
-            assert_fmt_eq!(format_args!("{:e}", -_2), "-2e0");
-            assert_fmt_eq!(format_args!("{:#e}", -_2), "-2e0");
-            assert_fmt_eq!(format_args!("{:+e}", -_2), "-2e0");
-            assert_fmt_eq!(format_args!("{:e}", _BILLION), "1e9");
-            assert_fmt_eq!(format_args!("{:+e}", _BILLION), "+1e9");
-            assert_fmt_eq!(format_args!("{:e}", _BILLION.recip()), "1e0/1e9");
-            assert_fmt_eq!(format_args!("{:+e}", _BILLION.recip()), "+1e0/1e9");
+        assert_fmt_eq!(format_args!("{:e}", -_2), "-2e0");
+        assert_fmt_eq!(format_args!("{:#e}", -_2), "-2e0");
+        assert_fmt_eq!(format_args!("{:+e}", -_2), "-2e0");
+        assert_fmt_eq!(format_args!("{:e}", _BILLION), "1e9");
+        assert_fmt_eq!(format_args!("{:+e}", _BILLION), "+1e9");
+        assert_fmt_eq!(format_args!("{:e}", _BILLION.recip()), "1e0/1e9");
+        assert_fmt_eq!(format_args!("{:+e}", _BILLION.recip()), "+1e0/1e9");
 
-            assert_fmt_eq!(format_args!("{:E}", -_2), "-2E0");
-            assert_fmt_eq!(format_args!("{:#E}", -_2), "-2E0");
-            assert_fmt_eq!(format_args!("{:+E}", -_2), "-2E0");
-            assert_fmt_eq!(format_args!("{:E}", _BILLION), "1E9");
-            assert_fmt_eq!(format_args!("{:+E}", _BILLION), "+1E9");
-            assert_fmt_eq!(format_args!("{:E}", _BILLION.recip()), "1E0/1E9");
-            assert_fmt_eq!(format_args!("{:+E}", _BILLION.recip()), "+1E0/1E9");
-        }
+        assert_fmt_eq!(format_args!("{:E}", -_2), "-2E0");
+        assert_fmt_eq!(format_args!("{:#E}", -_2), "-2E0");
+        assert_fmt_eq!(format_args!("{:+E}", -_2), "-2E0");
+        assert_fmt_eq!(format_args!("{:E}", _BILLION), "1E9");
+        assert_fmt_eq!(format_args!("{:+E}", _BILLION), "+1E9");
+        assert_fmt_eq!(format_args!("{:E}", _BILLION.recip()), "1E0/1E9");
+        assert_fmt_eq!(format_args!("{:+E}", _BILLION.recip()), "+1E0/1E9");
     }
 
     mod arith {

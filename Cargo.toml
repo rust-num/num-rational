@@ -45,6 +45,3 @@ std = ["num-bigint?/std", "num-integer/std", "num-traits/std"]
 num-bigint-std = ["num-bigint/std"]
 num-bigint = ["dep:num-bigint"]
 serde = ["dep:serde"]
-
-[build-dependencies]
-autocfg = "1.0.0"
