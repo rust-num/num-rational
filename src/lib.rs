@@ -12,7 +12,7 @@
 //!
 //! ## Compatibility
 //!
-//! The `num-rational` crate is tested for rustc 1.31 and greater.
+//! The `num-rational` crate is tested for rustc 1.60 and greater.
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.4")]
 #![no_std]
@@ -73,7 +73,7 @@ pub type Rational64 = Ratio<i64>;
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
-/// These method are `const` for Rust 1.31 and later.
+/// These method are `const`.
 impl<T> Ratio<T> {
     /// Creates a `Ratio` without checking for `denom == 0` or reducing.
     ///
