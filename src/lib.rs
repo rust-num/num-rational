@@ -12,7 +12,7 @@
 //!
 //! ## Compatibility
 //!
-//! The `num-rational` crate is tested for rustc 1.31 and greater.
+//! The `num-rational` crate is tested for rustc 1.60 and greater.
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.4")]
 #![no_std]
@@ -73,7 +73,7 @@ pub type Rational64 = Ratio<i64>;
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
-/// These method are `const` for Rust 1.31 and later.
+/// These method are `const`.
 impl<T> Ratio<T> {
     /// Creates a `Ratio` without checking for `denom == 0` or reducing.
     ///
@@ -1124,9 +1124,9 @@ impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
     }
 }
 
-impl<T> Into<(T, T)> for Ratio<T> {
-    fn into(self) -> (T, T) {
-        (self.numer, self.denom)
+impl<T> From<Ratio<T>> for (T, T) {
+    fn from(val: Ratio<T>) -> Self {
+        (val.numer, val.denom)
     }
 }
 
@@ -2111,24 +2111,21 @@ mod test {
         assert_fmt_eq!(format_args!("{:X}", -half_i8), "FF/2");
         assert_fmt_eq!(format_args!("{:#X}", -half_i8), "0xFF/0x2");
 
-        #[cfg(has_int_exp_fmt)]
-        {
-            assert_fmt_eq!(format_args!("{:e}", -_2), "-2e0");
-            assert_fmt_eq!(format_args!("{:#e}", -_2), "-2e0");
-            assert_fmt_eq!(format_args!("{:+e}", -_2), "-2e0");
-            assert_fmt_eq!(format_args!("{:e}", _BILLION), "1e9");
-            assert_fmt_eq!(format_args!("{:+e}", _BILLION), "+1e9");
-            assert_fmt_eq!(format_args!("{:e}", _BILLION.recip()), "1e0/1e9");
-            assert_fmt_eq!(format_args!("{:+e}", _BILLION.recip()), "+1e0/1e9");
+        assert_fmt_eq!(format_args!("{:e}", -_2), "-2e0");
+        assert_fmt_eq!(format_args!("{:#e}", -_2), "-2e0");
+        assert_fmt_eq!(format_args!("{:+e}", -_2), "-2e0");
+        assert_fmt_eq!(format_args!("{:e}", _BILLION), "1e9");
+        assert_fmt_eq!(format_args!("{:+e}", _BILLION), "+1e9");
+        assert_fmt_eq!(format_args!("{:e}", _BILLION.recip()), "1e0/1e9");
+        assert_fmt_eq!(format_args!("{:+e}", _BILLION.recip()), "+1e0/1e9");
 
-            assert_fmt_eq!(format_args!("{:E}", -_2), "-2E0");
-            assert_fmt_eq!(format_args!("{:#E}", -_2), "-2E0");
-            assert_fmt_eq!(format_args!("{:+E}", -_2), "-2E0");
-            assert_fmt_eq!(format_args!("{:E}", _BILLION), "1E9");
-            assert_fmt_eq!(format_args!("{:+E}", _BILLION), "+1E9");
-            assert_fmt_eq!(format_args!("{:E}", _BILLION.recip()), "1E0/1E9");
-            assert_fmt_eq!(format_args!("{:+E}", _BILLION.recip()), "+1E0/1E9");
-        }
+        assert_fmt_eq!(format_args!("{:E}", -_2), "-2E0");
+        assert_fmt_eq!(format_args!("{:#E}", -_2), "-2E0");
+        assert_fmt_eq!(format_args!("{:+E}", -_2), "-2E0");
+        assert_fmt_eq!(format_args!("{:E}", _BILLION), "1E9");
+        assert_fmt_eq!(format_args!("{:+E}", _BILLION), "+1E9");
+        assert_fmt_eq!(format_args!("{:E}", _BILLION.recip()), "1E0/1E9");
+        assert_fmt_eq!(format_args!("{:+E}", _BILLION.recip()), "+1E0/1E9");
     }
 
     mod arith {

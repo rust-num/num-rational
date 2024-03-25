@@ -11,7 +11,8 @@ repository = "https://github.com/rust-num/num-rational"
 version = "0.4.1"
 readme = "README.md"
 exclude = ["/ci/*", "/.github/*"]
-edition = "2018"
+edition = "2021"
+rust-version = "1.60"
 
 [package.metadata.docs.rs]
 features = ["std", "num-bigint-std", "serde"]
@@ -39,9 +40,8 @@ version = "1.0.0"
 default-features = false
 
 [features]
-default = ["num-bigint-std", "std"]
-std = ["num-integer/std", "num-traits/std"]
+default = ["num-bigint", "std"]
+std = ["num-bigint?/std", "num-integer/std", "num-traits/std"]
 num-bigint-std = ["num-bigint/std"]
-
-[build-dependencies]
-autocfg = "1.0.0"
+num-bigint = ["dep:num-bigint"]
+serde = ["dep:serde"]

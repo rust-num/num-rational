@@ -3,7 +3,7 @@
 set -e
 
 CRATE=num-rational
-MSRV=1.31
+MSRV=1.60
 
 get_rust_version() {
   local array=($(rustc --version));
@@ -28,8 +28,7 @@ if ! check_version $MSRV ; then
 fi
 
 STD_FEATURES=(num-bigint-std serde)
-NO_STD_FEATURES=(serde)
-check_version 1.36 && NO_STD_FEATURES+=(num-bigint)
+NO_STD_FEATURES=(num-bigint serde)
 echo "Testing supported features: ${STD_FEATURES[*]}"
 echo " no_std supported features: ${NO_STD_FEATURES[*]}"
 
