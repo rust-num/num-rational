@@ -1188,6 +1188,25 @@ impl<T: borsh::BorshDeserialize + Zero> borsh::BorshDeserialize for Ratio<T> {
     }
 }
 
+#[cfg(feature="cosmwasm")]
+impl<T: Integer + Clone + Copy> cosmwasm_std::Fraction<T> for Ratio<T> {
+    fn numerator(&self) -> T {
+        self.numer
+    }
+
+    fn denominator(&self) -> T {
+        self.denom
+    }
+
+    fn inv(&self) -> Option<Self> {
+        if self.numer.is_zero() {
+            None
+        } else {
+            Some(Ratio::new(self.denom.clone(), self.numer.clone()))
+        }
+    }
+}
+
 // FIXME: Bubble up specific errors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ParseRatioError {
