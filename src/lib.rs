@@ -33,6 +33,9 @@ use core::fmt::{Binary, Display, Formatter, LowerExp, LowerHex, Octal, UpperExp,
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, Div, Mul, Neg, Rem, ShlAssign, Sub};
 use core::str::FromStr;
+
+#[cfg(feature = "json-schema")]
+use std::borrow::ToOwned;
 #[cfg(feature = "std")]
 use std::error::Error;
 
@@ -51,6 +54,8 @@ mod pow;
 /// Represents the ratio between two numbers.
 #[derive(Copy, Clone, Debug)]
 #[allow(missing_docs)]
+#[cfg_attr(feature = "json-schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "borsh", derive(borsh::BorshSerialize))]
 pub struct Ratio<T> {
     /// Numerator.
     numer: T,
@@ -1163,6 +1168,23 @@ where
         } else {
             Ok(Ratio::new_raw(numer, denom))
         }
+    }
+}
+
+#[cfg(feature = "borsh")]
+impl<T: borsh::BorshDeserialize + Zero> borsh::BorshDeserialize for Ratio<T> {
+    fn deserialize_reader<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Self> {
+        use borsh::from_reader;
+        use borsh::io::{Error, ErrorKind};
+        let numer: T = from_reader(reader)?;
+        let denom: T = from_reader(reader)?;
+        if denom.is_zero() {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "a ratio with non-zero denominator",
+            ));
+        }
+        Ok(Ratio { numer, denom })
     }
 }
 

@@ -39,9 +39,23 @@ optional = true
 version = "1.0.0"
 default-features = false
 
+[dependencies.schemars]
+optional = true
+version = "0.8.7"
+default-features = false
+features = ["derive", "preserve_order"]
+
+[dependencies.borsh]
+optional = true
+version = "1.4.0"
+default-features = false
+features = ["derive"]
+
 [features]
-default = ["num-bigint", "std"]
+default = ["num-bigint", "std", "borsh"]
 std = ["num-bigint?/std", "num-integer/std", "num-traits/std"]
 num-bigint-std = ["num-bigint/std"]
 num-bigint = ["dep:num-bigint"]
 serde = ["dep:serde"]
+json-schema = ["dep:schemars", "std"]
+borsh = ["dep:borsh"]
