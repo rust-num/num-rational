@@ -52,7 +52,7 @@ default-features = false
 features = ["derive"]
 
 [features]
-default = ["num-bigint", "std", "borsh"]
+default = ["num-bigint", "std"]
 std = ["num-bigint?/std", "num-integer/std", "num-traits/std"]
 num-bigint-std = ["num-bigint/std"]
 num-bigint = ["dep:num-bigint"]
