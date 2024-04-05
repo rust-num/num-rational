@@ -1188,7 +1188,7 @@ impl<T: borsh::BorshDeserialize + Zero> borsh::BorshDeserialize for Ratio<T> {
     }
 }
 
-#[cfg(feature="cosmwasm")]
+#[cfg(feature = "cosmwasm")]
 impl<T: Integer + Clone + Copy> cosmwasm_std::Fraction<T> for Ratio<T> {
     fn numerator(&self) -> T {
         self.numer
@@ -1557,7 +1557,7 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     }
 }
 
-trait Bits {
+pub trait Bits {
     fn bits(&self) -> u64;
 }
 
@@ -1570,7 +1570,48 @@ impl Bits for BigInt {
 
 impl Bits for i128 {
     fn bits(&self) -> u64 {
-        (128 - self.wrapping_abs().leading_zeros()).into()
+        (Self::BITS - self.wrapping_abs().leading_zeros()).into()
+    }
+}
+
+impl<
+        B: num_traits::bounds::UpperBounded
+            + core::ops::Shr<u64, Output = B>
+            + num_traits::PrimInt
+            + Ord
+            + Integer
+            + Clone
+            + Copy
+            + Unsigned,
+    > Ratio<B>
+{
+    // can increase or decrease real ratio:
+    // increase:
+    // 10|0
+    // 100|1
+    // decrease:
+    // 10|1
+    // 100|1
+    pub fn msb_limit_unsigned<
+        T: Into<B> + Copy + Integer + num_traits::bounds::UpperBounded + TryFrom<B>,
+    >(
+        mut self,
+    ) -> Ratio<T> {
+        use core::mem::size_of;
+        self.reduce();
+        let max = self.numer.max(self.denom);
+        let limit: B = T::max_value().into();
+        let msb_max = size_of::<B> as u64 - max.leading_zeros() as u64;
+        let msb_limit = size_of::<B> as u64 - limit.leading_zeros() as u64;
+        let shift = if msb_max > msb_limit {
+            msb_max - msb_limit
+        } else {
+            0
+        };
+        Ratio::new(
+            T::try_from(self.numer.shr(shift)).ok().unwrap(),
+            T::try_from(self.denom.shr(shift)).ok().unwrap(),
+        )
     }
 }
 
@@ -3150,5 +3191,14 @@ mod test {
         assert_eq!(ldexp(INFINITY, 1), INFINITY);
         assert_eq!(ldexp(NEG_INFINITY, 1), NEG_INFINITY);
         assert!(ldexp(NAN, 1).is_nan());
+    }
+
+    #[test]
+    fn test_msb() {
+        let big = Ratio::new(0b111111111u128, 0b1111111111u128);
+        let small = big.msb_limit_unsigned::<u8>();
+        assert_eq!(small, Ratio::new(0b1111111u8, 0b11111111u8));
+        let same = Ratio::new(0b1111111u128, 0b11111111u128).msb_limit_unsigned::<u8>();
+        assert_eq!(same, Ratio::new(0b1111111u8, 0b11111111u8));
     }
 }
