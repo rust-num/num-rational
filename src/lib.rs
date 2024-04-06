@@ -1603,14 +1603,15 @@ impl<
         let limit: B = T::max_value().into();
         let msb_max = size_of::<B> as u64 - max.leading_zeros() as u64;
         let msb_limit = size_of::<B> as u64 - limit.leading_zeros() as u64;
-        let shift = if msb_max > msb_limit {
-            msb_max - msb_limit
-        } else {
-            0
-        };
+        let shift = msb_max.sub(msb_limit).max(0);
+
         Ratio::new(
-            T::try_from(self.numer.shr(shift)).ok().unwrap(),
-            T::try_from(self.denom.shr(shift)).ok().unwrap(),
+            T::try_from(self.numer.shr(shift))
+                .ok()
+                .expect("size was calculated and shifted"),
+            T::try_from(self.denom.shr(shift))
+                .ok()
+                .expect("size was calculated and shifted"),
         )
     }
 }
