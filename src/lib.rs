@@ -1557,7 +1557,7 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     }
 }
 
-pub trait Bits {
+trait Bits {
     fn bits(&self) -> u64;
 }
 
