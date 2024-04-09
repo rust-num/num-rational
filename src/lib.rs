@@ -43,6 +43,7 @@ use std::error::Error;
 use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 
 use num_integer::Integer;
+#[cfg(feature = "float")]
 use num_traits::float::FloatCore;
 use num_traits::{
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
@@ -286,6 +287,7 @@ impl<T: Clone + Integer> Ratio<T> {
 #[cfg(feature = "num-bigint")]
 impl Ratio<BigInt> {
     /// Converts a float into a rational number.
+    #[cfg(feature = "float")]
     pub fn from_float<T: FloatCore>(f: T) -> Option<BigRational> {
         if !f.is_finite() {
             return None;
@@ -1299,20 +1301,33 @@ macro_rules! from_primitive_integer {
     };
 }
 
+#[cfg(feature = "float")]
 from_primitive_integer!(i8, approximate_float);
+#[cfg(feature = "float")]
 from_primitive_integer!(i16, approximate_float);
+#[cfg(feature = "float")]
 from_primitive_integer!(i32, approximate_float);
+#[cfg(feature = "float")]
 from_primitive_integer!(i64, approximate_float);
+#[cfg(feature = "float")]
 from_primitive_integer!(i128, approximate_float);
+#[cfg(feature = "float")]
 from_primitive_integer!(isize, approximate_float);
 
+#[cfg(feature = "float")]
 from_primitive_integer!(u8, approximate_float_unsigned);
+#[cfg(feature = "float")]
 from_primitive_integer!(u16, approximate_float_unsigned);
+#[cfg(feature = "float")]
 from_primitive_integer!(u32, approximate_float_unsigned);
+#[cfg(feature = "float")]
 from_primitive_integer!(u64, approximate_float_unsigned);
+#[cfg(feature = "float")]
 from_primitive_integer!(u128, approximate_float_unsigned);
+#[cfg(feature = "float")]
 from_primitive_integer!(usize, approximate_float_unsigned);
 
+#[cfg(feature = "float")]
 impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
     pub fn approximate_float<F: FloatCore + NumCast>(f: F) -> Option<Ratio<T>> {
         // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
@@ -1323,6 +1338,7 @@ impl<T: Integer + Signed + Bounded + NumCast + Clone> Ratio<T> {
     }
 }
 
+#[cfg(feature = "float")]
 impl<T: Integer + Unsigned + Bounded + NumCast + Clone> Ratio<T> {
     pub fn approximate_float_unsigned<F: FloatCore + NumCast>(f: F) -> Option<Ratio<T>> {
         // 1/10e-20 < 1/2**32 which seems like a good default, and 30 seems
@@ -1333,6 +1349,7 @@ impl<T: Integer + Unsigned + Bounded + NumCast + Clone> Ratio<T> {
     }
 }
 
+#[cfg(feature = "float")]
 fn approximate_float<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
 where
     T: Integer + Signed + Bounded + NumCast + Clone,
@@ -1349,6 +1366,7 @@ where
 
 // No Unsigned constraint because this also works on positive integers and is called
 // like that, see above
+#[cfg(feature = "float")]
 fn approximate_float_unsigned<T, F>(val: F, max_error: F, max_iterations: usize) -> Option<Ratio<T>>
 where
     T: Integer + Bounded + NumCast + Clone,
@@ -1478,7 +1496,7 @@ to_primitive_small!(u8 i8 u16 i16 u32 i32);
 #[cfg(all(target_pointer_width = "32", not(feature = "num-bigint")))]
 to_primitive_small!(usize isize);
 
-#[cfg(not(feature = "num-bigint"))]
+#[cfg(all(not(feature = "num-bigint"), feature = "float"))]
 macro_rules! to_primitive_64 {
     ($($type_name:ty)*) => ($(
         impl ToPrimitive for Ratio<$type_name> {
@@ -1513,13 +1531,17 @@ macro_rules! to_primitive_64 {
     )*)
 }
 
-#[cfg(not(feature = "num-bigint"))]
+#[cfg(all(not(feature = "num-bigint"), feature = "float"))]
 to_primitive_64!(u64 i64);
 
-#[cfg(all(target_pointer_width = "64", not(feature = "num-bigint")))]
+#[cfg(all(
+    target_pointer_width = "64",
+    not(feature = "num-bigint"),
+    feature = "float"
+))]
 to_primitive_64!(usize isize);
 
-#[cfg(feature = "num-bigint")]
+#[cfg(all(feature = "num-bigint", feature = "float"))]
 impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
     fn to_i64(&self) -> Option<i64> {
         self.to_integer().to_i64()
@@ -1620,6 +1642,7 @@ impl<
 ///
 /// In addition to stated trait bounds, `T` must be able to hold numbers 56 bits larger than
 /// the largest of `numer` and `denom`. This is automatically true if `T` is `BigInt`.
+#[cfg(feature = "float")]
 fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimitive>(
     numer: T,
     denom: T,
@@ -1713,6 +1736,7 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
 
 /// Multiply `x` by 2 to the power of `exp`. Returns an accurate result even if `2^exp` is not
 /// representable.
+#[cfg(feature = "float")]
 fn ldexp(x: f64, exp: i32) -> f64 {
     use core::f64::{INFINITY, MANTISSA_DIGITS, MAX_EXP, RADIX};
 
@@ -1791,11 +1815,13 @@ fn hash<T: Hash>(x: &T) -> u64 {
 
 #[cfg(test)]
 mod test {
+    #[cfg(feature = "float")]
     use super::ldexp;
     #[cfg(feature = "num-bigint")]
     use super::{BigInt, BigRational};
     use super::{Ratio, Rational64};
 
+    #[cfg(feature = "float")]
     use core::f64;
     use core::i32;
     use core::i64;
@@ -1915,6 +1941,7 @@ mod test {
         let _a = Ratio::new(1, 0);
     }
 
+    #[cfg(feature = "float")]
     #[test]
     fn test_approximate_float() {
         assert_eq!(Ratio::from_f32(0.5f32), Some(Ratio::new(1i64, 2)));
@@ -3059,6 +3086,7 @@ mod test {
         assert_eq!(r.denom(), &(456 / 3));
     }
 
+    #[cfg(feature = "float")]
     #[test]
     fn test_ratio_to_i64() {
         assert_eq!(5, Rational64::new(70, 14).to_u64().unwrap());
@@ -3132,6 +3160,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "float")]
     fn test_ratio_to_f64() {
         assert_eq!(Ratio::<u8>::new(1, 2).to_f64(), Some(0.5f64));
         assert_eq!(Rational64::new(1, 2).to_f64(), Some(0.5f64));
@@ -3158,6 +3187,7 @@ mod test {
         assert_eq!(Ratio::<i32>::new_raw(0, 0).to_f64(), None);
     }
 
+    #[cfg(feature = "float")]
     #[test]
     fn test_ldexp() {
         use core::f64::{INFINITY, MAX_EXP, MIN_EXP, NAN, NEG_INFINITY};

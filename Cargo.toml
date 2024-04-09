@@ -57,11 +57,12 @@ version = "1.5.0"
 default-features = false
 
 [features]
-default = ["num-bigint", "std"]
-std = ["num-bigint?/std", "num-integer/std", "num-traits/std"]
+default = ["num-bigint", "std", "float"]
+std = ["num-bigint?/std", "num-integer/std", "num-traits/std", "float"]
 num-bigint-std = ["num-bigint/std"]
 num-bigint = ["dep:num-bigint"]
 serde = ["dep:serde"]
 json-schema = ["dep:schemars", "std"]
 borsh = ["dep:borsh"]
 cosmwasm = ["dep:cosmwasm-std"]
+float = []
