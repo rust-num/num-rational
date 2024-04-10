@@ -1094,12 +1094,19 @@ macro_rules! impl_formatting {
     };
 }
 
+#[cfg(feature = "float")]
 impl_formatting!(Display, "", "{}", "{:#}");
+#[cfg(feature = "float")]
 impl_formatting!(Octal, "0o", "{:o}", "{:#o}");
+#[cfg(feature = "float")]
 impl_formatting!(Binary, "0b", "{:b}", "{:#b}");
+#[cfg(feature = "float")]
 impl_formatting!(LowerHex, "0x", "{:x}", "{:#x}");
+#[cfg(feature = "float")]
 impl_formatting!(UpperHex, "0x", "{:X}", "{:#X}");
+#[cfg(feature = "float")]
 impl_formatting!(LowerExp, "", "{:e}", "{:#e}");
+#[cfg(feature = "float")]
 impl_formatting!(UpperExp, "", "{:E}", "{:#E}");
 
 impl<T: FromStr + Clone + Integer> FromStr for Ratio<T> {
