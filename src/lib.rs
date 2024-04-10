@@ -46,9 +46,12 @@ use num_integer::Integer;
 #[cfg(feature = "float")]
 use num_traits::float::FloatCore;
 use num_traits::{
-    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
-    Pow, Signed, ToPrimitive, Unsigned, Zero,
+    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Inv, Num, NumCast, One, Pow, Signed,
+    Unsigned, Zero,
 };
+
+#[cfg(feature = "float")]
+use num_traits::{FromPrimitive, ToPrimitive};
 
 mod pow;
 
@@ -1297,10 +1300,12 @@ macro_rules! from_primitive_integer {
                 <$typ as FromPrimitive>::from_u128(n).map(Ratio::from_integer)
             }
 
+            #[cfg(feature = "float")]
             fn from_f32(n: f32) -> Option<Self> {
                 $approx(n, 10e-20, 30)
             }
 
+            #[cfg(feature = "float")]
             fn from_f64(n: f64) -> Option<Self> {
                 $approx(n, 10e-20, 30)
             }
@@ -1480,11 +1485,11 @@ macro_rules! to_primitive_small {
             fn to_u64(&self) -> Option<u64> {
                 self.to_integer().to_u64()
             }
-            
+
             fn to_u128(&self) -> Option<u128> {
                 self.to_integer().to_u128()
             }
-            
+
             #[cfg(feature = "float")]
             fn to_f64(&self) -> Option<f64> {
                 let float = self.numer.to_f64().unwrap() / self.denom.to_f64().unwrap();
@@ -1501,7 +1506,11 @@ macro_rules! to_primitive_small {
 #[cfg(all(not(feature = "num-bigint"), feature = "float"))]
 to_primitive_small!(u8 i8 u16 i16 u32 i32);
 
-#[cfg(all(target_pointer_width = "32", not(feature = "num-bigint"), feature = "float"))]
+#[cfg(all(
+    target_pointer_width = "32",
+    not(feature = "num-bigint"),
+    feature = "float"
+))]
 to_primitive_small!(usize isize);
 
 #[cfg(all(not(feature = "num-bigint"), feature = "float"))]
@@ -1837,8 +1846,9 @@ mod test {
     use core::i64;
     use core::str::FromStr;
     use num_integer::Integer;
-    use num_traits::ToPrimitive;
-    use num_traits::{FromPrimitive, One, Pow, Signed, Zero};
+    #[cfg(feature = "float")]
+    use num_traits::{FromPrimitive, ToPrimitive};
+    use num_traits::{One, Pow, Signed, Zero};
 
     pub const _0: Rational64 = Ratio { numer: 0, denom: 1 };
     pub const _1: Rational64 = Ratio { numer: 1, denom: 1 };
@@ -3115,6 +3125,7 @@ mod test {
         );
     }
 
+    #[cfg(feature = "float")]
     #[test]
     #[cfg(feature = "num-bigint")]
     fn test_big_ratio_to_f64() {
