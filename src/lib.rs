@@ -1473,11 +1473,12 @@ macro_rules! to_primitive_small {
             fn to_u64(&self) -> Option<u64> {
                 self.to_integer().to_u64()
             }
-
+            
             fn to_u128(&self) -> Option<u128> {
                 self.to_integer().to_u128()
             }
-
+            
+            #[cfg(feature = "float")]
             fn to_f64(&self) -> Option<f64> {
                 let float = self.numer.to_f64().unwrap() / self.denom.to_f64().unwrap();
                 if float.is_nan() {
@@ -1490,10 +1491,10 @@ macro_rules! to_primitive_small {
     )*)
 }
 
-#[cfg(not(feature = "num-bigint"))]
+#[cfg(all(not(feature = "num-bigint"), feature = "float"))]
 to_primitive_small!(u8 i8 u16 i16 u32 i32);
 
-#[cfg(all(target_pointer_width = "32", not(feature = "num-bigint")))]
+#[cfg(all(target_pointer_width = "32", not(feature = "num-bigint"), feature = "float"))]
 to_primitive_small!(usize isize);
 
 #[cfg(all(not(feature = "num-bigint"), feature = "float"))]
@@ -1516,6 +1517,7 @@ macro_rules! to_primitive_64 {
                 self.to_integer().to_u128()
             }
 
+            #[cfg(feature = "float")]
             fn to_f64(&self) -> Option<f64> {
                 let float = ratio_to_f64(
                     self.numer as i128,
@@ -1559,6 +1561,7 @@ impl<T: Clone + Integer + ToPrimitive + ToBigInt> ToPrimitive for Ratio<T> {
         self.to_integer().to_u128()
     }
 
+    #[cfg(feature = "float")]
     fn to_f64(&self) -> Option<f64> {
         let float = match (self.numer.to_i64(), self.denom.to_i64()) {
             (Some(numer), Some(denom)) => ratio_to_f64(
