@@ -1634,23 +1634,23 @@ impl<
     // 10|1
     // 100|1
     pub fn msb_limit_unsigned<
-        T: Into<B> + Copy + Integer + num_traits::bounds::UpperBounded + TryFrom<B>,
+        Smaller: Into<B> + Copy + Integer + num_traits::bounds::UpperBounded + TryFrom<B>,
     >(
         mut self,
-    ) -> Ratio<T> {
+    ) -> Ratio<Smaller> {
         use core::mem::size_of;
         self.reduce();
         let max = self.numer.max(self.denom);
-        let limit: B = T::max_value().into();
+        let limit: B = Smaller::max_value().into();
         let msb_max = size_of::<B> as u64 - max.leading_zeros() as u64;
         let msb_limit = size_of::<B> as u64 - limit.leading_zeros() as u64;
-        let shift = msb_max.sub(msb_limit).max(0);
+        let shift = msb_max.saturating_sub(msb_limit);
 
         Ratio::new(
-            T::try_from(self.numer.shr(shift))
+            Smaller::try_from(self.numer.shr(shift))
                 .ok()
                 .expect("size was calculated and shifted"),
-            T::try_from(self.denom.shr(shift))
+            Smaller::try_from(self.denom.shr(shift))
                 .ok()
                 .expect("size was calculated and shifted"),
         )
@@ -3252,5 +3252,6 @@ mod test {
         assert_eq!(small, Ratio::new(0b1111111u8, 0b11111111u8));
         let same = Ratio::new(0b1111111u128, 0b11111111u128).msb_limit_unsigned::<u8>();
         assert_eq!(same, Ratio::new(0b1111111u8, 0b11111111u8));
+        let one = Ratio::new(1000u128, 1000u128).msb_limit_unsigned::<u8>();
     }
 }
