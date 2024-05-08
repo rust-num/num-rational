@@ -1,3 +1,17 @@
+# Release 0.4.2 (2024-05-07)
+
+- [Upgrade to 2021 edition, **MSRV 1.60**][126]
+- [Add `Ratio::approximate_float_unsigned` to convert `FloatCore` types to unsigned][109]
+- [Add `const ZERO` and `ONE`, and implement `num_traits::ConstZero` and `ConstOne`][128]
+- [Add `Ratio::into_raw` to deconstruct the numerator and denominator][129]
+
+**Contributors**: @cuviper, @Enyium, @flavioroth, @waywardmonkeys
+
+[109]: https://github.com/rust-num/num-rational/pull/109
+[126]: https://github.com/rust-num/num-rational/pull/126
+[128]: https://github.com/rust-num/num-rational/pull/128
+[129]: https://github.com/rust-num/num-rational/pull/129
+
 # Release 0.4.1 (2022-06-23)
 
 - [Fewer `clone` calls are used when reducing a new `Ratio<T>`][98].
