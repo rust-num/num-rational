@@ -84,6 +84,12 @@ impl<T> Ratio<T> {
         Ratio { numer, denom }
     }
 
+    /// Deconstructs a `Ratio` into its numerator and denominator.
+    #[inline]
+    pub fn into_raw(self) -> (T, T) {
+        (self.numer, self.denom)
+    }
+
     /// Gets an immutable reference to the numerator.
     #[inline]
     pub const fn numer(&self) -> &T {
