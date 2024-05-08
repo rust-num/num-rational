@@ -42,8 +42,8 @@ use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 use num_integer::Integer;
 use num_traits::float::FloatCore;
 use num_traits::{
-    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, FromPrimitive, Inv, Num, NumCast, One,
-    Pow, Signed, ToPrimitive, Unsigned, Zero,
+    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, ConstOne, ConstZero, FromPrimitive,
+    Inv, Num, NumCast, One, Pow, Signed, ToPrimitive, Unsigned, Zero,
 };
 
 mod pow;
@@ -922,6 +922,15 @@ where
 }
 
 // Constants
+impl<T: ConstZero + ConstOne> Ratio<T> {
+    /// A constant `Ratio` 0/1.
+    pub const ZERO: Self = Self::new_raw(T::ZERO, T::ONE);
+}
+
+impl<T: Clone + Integer + ConstZero + ConstOne> ConstZero for Ratio<T> {
+    const ZERO: Self = Self::ZERO;
+}
+
 impl<T: Clone + Integer> Zero for Ratio<T> {
     #[inline]
     fn zero() -> Ratio<T> {
@@ -938,6 +947,15 @@ impl<T: Clone + Integer> Zero for Ratio<T> {
         self.numer.set_zero();
         self.denom.set_one();
     }
+}
+
+impl<T: ConstOne> Ratio<T> {
+    /// A constant `Ratio` 1/1.
+    pub const ONE: Self = Self::new_raw(T::ONE, T::ONE);
+}
+
+impl<T: Clone + Integer + ConstOne> ConstOne for Ratio<T> {
+    const ONE: Self = Self::ONE;
 }
 
 impl<T: Clone + Integer> One for Ratio<T> {
