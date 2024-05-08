@@ -19,8 +19,6 @@
 // Ratio ops often use other "suspicious" ops
 #![allow(clippy::suspicious_arithmetic_impl)]
 #![allow(clippy::suspicious_op_assign_impl)]
-// This uses stdlib features higher than the MSRV
-#![allow(clippy::manual_range_contains)] // 1.35
 
 #[cfg(feature = "std")]
 #[macro_use]
@@ -1580,7 +1578,8 @@ fn ratio_to_f64<T: Bits + Clone + Integer + Signed + ShlAssign<usize> + ToPrimit
     // FPU do the job is faster and easier. In any other case, converting to f64s may lead
     // to an inexact result: https://stackoverflow.com/questions/56641441/.
     if let (Some(n), Some(d)) = (numer.to_i64(), denom.to_i64()) {
-        if MIN_EXACT_INT <= n && n <= MAX_EXACT_INT && MIN_EXACT_INT <= d && d <= MAX_EXACT_INT {
+        let exact = MIN_EXACT_INT..=MAX_EXACT_INT;
+        if exact.contains(&n) && exact.contains(&d) {
             return n.to_f64().unwrap() / d.to_f64().unwrap();
         }
     }
