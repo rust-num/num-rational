@@ -19,8 +19,7 @@
 // Ratio ops often use other "suspicious" ops
 #![allow(clippy::suspicious_arithmetic_impl)]
 #![allow(clippy::suspicious_op_assign_impl)]
-// These use stdlib features higher than the MSRV
-#![allow(clippy::manual_strip)] // 1.45
+// This uses stdlib features higher than the MSRV
 #![allow(clippy::manual_range_contains)] // 1.35
 
 #[cfg(feature = "std")]
@@ -1068,15 +1067,11 @@ macro_rules! impl_formatting {
                         format!(concat!($fmt_str, "/", $fmt_str), self.numer, self.denom)
                     }
                 };
-                // TODO: replace with strip_prefix, when stabilized
-                let (pre_pad, non_negative) = {
-                    if pre_pad.starts_with("-") {
-                        (&pre_pad[1..], false)
-                    } else {
-                        (&pre_pad[..], true)
-                    }
-                };
-                f.pad_integral(non_negative, $prefix, pre_pad)
+                if let Some(pre_pad) = pre_pad.strip_prefix("-") {
+                    f.pad_integral(false, $prefix, pre_pad)
+                } else {
+                    f.pad_integral(true, $prefix, &pre_pad)
+                }
             }
             #[cfg(not(feature = "std"))]
             fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
