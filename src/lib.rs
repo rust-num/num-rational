@@ -1183,6 +1183,36 @@ where
     }
 }
 
+#[cfg(feature = "borsh")]
+impl<T> borsh::BorshSerialize for Ratio<T>
+where
+    T: borsh::BorshSerialize,
+{
+    fn serialize<W: borsh::io::Write>(&self, writer: &mut W) -> borsh::io::Result<()> {
+        <T as borsh::BorshSerialize>::serialize(self.numer(), writer)?;
+        <T as borsh::BorshSerialize>::serialize(self.denom(), writer)
+    }
+}
+
+#[cfg(feature = "borsh")]
+impl<T> borsh::BorshDeserialize for Ratio<T>
+where
+    T: borsh::BorshDeserialize + num_traits::Zero,
+{
+    fn deserialize_reader<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Self> {
+        let numer = <T as borsh::BorshDeserialize>::deserialize_reader(reader)?;
+        let denom = <T as borsh::BorshDeserialize>::deserialize_reader(reader)?;
+        if denom.is_zero() {
+            Err(borsh::io::Error::new(
+                borsh::io::ErrorKind::InvalidData,
+                "expected a ratio with non-zero denominator",
+            ))
+        } else {
+            Ok(Ratio::new_raw(numer, denom))
+        }
+    }
+}
+
 // FIXME: Bubble up specific errors
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct ParseRatioError {

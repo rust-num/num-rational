@@ -15,7 +15,7 @@ edition = "2021"
 rust-version = "1.60"
 
 [package.metadata.docs.rs]
-features = ["std", "num-bigint-std", "serde"]
+features = ["std", "num-bigint-std", "serde", "borsh"]
 
 [dependencies]
 
@@ -37,6 +37,11 @@ features = ["i128"]
 [dependencies.serde]
 optional = true
 version = "1.0.0"
+default-features = false
+
+[dependencies.borsh]
+optional = true
+version = "1.2.0"
 default-features = false
 
 [features]
