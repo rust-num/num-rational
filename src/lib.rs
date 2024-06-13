@@ -45,7 +45,12 @@ use num_traits::{
 
 mod pow;
 
-/// Represents the ratio between two numbers.
+/// Represents the ratio between two integers.
+/// 
+/// Converting to a `Ratio<T>` yields `None` in the following cases:
+///
+/// - The input value is out of the bounds of the integer target type, which, in case of a float, includes positive and negative infinity.
+/// - The input value is a float and NaN.
 #[derive(Copy, Clone, Debug)]
 #[allow(missing_docs)]
 pub struct Ratio<T> {
