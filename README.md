@@ -2,7 +2,7 @@
 
 [![crate](https://img.shields.io/crates/v/num-rational.svg)](https://crates.io/crates/num-rational)
 [![documentation](https://docs.rs/num-rational/badge.svg)](https://docs.rs/num-rational)
-![minimum rustc 1.8](https://img.shields.io/badge/rustc-1.8+-red.svg)
+![minimum rustc 1.19](https://img.shields.io/badge/rustc-1.19+-red.svg)
 [![Travis status](https://travis-ci.org/rust-num/num-rational.svg?branch=master)](https://travis-ci.org/rust-num/num-rational)
 
 Generic `Rational` numbers for Rust.
@@ -28,4 +28,4 @@ Release notes are available in [RELEASES.md](RELEASES.md).
 
 ## Compatibility
 
-The `num-rational` crate is tested for rustc 1.8 and greater.
+The `num-rational` crate is tested for rustc 1.19 and greater.

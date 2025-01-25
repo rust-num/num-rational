@@ -12,9 +12,10 @@
 //!
 //! ## Compatibility
 //!
-//! The `num-rational` crate is tested for rustc 1.8 and greater.
+//! The `num-rational` crate is tested for rustc 1.19 and greater.
 
 #![doc(html_root_url = "https://docs.rs/num-rational/0.1")]
+#![cfg_attr(has_derive_rustc_serialize, warn(soft_unstable))] // un-deny
 
 #[cfg(feature = "rustc-serialize")]
 extern crate rustc_serialize;
@@ -41,7 +42,7 @@ use traits::{FromPrimitive, Float, PrimInt, Num, Signed, Zero, One, Bounded, Num
 
 /// Represents the ratio between 2 numbers.
 #[derive(Copy, Clone, Debug)]
-#[cfg_attr(feature = "rustc-serialize", derive(RustcEncodable, RustcDecodable))]
+#[cfg_attr(has_derive_rustc_serialize, derive(RustcEncodable, RustcDecodable))]
 #[allow(missing_docs)]
 pub struct Ratio<T> {
     numer: T,
