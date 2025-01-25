@@ -1,3 +1,9 @@
+# Release 0.1.43
+
+- [Disable `rustc-serialize` derives for future compilers.][132]
+
+[132]: https://github.com/rust-num/num-rational/pull/132
+
 # Release 0.1.42
 
 - Maintenance release to update dependencies.
