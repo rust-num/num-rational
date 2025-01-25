@@ -8,14 +8,15 @@ categories = [ "algorithms", "data-structures", "science" ]
 license = "MIT/Apache-2.0"
 name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
-version = "0.1.42"
+version = "0.1.43"
 readme = "README.md"
+build = "build.rs"
 
 [dependencies]
 
 [dependencies.num-bigint]
 optional = true
-version = "0.1.42"
+version = "0.1.45"
 
 [dependencies.num-integer]
 version = "0.1.36"
@@ -37,3 +38,6 @@ version = ">= 0.7.0, < 0.9.0"
 [features]
 default = ["bigint", "rustc-serialize"]
 bigint = ["num-bigint"]
+
+[build-dependencies]
+autocfg = "1.4.0"
