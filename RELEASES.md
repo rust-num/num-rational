@@ -3,7 +3,7 @@
 - [Upgrade to 2021 edition, **MSRV 1.60**][126]
 - [Add `Ratio::approximate_float_unsigned` to convert `FloatCore` types to unsigned][109]
 - [Add `const ZERO` and `ONE`, and implement `num_traits::ConstZero` and `ConstOne`][128]
-- [Add `Ratio::into_raw` to deconstruct the numerator and denominator][129]
+- [Add `Ratio::into_raw` to deconstruct the numberator and denominator][129]
 
 **Contributors**: @cuviper, @Enyium, @flavioroth, @waywardmonkeys
 
@@ -28,7 +28,7 @@
 
 - The optional `num-bigint` dependency is now 0.4.
 - [The `Rational` alias for `Ratio<usize>` is now deprecated][92]. It is
-  recommended to use specific type sizes for numeric computation, like
+  recommended to use specific type sizes for numberic computation, like
   `Rational32` and `Rational64`.
 
 **Contributors**: @cuviper, @vks
@@ -84,7 +84,7 @@
 # Release 0.2.4 (2020-03-17)
 
 - [Fixed `CheckedDiv` when both dividend and divisor are 0][74].
-- [Fixed `CheckedDiv` with `min_value()` numerators][76].
+- [Fixed `CheckedDiv` with `min_value()` numberators][76].
 
 [74]: https://github.com/rust-num/num-rational/pull/74
 [76]: https://github.com/rust-num/num-rational/pull/76
@@ -92,7 +92,7 @@
 # Release 0.2.3 (2020-01-09)
 
 - [`Ratio` now performs earlier reductions to avoid overflow with `+-*/%` operators][42].
-- [`Ratio::{new_raw, numer, denom}` are now `const fn` for Rust 1.31 and later][48].
+- [`Ratio::{new_raw, number, denom}` are now `const fn` for Rust 1.31 and later][48].
 - [Updated the `autocfg` build dependency to 1.0][63].
 
 **Contributors**: @cuviper, @dingelish, @jimbo1qaz, @maxbla
