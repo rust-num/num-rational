@@ -39,6 +39,7 @@ use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 use num_integer::Integer;
 use num_traits::float::FloatCore;
 use num_traits::{
+    bounds::{LowerBounded, UpperBounded},
     Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, ConstOne, ConstZero, FromPrimitive,
     Inv, Num, NumCast, One, Pow, Signed, ToPrimitive, Unsigned, Zero,
 };
@@ -422,6 +423,18 @@ impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
                 denom.hash(state);
             }
         }
+    }
+}
+
+impl<T: LowerBounded + Clone + Integer> LowerBounded for Ratio<T> {
+    fn min_value() -> Self {
+        Self::from_integer(T::min_value())
+    }
+}
+
+impl<T: UpperBounded + Clone + Integer> UpperBounded for Ratio<T> {
+    fn max_value() -> Self {
+        Self::from_integer(T::max_value())
     }
 }
 
