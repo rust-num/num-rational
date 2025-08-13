@@ -8,7 +8,7 @@ categories = ["algorithms", "data-structures", "science", "no-std"]
 license = "MIT OR Apache-2.0"
 name = "num-rational"
 repository = "https://github.com/rust-num/num-rational"
-version = "0.4.2"
+version = "0.4.3"
 readme = "README.md"
 exclude = ["/ci/*", "/.github/*"]
 edition = "2021"
@@ -25,12 +25,12 @@ version = "0.4.0"
 default-features = false
 
 [dependencies.num-integer]
-version = "0.1.42"
+version = "0.1.47"
 default-features = false
 features = ["i128"]
 
 [dependencies.num-traits]
-version = "0.2.18"
+version = "0.3.0"
 default-features = false
 features = ["i128"]
 
@@ -45,3 +45,10 @@ std = ["num-bigint?/std", "num-integer/std", "num-traits/std"]
 num-bigint-std = ["num-bigint/std"]
 num-bigint = ["dep:num-bigint"]
 serde = ["dep:serde"]
+
+
+[patch.crates-io]
+num-bigint = { git = "https://github.com/rickwebiii/num-bigint.git", branch = "rweber/wrapping" }
+num-traits = { git = "https://github.com/rickwebiii/num-traits.git", branch = "rweber/wrapping" }
+num-integer = { git = "https://github.com/rickwebiii/num-integer.git", branch = "rweber/wrapping" }
+
