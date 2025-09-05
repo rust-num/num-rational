@@ -287,9 +287,9 @@ impl<T: Clone + Integer> Ratio<T> {
                 } else {
                     let one: Ratio<T> = One::one();
                     if *self >= Zero::zero() {
-                        self.trunc() + one
+                        trunc + one
                     } else {
-                        self.trunc() - one
+                        trunc - one
                     }
                 }
             }
@@ -1782,6 +1782,7 @@ mod test {
     pub const _0: Rational64 = Ratio { numer: 0, denom: 1 };
     pub const _1: Rational64 = Ratio { numer: 1, denom: 1 };
     pub const _2: Rational64 = Ratio { numer: 2, denom: 1 };
+    pub const _3: Rational64 = Ratio { numer: 3, denom: 1 };
     pub const _NEG2: Rational64 = Ratio {
         numer: -2,
         denom: 1,
@@ -2690,37 +2691,50 @@ mod test {
         assert_eq!(_1_3.ceil(), _1);
         assert_eq!(_1_3.floor(), _0);
         assert_eq!(_1_3.round(), _0);
+        assert_eq!(_1_3.round_ties_even(), _0);
         assert_eq!(_1_3.trunc(), _0);
 
         assert_eq!(_NEG1_3.ceil(), _0);
         assert_eq!(_NEG1_3.floor(), -_1);
         assert_eq!(_NEG1_3.round(), _0);
+        assert_eq!(_NEG1_3.round_ties_even(), _0);
         assert_eq!(_NEG1_3.trunc(), _0);
 
         assert_eq!(_2_3.ceil(), _1);
         assert_eq!(_2_3.floor(), _0);
         assert_eq!(_2_3.round(), _1);
+        assert_eq!(_2_3.round_ties_even(), _1);
         assert_eq!(_2_3.trunc(), _0);
 
         assert_eq!(_NEG2_3.ceil(), _0);
         assert_eq!(_NEG2_3.floor(), -_1);
         assert_eq!(_NEG2_3.round(), -_1);
+        assert_eq!(_NEG2_3.round_ties_even(), -_1);
         assert_eq!(_NEG2_3.trunc(), _0);
 
         assert_eq!(_1_2.ceil(), _1);
         assert_eq!(_1_2.floor(), _0);
         assert_eq!(_1_2.round(), _1);
+        assert_eq!(_1_2.round_ties_even(), _0);
         assert_eq!(_1_2.trunc(), _0);
 
         assert_eq!(_NEG1_2.ceil(), _0);
         assert_eq!(_NEG1_2.floor(), -_1);
         assert_eq!(_NEG1_2.round(), -_1);
+        assert_eq!(_NEG1_2.round_ties_even(), _0);
         assert_eq!(_NEG1_2.trunc(), _0);
 
         assert_eq!(_1.ceil(), _1);
         assert_eq!(_1.floor(), _1);
         assert_eq!(_1.round(), _1);
+        assert_eq!(_1.round_ties_even(), _1);
         assert_eq!(_1.trunc(), _1);
+
+        assert_eq!(_5_2.ceil(), _3);
+        assert_eq!(_5_2.floor(), _2);
+        assert_eq!(_5_2.round(), _3);
+        assert_eq!(_5_2.round_ties_even(), _2);
+        assert_eq!(_5_2.trunc(), _2);
 
         // Overflow checks
 
@@ -2742,6 +2756,14 @@ mod test {
         assert_eq!(_large_rat6.round(), _neg1);
         assert_eq!(_large_rat7.round(), Zero::zero());
         assert_eq!(_large_rat8.round(), Zero::zero());
+        assert_eq!(_large_rat1.round_ties_even(), One::one());
+        assert_eq!(_large_rat2.round_ties_even(), One::one());
+        assert_eq!(_large_rat3.round_ties_even(), One::one());
+        assert_eq!(_large_rat4.round_ties_even(), One::one());
+        assert_eq!(_large_rat5.round_ties_even(), _neg1);
+        assert_eq!(_large_rat6.round_ties_even(), _neg1);
+        assert_eq!(_large_rat7.round_ties_even(), Zero::zero());
+        assert_eq!(_large_rat8.round_ties_even(), Zero::zero());
     }
 
     #[test]
