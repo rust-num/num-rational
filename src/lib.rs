@@ -257,6 +257,46 @@ impl<T: Clone + Integer> Ratio<T> {
         }
     }
 
+    /// Rounds to the nearest integer. Rounds half-way cases to even.
+    pub fn round_ties_even(&self) -> Ratio<T> {
+        let zero: Ratio<T> = Zero::zero();
+        let one: T = One::one();
+        let two: T = one.clone() + one.clone();
+
+        // Find unsigned fractional part of rational number
+        let mut fractional = self.fract();
+        if fractional < zero {
+            fractional = zero - fractional
+        };
+
+        // Compare the unsigned fractional part with 1/2
+        let half = Ratio::new_raw(one, two);
+        match fractional.cmp(&half) {
+            cmp::Ordering::Greater => {
+                let one: Ratio<T> = One::one();
+                if *self >= Zero::zero() {
+                    self.trunc() + one
+                } else {
+                    self.trunc() - one
+                }
+            }
+            cmp::Ordering::Equal => {
+                let trunc = self.trunc();
+                if trunc.numer().is_even() {
+                    trunc
+                } else {
+                    let one: Ratio<T> = One::one();
+                    if *self >= Zero::zero() {
+                        self.trunc() + one
+                    } else {
+                        self.trunc() - one
+                    }
+                }
+            }
+            cmp::Ordering::Less => self.trunc(),
+        }
+    }
+
     /// Rounds towards zero.
     #[inline]
     pub fn trunc(&self) -> Ratio<T> {
