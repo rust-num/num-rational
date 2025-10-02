@@ -98,6 +98,21 @@ impl<T> Ratio<T> {
     pub const fn denom(&self) -> &T {
         &self.denom
     }
+
+    /// Gets an mutable reference to the numerator.
+    #[inline]
+    pub const fn numer_mut(&mut self) -> &mut T {
+        &mut self.numer
+    }
+
+    /// Gets an mutable reference to the denominator.
+    ///
+    /// **There are several methods that will panic if used on a `Ratio` with
+    /// `denom == 0`.**
+    #[inline]
+    pub const fn denom_mut(&mut self) -> &mut T {
+        &mut self.denom
+    }
 }
 
 impl<T: Clone + Integer> Ratio<T> {
