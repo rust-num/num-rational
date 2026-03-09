@@ -246,7 +246,7 @@ impl<T: Clone + Integer> Ratio<T> {
         };
 
         if half_or_larger {
-            let one: Ratio<T> = One::one();
+            let one: T = One::one();
             if *self >= Zero::zero() {
                 self.trunc() + one
             } else {
@@ -883,8 +883,9 @@ where
     type Output = Ratio<T>;
 
     #[inline]
-    fn neg(self) -> Ratio<T> {
-        Ratio::new_raw(-self.numer, self.denom)
+    fn neg(mut self) -> Ratio<T> {
+        self.numer = -self.numer;
+        self
     }
 }
 
@@ -908,7 +909,7 @@ where
 
     #[inline]
     fn inv(self) -> Ratio<T> {
-        self.recip()
+        self.into_recip()
     }
 }
 
