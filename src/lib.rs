@@ -120,7 +120,7 @@ impl<T: Clone + Integer> Ratio<T> {
     /// Converts to an integer, rounding towards zero.
     #[inline]
     pub fn to_integer(&self) -> T {
-        self.trunc().numer
+        self.numer.clone() / self.denom.clone()
     }
 
     /// Returns true if the rational number is an integer (denominator is 1).
@@ -197,38 +197,44 @@ impl<T: Clone + Integer> Ratio<T> {
         }
     }
 
+    /// Rounds and returns an integer towards minus infinity.
+    #[inline]
+    pub fn floor_to_int(&self) -> T {
+        if *self < Zero::zero() {
+            let one: T = One::one();
+            (self.numer.clone() + one.clone()) / self.denom.clone() - one
+        } else {
+            self.numer.clone() / self.denom.clone()
+        }
+    }
+
     /// Rounds towards minus infinity.
     #[inline]
     pub fn floor(&self) -> Ratio<T> {
+        Ratio::from_integer(self.floor_to_int())
+    }
+
+    /// Rounds and returns an integer towards plus infinity.
+    #[inline]
+    pub fn ceil_to_int(&self) -> T {
         if *self < Zero::zero() {
-            let one: T = One::one();
-            Ratio::from_integer(
-                (self.numer.clone() - self.denom.clone() + one) / self.denom.clone(),
-            )
+            self.numer.clone() / self.denom.clone()
         } else {
-            Ratio::from_integer(self.numer.clone() / self.denom.clone())
+            let one: T = One::one();
+            (self.numer.clone() - one.clone()) / self.denom.clone() + one
         }
     }
 
     /// Rounds towards plus infinity.
     #[inline]
     pub fn ceil(&self) -> Ratio<T> {
-        if *self < Zero::zero() {
-            Ratio::from_integer(self.numer.clone() / self.denom.clone())
-        } else {
-            let one: T = One::one();
-            Ratio::from_integer(
-                (self.numer.clone() + self.denom.clone() - one) / self.denom.clone(),
-            )
-        }
+        Ratio::from_integer(self.ceil_to_int())
     }
 
-    /// Rounds to the nearest integer. Rounds half-way cases away from zero.
+    /// Rounds and returns the nearest integer. Rounds half-way cases away from zero.
     #[inline]
-    pub fn round(&self) -> Ratio<T> {
+    pub fn round_to_int(&self) -> T {
         let zero: Ratio<T> = Zero::zero();
-        let one: T = One::one();
-        let two: T = one.clone() + one.clone();
 
         // Find unsigned fractional part of rational number
         let mut fractional = self.fract();
@@ -236,25 +242,27 @@ impl<T: Clone + Integer> Ratio<T> {
             fractional = zero - fractional
         };
 
-        // The algorithm compares the unsigned fractional part with 1/2, that
-        // is, a/b >= 1/2, or a >= b/2. For odd denominators, we use
-        // a >= (b/2)+1. This avoids overflow issues.
-        let half_or_larger = if fractional.denom.is_even() {
-            fractional.numer >= fractional.denom / two
-        } else {
-            fractional.numer >= (fractional.denom / two) + one
-        };
+        // Integer part of rational number
+        let integer = self.to_integer();
 
-        if half_or_larger {
-            let one: Ratio<T> = One::one();
+        // The algorithm compares the unsigned fractional part with 1/2, that
+        // is, a/b >= 1/2, or a >= b-a. This avoids overflow issues.
+        if fractional.numer.clone() >= fractional.denom - fractional.numer {
+            let one: T = One::one();
             if *self >= Zero::zero() {
-                self.trunc() + one
+                integer + one
             } else {
-                self.trunc() - one
+                integer - one
             }
         } else {
-            self.trunc()
+            integer
         }
+    } 
+    
+    /// Rounds to the nearest integer. Rounds half-way cases away from zero.
+    #[inline]
+    pub fn round(&self) -> Ratio<T> {
+        Ratio::from_integer(self.round_to_int())
     }
 
     /// Rounds towards zero.
@@ -268,7 +276,21 @@ impl<T: Clone + Integer> Ratio<T> {
     /// Satisfies `self == self.trunc() + self.fract()`.
     #[inline]
     pub fn fract(&self) -> Ratio<T> {
-        Ratio::new_raw(self.numer.clone() % self.denom.clone(), self.denom.clone())
+        Ratio::new_raw(self.remainder(), self.denom.clone())
+    }
+
+    /// Returns the remainder of the numerator divided by the denominator.
+    #[inline]
+    pub fn remainder(&self) -> T {
+        self.numer.clone() % self.denom.clone()
+    }
+
+    /// Returns the ratio as a mixed fraction.
+    /// 
+    /// Satisfies `self == self.mixed().0 + self.mixed().1`.
+    pub fn mixed(&self) -> (T, Ratio<T>) {
+        let (quotient, remainder) = self.numer.div_rem(&self.denom);
+        (quotient, Ratio::new_raw(remainder, self.denom.clone()))
     }
 
     /// Raises the `Ratio` to the power of an exponent.
@@ -908,7 +930,7 @@ where
 
     #[inline]
     fn inv(self) -> Ratio<T> {
-        self.recip()
+        self.into_recip()
     }
 }
 
@@ -2702,6 +2724,15 @@ mod test {
         assert_eq!(_large_rat6.round(), _neg1);
         assert_eq!(_large_rat7.round(), Zero::zero());
         assert_eq!(_large_rat8.round(), Zero::zero());
+
+        assert_eq!(_large_rat1.floor(), One::one());
+        assert_eq!(_large_rat2.ceil(), One::one());
+        assert_eq!(_large_rat3.ceil(), One::one());
+        assert_eq!(_large_rat4.floor(), One::one());
+        assert_eq!(_large_rat5.floor(), _neg1);
+        assert_eq!(_large_rat6.ceil(), _neg1);
+        assert_eq!(_large_rat7.ceil(), Zero::zero());
+        assert_eq!(_large_rat8.floor(), Zero::zero());
     }
 
     #[test]
@@ -2710,6 +2741,22 @@ mod test {
         assert_eq!(_NEG1_2.fract(), _NEG1_2);
         assert_eq!(_1_2.fract(), _1_2);
         assert_eq!(_3_2.fract(), _1_2);
+
+    }
+
+    #[test]
+    fn test_mixed() {
+        assert_eq!(_0.mixed().0, 0);
+        assert_eq!(_1.mixed().0, 1);
+        assert_eq!(_2.mixed().0, 2);
+        assert_eq!(_1_2.mixed().0, 0);
+        assert_eq!(_3_2.mixed().0, 1);
+        assert_eq!(_NEG1_2.mixed().0, 0);
+
+        assert_eq!(_1.mixed().1, _0);
+        assert_eq!(_NEG1_2.mixed().1, _NEG1_2);
+        assert_eq!(_1_2.mixed().1, _1_2);
+        assert_eq!(_3_2.mixed().1, _1_2);
     }
 
     #[test]
