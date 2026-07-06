@@ -39,8 +39,8 @@ use num_bigint::{BigInt, BigUint, Sign, ToBigInt};
 use num_integer::Integer;
 use num_traits::float::FloatCore;
 use num_traits::{
-    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, ConstOne, ConstZero, FromPrimitive,
-    Inv, Num, NumCast, One, Pow, Signed, ToPrimitive, Unsigned, Zero,
+    Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, ConstOne, ConstZero,
+    FromPrimitive, Inv, Num, NumCast, One, Pow, Signed, ToPrimitive, Unsigned, Zero,
 };
 
 mod pow;
@@ -875,6 +875,20 @@ checked_arith_impl!(impl CheckedAdd, checked_add);
 
 // a/b - c/d = (lcm/b*a - lcm/d*c)/lcm, where lcm = lcm(b,d)
 checked_arith_impl!(impl CheckedSub, checked_sub);
+
+// -(a/b) = (-a)/b, so only the numerator can overflow
+impl<T> CheckedNeg for Ratio<T>
+where
+    T: Clone + Integer + CheckedNeg,
+{
+    #[inline]
+    fn checked_neg(&self) -> Option<Ratio<T>> {
+        Some(Ratio::new_raw(
+            self.numer.checked_neg()?,
+            self.denom.clone(),
+        ))
+    }
+}
 
 impl<T> Neg for Ratio<T>
 where
@@ -2151,7 +2165,9 @@ mod test {
         use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _MAX, _MAX_M1, _MIN, _MIN_P1, _NEG1_2};
         use core::fmt::Debug;
         use num_integer::Integer;
-        use num_traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
+        use num_traits::{
+            Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, NumAssign,
+        };
 
         #[test]
         fn test_add() {
@@ -2547,6 +2563,17 @@ mod test {
             test(_1_2, _NEG1_2);
             test(-_1, _1);
         }
+
+        #[test]
+        fn test_checked_neg() {
+            assert_eq!(_0.checked_neg(), Some(_0));
+            assert_eq!(_1_2.checked_neg(), Some(_NEG1_2));
+            assert_eq!(_NEG1_2.checked_neg(), Some(_1_2));
+            // Negating the numerator i64::MIN overflows.
+            let min = Ratio::new(i64::MIN, 3);
+            assert_eq!(min.checked_neg(), None);
+        }
+
         #[test]
         #[allow(clippy::eq_op)]
         fn test_zero() {
