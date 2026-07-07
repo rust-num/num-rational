@@ -11,54 +11,88 @@ use num_integer::Integer;
 // for those multiplications to overflow fixed-size integers, so we need to take care.
 
 impl<T: Clone + Integer> Ord for Ratio<T> {
-    #[inline]
+
     fn cmp(&self, other: &Self) -> Ordering {
-        // With equal denominators, the numerators can be directly compared
-        if self.denom == other.denom {
-            let ord = self.numer.cmp(&other.numer);
-            return if self.denom < T::zero() {
-                ord.reverse()
-            } else {
-                ord
-            };
+
+        let zero = T::zero();
+
+        // makes self.denom > 0 and other.denom > 0
+        if self.denom <= zero || other.denom <= zero {
+            return self.reduced().cmp(&other.reduced());
         }
 
-        // With equal numerators, the denominators can be inversely compared
-        if self.numer == other.numer {
-            if self.numer.is_zero() {
-                return Ordering::Equal;
+        // return an `Ordering` for the following case
+        // let a/b = lhs, c/d = rhs
+        // 0 < c < a and 0 < b and 0 < d 
+        #[inline]
+        fn reduce_cmp<T: Integer>(
+            lhs: &Ratio<T>, 
+            rhs: &Ratio<T>
+        ) -> Ordering {
+            if lhs.denom <= rhs.denom {
+                return Ordering::Greater;
             }
-            let ord = self.denom.cmp(&other.denom);
-            return if self.numer < T::zero() {
-                ord
-            } else {
-                ord.reverse()
-            };
-        }
 
-        // Unfortunately, we don't have CheckedMul to try.  That could sometimes avoid all the
-        // division below, or even always avoid it for BigInt and BigUint.
-        // FIXME- future breaking change to add Checked* to Integer?
+            let zero = T::zero();
 
-        // Compare as floored integers and remainders
-        let (self_int, self_rem) = self.numer.div_mod_floor(&self.denom);
-        let (other_int, other_rem) = other.numer.div_mod_floor(&other.denom);
-        match self_int.cmp(&other_int) {
-            Ordering::Greater => Ordering::Greater,
-            Ordering::Less => Ordering::Less,
-            Ordering::Equal => {
-                match (self_rem.is_zero(), other_rem.is_zero()) {
-                    (true, true) => Ordering::Equal,
-                    (true, false) => Ordering::Less,
-                    (false, true) => Ordering::Greater,
-                    (false, false) => {
-                        // Compare the reciprocals of the remaining fractions in reverse
-                        let self_recip = Ratio::new_raw(self.denom.clone(), self_rem);
-                        let other_recip = Ratio::new_raw(other.denom.clone(), other_rem);
-                        self_recip.cmp(&other_recip).reverse()
-                    }
+            let (q_n, mut a) = lhs.numer.div_rem(&rhs.numer); // 0 < c < a ∴ q_n ≥ 1
+            let (q_d, mut b) = lhs.denom.div_rem(&rhs.denom); // 0 < d < b ∴ q_d ≥ 1
+            let mut ord = q_n.cmp(&q_d);
+            if ord.is_ne() {
+                return ord;
+            }
+            match (a == zero, b == zero) {
+                // a = 0, b = 0 ∴ a*d = 0 = b*c
+                (true, true) => return Ordering::Equal,
+                // 0 = a, 0 < b, 0 < c ∴ a*d = 0 < b*c
+                (true, false) => return Ordering::Less,
+                // 0 < a, b = 0, 0 < d ∴ a*d > 0 = b*c
+                (false, true) => return Ordering::Greater,
+                (false, false) => (),
+            }
+            let (mut q_n, mut c) = rhs.numer.div_rem(&a); // 0 < a < c ∴ q_n ≥ 1
+            let (mut q_d, mut d) = rhs.denom.div_rem(&b); // 0 < b < d ∴ q_d ≥ 1
+            ord = q_d.cmp(&q_n); // d/b ?= c/a
+            while ord.is_eq() {
+                match (c == zero, d == zero) {
+                    // c = 0, d = 0 ∴ a*d = 0 = b*c
+                    (true, true) => return Ordering::Equal,
+                    // 0 < a, c = 0, 0 < d ∴ a*d > 0 = b*c
+                    (true, false) => return Ordering::Greater,
+                    // 0 < b, 0 < c, d = 0 ∴ a*d = 0 < b*c
+                    (false, true) => return Ordering::Less,
+                    (false, false) => (),
                 }
+                (a, b, c, d) = (d, c, b, a);
+                (q_n, c) = c.div_rem(&a); // 0 < a < c ∴ q_n ≥ 1
+                (q_d, d) = d.div_rem(&b); // 0 < b < d ∴ q_d ≥ 1
+                ord = q_d.cmp(&q_n); // d/b ?= c/a
             }
+            ord
+        }
+
+        match self.numer.cmp(&zero) {
+            Ordering::Greater => {
+                if other.numer <= zero {
+                    return Ordering::Greater;
+                }
+                match self.numer.cmp(&other.numer) {
+                    Ordering::Greater => reduce_cmp(self, other),
+                    Ordering::Less => reduce_cmp(other, self).reverse(),
+                    Ordering::Equal => other.denom.cmp(&self.denom),
+                }
+            },
+            Ordering::Less => {
+                if  zero <= other.numer {
+                    return Ordering::Less;
+                }
+                match self.numer.cmp(&other.numer) {
+                    Ordering::Greater => reduce_cmp(other, self),
+                    Ordering::Less => reduce_cmp(self, other).reverse(),
+                    Ordering::Equal => self.denom.cmp(&other.denom)
+                }
+            },
+            Ordering::Equal => zero.cmp(&other.numer)
         }
     }
 }
