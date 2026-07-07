@@ -3,7 +3,7 @@
 [![crate](https://img.shields.io/crates/v/num-rational.svg)](https://crates.io/crates/num-rational)
 [![documentation](https://docs.rs/num-rational/badge.svg)](https://docs.rs/num-rational)
 [![minimum rustc 1.60](https://img.shields.io/badge/rustc-1.60+-red.svg)](https://rust-lang.github.io/rfcs/2495-min-rust-version.html)
-[![build status](https://github.com/rust-num/num-rational/workflows/master/badge.svg)](https://github.com/rust-num/num-rational/actions)
+[![build status](https://github.com/rust-num/num-rational/actions/workflows/main.yaml/badge.svg)](https://github.com/rust-num/num-rational/actions/workflows/main.yaml)
 
 Generic `Rational` numbers (aka fractions) for Rust.
 
