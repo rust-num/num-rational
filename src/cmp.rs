@@ -12,9 +12,7 @@ use num_integer::Integer;
 
 impl<T: Clone + Integer> Ord for Ratio<T> {
 
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-
-        use cmp::Ordering;
+    fn cmp(&self, other: &Self) -> Ordering {
 
         let zero = T::zero();
 
