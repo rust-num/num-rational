@@ -21,6 +21,14 @@ check_version() {
   ]]
 }
 
+export CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback
+generate_lockfile() {
+  cargo generate-lockfile
+  if ! check_version 1.85 ; then
+    cargo +stable update
+  fi
+}
+
 echo "Testing $CRATE on rustc $RUST_VERSION"
 if ! check_version $MSRV ; then
   echo "The minimum for $CRATE is rustc $MSRV"
@@ -31,6 +39,8 @@ STD_FEATURES=(num-bigint-std serde)
 NO_STD_FEATURES=(num-bigint serde)
 echo "Testing supported features: ${STD_FEATURES[*]}"
 echo " no_std supported features: ${NO_STD_FEATURES[*]}"
+
+generate_lockfile
 
 set -x
 
