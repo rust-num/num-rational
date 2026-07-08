@@ -40,26 +40,53 @@ impl<T: Clone + Integer> Ord for Ratio<T> {
         // division below, or even always avoid it for BigInt and BigUint.
         // FIXME- future breaking change to add Checked* to Integer?
 
-        // Compare as floored integers and remainders
-        let (self_int, self_rem) = self.numer.div_mod_floor(&self.denom);
-        let (other_int, other_rem) = other.numer.div_mod_floor(&other.denom);
-        match self_int.cmp(&other_int) {
-            Ordering::Greater => Ordering::Greater,
-            Ordering::Less => Ordering::Less,
-            Ordering::Equal => {
-                match (self_rem.is_zero(), other_rem.is_zero()) {
-                    (true, true) => Ordering::Equal,
-                    (true, false) => Ordering::Less,
-                    (false, true) => Ordering::Greater,
-                    (false, false) => {
-                        // Compare the reciprocals of the remaining fractions in reverse
-                        let self_recip = Ratio::new_raw(self.denom.clone(), self_rem);
-                        let other_recip = Ratio::new_raw(other.denom.clone(), other_rem);
-                        self_recip.cmp(&other_recip).reverse()
-                    }
+        let (mut lhs_nbuf, mut lhs_dbuf, mut rhs_nbuf, mut rhs_dbuf);
+        let (mut lhs_numer, mut lhs_denom) = (&self.numer, &self.denom);
+        let (mut rhs_numer, mut rhs_denom) = (&other.numer, &other.denom);
+        loop {
+            match cmp_int(lhs_numer, lhs_denom, rhs_numer, rhs_denom) {
+                Ok(ord) => return ord,
+                Err((lhs_rem, rhs_rem)) => {
+                    lhs_nbuf = lhs_rem;
+                    lhs_numer = &lhs_nbuf;
+                    rhs_nbuf = rhs_rem;
+                    rhs_numer = &rhs_nbuf;
+                }
+            }
+
+            match cmp_int(lhs_denom, lhs_numer, rhs_denom, rhs_numer) {
+                Ok(ord) => return ord.reverse(),
+                Err((lhs_rem, rhs_rem)) => {
+                    lhs_dbuf = lhs_rem;
+                    lhs_denom = &lhs_dbuf;
+                    rhs_dbuf = rhs_rem;
+                    rhs_denom = &rhs_dbuf;
                 }
             }
         }
+    }
+}
+
+/// Compare as floored integers; if equal then return remainders
+#[inline(always)]
+fn cmp_int<T: Integer>(
+    lhs_numer: &T,
+    lhs_denom: &T,
+    rhs_numer: &T,
+    rhs_denom: &T,
+) -> Result<Ordering, (T, T)> {
+    // Compare as floored integers and remainders
+    let (lhs_int, lhs_rem) = lhs_numer.div_mod_floor(lhs_denom);
+    let (rhs_int, rhs_rem) = rhs_numer.div_mod_floor(rhs_denom);
+    match lhs_int.cmp(&rhs_int) {
+        Ordering::Greater => Ok(Ordering::Greater),
+        Ordering::Less => Ok(Ordering::Less),
+        Ordering::Equal => match (lhs_rem.is_zero(), rhs_rem.is_zero()) {
+            (true, true) => Ok(Ordering::Equal),
+            (true, false) => Ok(Ordering::Less),
+            (false, true) => Ok(Ordering::Greater),
+            (false, false) => Err((lhs_rem, rhs_rem)),
+        },
     }
 }
 
@@ -83,15 +110,31 @@ impl<T: Clone + Integer> Eq for Ratio<T> {}
 // with `Eq` even for non-reduced ratios.
 impl<T: Clone + Integer + Hash> Hash for Ratio<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        recurse(&self.numer, &self.denom, state);
+        // This looping structure is similar to `Ord::cmp`
+        let (mut nbuf, mut dbuf);
+        let (mut numer, mut denom) = (&self.numer, &self.denom);
 
-        fn recurse<T: Integer + Hash, H: Hasher>(numer: &T, denom: &T, state: &mut H) {
-            if !denom.is_zero() {
+        loop {
+            {
                 let (int, rem) = numer.div_mod_floor(denom);
                 int.hash(state);
-                recurse(denom, &rem, state);
-            } else {
-                denom.hash(state);
+                if rem.is_zero() {
+                    rem.hash(state);
+                    return;
+                }
+                nbuf = rem;
+                numer = &nbuf;
+            }
+
+            {
+                let (int, rem) = denom.div_mod_floor(numer);
+                int.hash(state);
+                if rem.is_zero() {
+                    rem.hash(state);
+                    return;
+                }
+                dbuf = rem;
+                denom = &dbuf;
             }
         }
     }
