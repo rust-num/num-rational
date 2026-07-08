@@ -224,6 +224,54 @@ fn test_cmp_overflow() {
 }
 
 #[test]
+#[ignore] // 2^30 combinations are slow in debug, but manageable with `--release`
+fn test_cmp_i8_full() {
+    // All (non-reduced) `Ratio<i8>` with normal denom > 0
+    let ratios = (i8::MIN..=i8::MAX)
+        .flat_map(|numer| (1..=i8::MAX).map(move |denom| Ratio::new_raw(numer, denom)));
+    for lhs in ratios.clone() {
+        let lhs_float = f64::from(lhs.numer) / f64::from(lhs.denom);
+        for rhs in ratios.clone() {
+            let rhs_float = f64::from(rhs.numer) / f64::from(rhs.denom);
+            let ord_ratio = lhs.cmp(&rhs);
+            let ord_float = lhs_float.partial_cmp(&rhs_float).unwrap();
+            assert_eq!(
+                ord_ratio, ord_float,
+                "{lhs} ({lhs_float}) <=> {rhs} ({rhs_float})"
+            );
+
+            #[cfg(feature = "std")]
+            if ord_ratio.is_eq() {
+                assert_eq!(hash_one(&lhs), hash_one(&rhs));
+            }
+        }
+    }
+}
+
+#[cfg(feature = "num-bigint")]
+fn big_ratios() -> (BigRational, BigRational) {
+    let mut numer = BigInt::from(29u32);
+    let mut denom = BigInt::from(28u32);
+    for _ in 0..13 {
+        numer = &numer * &numer;
+        denom = &denom * &denom;
+    }
+    let one = BigInt::one();
+    let a = Ratio::new_raw(numer, denom);
+    let b = Ratio::new_raw(a.numer() + &one, a.denom() + &one);
+    (a, b)
+}
+
+#[test]
+#[cfg(feature = "num-bigint")]
+fn test_cmp_stack_overflow() {
+    // When `cmp` was recursive, this test caused a stack overflow. (num-rational#140)
+    let (a, b) = big_ratios();
+    assert!(a > b);
+    assert!(a != b);
+}
+
+#[test]
 fn test_to_integer() {
     assert_eq!(_0.to_integer(), 0);
     assert_eq!(_1.to_integer(), 1);
@@ -649,20 +697,20 @@ fn test_signed() {
     assert!(!_0.is_negative());
 }
 
+// TODO(MSRV 1.71): use `BuildHasher::hash_one`
+#[cfg(feature = "std")]
+fn hash_one<T: std::hash::Hash>(x: &T) -> u64 {
+    use std::collections::hash_map::RandomState;
+    use std::hash::{BuildHasher, Hasher};
+
+    let mut hasher = <RandomState as BuildHasher>::Hasher::new();
+    x.hash(&mut hasher);
+    hasher.finish()
+}
+
 #[test]
 #[cfg(feature = "std")]
 fn test_hash() {
-    // TODO(MSRV 1.71): use `BuildHasher::hash_one`
-    #[cfg(feature = "std")]
-    fn hash_one<T: std::hash::Hash>(x: &T) -> u64 {
-        use std::collections::hash_map::RandomState;
-        use std::hash::{BuildHasher, Hasher};
-
-        let mut hasher = <RandomState as BuildHasher>::Hasher::new();
-        x.hash(&mut hasher);
-        hasher.finish()
-    }
-
     assert!(hash_one(&_0) != hash_one(&_1));
     assert!(hash_one(&_0) != hash_one(&_3_2));
 
@@ -676,6 +724,16 @@ fn test_hash() {
     let b = Rational64::new_raw(123456789 * 5, 5000);
     assert_eq!(a, b);
     assert_eq!(hash_one(&a), hash_one(&b));
+}
+
+#[test]
+#[cfg(all(feature = "std", feature = "num-bigint"))]
+fn test_hash_stack_overflow() {
+    // When `hash` was recursive, this test caused a stack overflow.
+    // (related to num-rational#140)
+    let (a, b) = big_ratios();
+    let _ = hash_one(&a);
+    let _ = hash_one(&b);
 }
 
 #[test]
