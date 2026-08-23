@@ -7,7 +7,7 @@ use super::Ratio;
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use num_integer::Integer;
-use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Inv, One, Zero};
+use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, Inv, One, Zero};
 
 macro_rules! forward_ref_ref_binop {
     (impl $imp:ident, $method:ident) => {
@@ -272,6 +272,17 @@ checked_arith_impl!(impl CheckedAdd, checked_add);
 
 // a/b - c/d = (lcm/b*a - lcm/d*c)/lcm, where lcm = lcm(b,d)
 checked_arith_impl!(impl CheckedSub, checked_sub);
+
+// -(a/b) = (-a)/b, so only the numerator can overflow
+impl<T> CheckedNeg for Ratio<T>
+where
+    T: Clone + Integer + CheckedNeg,
+{
+    #[inline]
+    fn checked_neg(&self) -> Option<Ratio<T>> {
+        Some(Ratio::new_raw(self.numer.checked_neg()?, self.denom.clone()))
+    }
+}
 
 impl<T> Neg for Ratio<T>
 where

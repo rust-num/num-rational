@@ -2,7 +2,7 @@ use super::super::{Ratio, Rational64};
 use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _MAX, _MAX_M1, _MIN, _MIN_P1, _NEG1_2};
 use core::fmt::Debug;
 use num_integer::Integer;
-use num_traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
+use num_traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, NumAssign};
 
 #[test]
 fn test_add() {
@@ -397,6 +397,15 @@ fn test_neg() {
     test(_0, _0);
     test(_1_2, _NEG1_2);
     test(-_1, _1);
+}
+
+#[test]
+fn test_checked_neg() {
+    assert_eq!(_0.checked_neg(), Some(_0));
+    assert_eq!(_1_2.checked_neg(), Some(_NEG1_2));
+    assert_eq!(_NEG1_2.checked_neg(), Some(_1_2));
+    // Negating the numerator i64::MIN overflows.
+    assert_eq!(Ratio::new(i64::MIN, 3).checked_neg(), None);
 }
 #[test]
 #[allow(clippy::eq_op)]
