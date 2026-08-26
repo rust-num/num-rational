@@ -10,6 +10,23 @@
 
 //! Rational numbers
 //!
+//! ## Features
+//!
+//! The `std` crate feature is enabled by default, which enables the [`std::error::Error`]
+//! implementation for [`ParseRatioError`]. This can be disabled by depending on `num-rational`
+//! with `default-features = false` for `no_std` support.
+//!
+//! ### Arbitrary Precision
+//!
+//! The `num-bigint` crate feature is enabled by default and provides the [`BigRational`] type
+//! alias, a [`Ratio`] of arbitrary precision integers. Enable the `num-bigint-std` feature as
+//! well to build `num-bigint` with `std` support.
+//!
+//! ### Serialization
+//!
+//! The `serde` feature adds implementations of `Serialize` and `Deserialize` for [`Ratio`]. A
+//! value is serialized as a tuple of its numerator and denominator.
+//!
 //! ## Compatibility
 //!
 //! The `num-rational` crate is tested for rustc 1.60 and greater.
