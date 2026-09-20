@@ -7,7 +7,7 @@ use super::Ratio;
 use core::ops::{Add, Div, Mul, Neg, Rem, Sub};
 
 use num_integer::Integer;
-use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, Inv, One, Zero};
+use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, Inv, One, Zero};
 
 macro_rules! forward_ref_ref_binop {
     (impl $imp:ident, $method:ident) => {
@@ -294,6 +294,19 @@ where
     #[inline]
     fn neg(self) -> Ratio<T> {
         -self.clone()
+    }
+}
+
+impl<T> CheckedNeg for Ratio<T>
+where
+    T: Clone + Integer + CheckedNeg,
+{
+    #[inline]
+    fn checked_neg(&self) -> Option<Ratio<T>> {
+        Some(Ratio::new_raw(
+            self.numer.checked_neg()?,
+            self.denom.clone(),
+        ))
     }
 }
 
