@@ -2,7 +2,7 @@ use super::super::{Ratio, Rational64};
 use super::{to_big, _0, _1, _1_2, _2, _3_2, _5_2, _MAX, _MAX_M1, _MIN, _MIN_P1, _NEG1_2};
 use core::fmt::Debug;
 use num_integer::Integer;
-use num_traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedSub, NumAssign};
+use num_traits::{Bounded, CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, NumAssign};
 
 #[test]
 fn test_add() {
@@ -398,6 +398,42 @@ fn test_neg() {
     test(_1_2, _NEG1_2);
     test(-_1, _1);
 }
+
+#[test]
+fn test_checked_neg() {
+    fn checked<T>(value: Ratio<T>) -> Option<Ratio<T>>
+    where
+        T: Clone + Integer + CheckedNeg,
+    {
+        value.checked_neg()
+    }
+
+    assert_eq!(checked(Ratio::new(i64::MIN, 3)), None);
+    assert_eq!(checked(Ratio::new_raw(i64::MIN, 3)), None);
+    assert_eq!(checked(_1_2), Some(_NEG1_2));
+    assert_eq!(checked(_NEG1_2), Some(_1_2));
+    assert_eq!(checked(_0), Some(_0));
+    assert_eq!(checked(_MAX), Some(Ratio::new(-i64::MAX, 1)));
+
+    assert_eq!(checked(Ratio::new(0_u64, 2)), Some(Ratio::new_raw(0, 1)));
+    assert_eq!(checked(Ratio::new(1_u64, 2)), None);
+
+    let unreduced = Ratio::new_raw(2_i64, 4);
+    let unreduced_negated = checked(unreduced).unwrap();
+    assert_eq!(unreduced_negated.numer(), &-2);
+    assert_eq!(unreduced_negated.denom(), &4);
+
+    let negative_denominator = Ratio::new_raw(2_i64, -4);
+    let negative_denominator_negated = checked(negative_denominator).unwrap();
+    assert_eq!(negative_denominator_negated.numer(), &-2);
+    assert_eq!(negative_denominator_negated.denom(), &-4);
+
+    let minimum_denominator = Ratio::new_raw(1_i64, i64::MIN);
+    let minimum_denominator_negated = checked(minimum_denominator).unwrap();
+    assert_eq!(minimum_denominator_negated.numer(), &-1);
+    assert_eq!(minimum_denominator_negated.denom(), &i64::MIN);
+}
+
 #[test]
 #[allow(clippy::eq_op)]
 fn test_zero() {
