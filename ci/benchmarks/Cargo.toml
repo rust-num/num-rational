@@ -13,7 +13,7 @@ default-features = false
 features = ["num-bigint"]
 
 [dependencies.num-bigint]
-version = "0.4.0"
+version = "0.5.1"
 default-features = false
 
 [dependencies.rand]
